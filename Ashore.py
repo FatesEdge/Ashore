@@ -9,42 +9,39 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os, platform
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon
+import sys, os, platform, json, copy, signal
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon, QMessageBox
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QDesktopServices, QFont
 from PyQt6.QtCore import QTimer, QSize, QEvent, QUrl, pyqtSignal, QObject, QThread, Qt
-from page import Page
-from aria2Operate import Aria2Operate
-from addNewDialog import AddNewDialog
-from settingPage import SettingPage
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
+from interface.page import Page
+from core.aria2Operate import Aria2Operate
+from interface.addNewDialog import AddNewDialog
+from interface.settingPage import SettingPage
+from paths import RESOURCE_DIR
+from core.aria2Events import Aria2Events
 
 DEFAULTPATH = os.path.expanduser('~/Downloads')
+APP_VERSION = '0.7.66'
 class Aria2Thread(Aria2Operate, QThread):
 
     updatedSignal = pyqtSignal(dict)
 
     def __init__(self, BASEPATH:str=None, QuitWithAria2:bool=False, UpdateInterval:int=2000):
-        #传递参数运行基本目录
-        super().__init__(BASEPATH=BASEPATH, QuitWithAria2=QuitWithAria2)
-        QObject.__init__(self)
-        self.timer = QTimer()  # 初始化一个定时器
-        self.timer.timeout.connect(self.start)  # 每次计时到时间时发出信号
-        self.timer.start(UpdateInterval)  # 设置计时间隔并启动；单位毫秒
+        QThread.__init__(self)
+        Aria2Operate.__init__(self, BASEPATH=BASEPATH, QuitWithAria2=QuitWithAria2)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.poll)
+        self.timer.start(max(500, UpdateInterval))
+
+    def poll(self):
+        if not self.isRunning():
+            self.start()
 
     def run(self):
-        # self.timer.stop()
-        self.myPrint('----------------new request-----------------')
-        self.updatedSignal.emit(self.getMissions())
-        # missions = self.getMissions()
-        # if 'ResultError' in missions:
-        # # # self.timer.start()
-        #     self.updatedSignal.emit((0, missions))
-        # else:
-        #     self.updatedSignal.emit((missions, 0)
-
-    def performan(self, host="http://localhost", port=6801, secret="", data:str='{}', numRetry:int=7) -> dict:
-        result = Aria2Operate.performan(self, host=host, port=port, secret=secret, data=data, numRetry=numRetry)
-        return result
+        missions = self.getMissions()
+        status = self.lastPollGlobalStatus
+        self.updatedSignal.emit({'missions': copy.deepcopy(missions), 'globalStatus': dict(status)})
 
 class Ashore(QMainWindow):
     def __init__(self):
@@ -59,12 +56,12 @@ class Ashore(QMainWindow):
         #      修改main.spec中的datas，
         #      如datas=[('res', 'res')]，意思是当前目录下的res目录加入目标exe中，在运行时放在零时文件的根目录下，名称为res
         self.isRelease = False
-        self.BASEPATH = ''
+        self.BASEPATH = str(RESOURCE_DIR) + '/'
         # getattr 函数判断第一参数中是否含有第二参数这个属性：有则返回True，若没有：当第三参数为空时返回error，第三参数存在则返回第三参数
         if getattr(sys, 'frozen', False):
             self.isRelease = True
             #判断是否为发布状态，利用系统方法找到运行目录
-            self.BASEPATH = sys._MEIPASS + '/'        
+            self.BASEPATH = sys._MEIPASS + '/'
         self.pageSetting = SettingPage()
         #获取ashore配置信息
         ashoreConfig = self.pageSetting.getAshoreConfig()
@@ -76,8 +73,15 @@ class Ashore(QMainWindow):
 
         self.initUI()
         self.setConnect()
-        self.updatePage()
         self.aria2Operate.updatedSignal.connect(self.updatePage)
+        self.knownStatuses = None
+        self.pendingNotifications = {}
+        self.notifiedDownloads = set()
+        self.aria2ConfigError = None
+        self.quitting = False
+        self.aria2Events = Aria2Events(self.aria2Operate.rpc_port, self)
+        self.aria2Events.notification.connect(self.slotAria2Notification)
+        self.aria2Operate.poll()
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -164,6 +168,8 @@ class Ashore(QMainWindow):
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
         self.statusBar.addPermanentWidget(self.upSpeedIcon)
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
+        self.aria2StateLabel = QLabel('aria2：连接中')
+        self.statusBar.addPermanentWidget(self.aria2StateLabel)
         self.setStatusBar(self.statusBar)
 
     def initUI(self) -> None:
@@ -253,46 +259,60 @@ class Ashore(QMainWindow):
         self.tabSetting.clicked.connect(self.slotSwitchSetting)
         self.pageSetting.aria2ConfSinOut.connect(self.slotUpdateRunningAria2Config)
         self.pageSetting.ashoreConfigSinOut.connect(self.slotUpdateRunningAshoreConfig)
+        self.pageDownloading.sectionAdded.connect(self.connectSection)
+        self.pageDownloaded.sectionAdded.connect(self.connectSection)
 
-    def updatePage(self, missions:dict=None) -> None:
-        #先获取全局状态信息
-        globalStatus = self.aria2Operate.getGlobalStatus()
+    def updatePage(self, snapshot:dict) -> None:
+        missions = snapshot['missions']
+        globalStatus = snapshot['globalStatus']
         if 'ResultError' in globalStatus:
-             #包含错误信息，认为任务信息有误，直接报错
-            self.myPrint(globalStatus['ResultError'])
+            self.aria2StateLabel.setText('aria2：未连接')
+            self.aria2StateLabel.setToolTip(str(globalStatus['ResultError']))
+            self.downSpeedLabel.setText('—')
+            self.upSpeedLabel.setText('—')
             return
-        else:
-            #没报错处理任务字典
-            if missions == None:
-                #若为空调用，则主动获取
-                missions = self.aria2Operate.getMissions()
-            else:
-                #若为参数调用，判断参数内容
-                if 'ResultError' in missions:
-                    #包含错误信息，认为任务信息有误，直接报错
-                    self.myPrint(missions['ResultError'])
-                    return
-            self.pageDownloading.updateSections({'active' : missions['active'], 'waiting' : missions['waiting'], 'paused' : missions['paused']})
-            self.pageDownloaded.updateSections({'completed' : missions['completed'] , 'error' : missions['error']})
-            self.downSpeedLabel.setText(self.getSpeedStr(int(globalStatus['downloadSpeed'])))
-            self.upSpeedLabel.setText(self.getSpeedStr(int(globalStatus['uploadSpeed'])))
-        self.setConnectByDic()
+        if 'ResultError' in missions:
+            self.aria2StateLabel.setText('aria2：查询失败')
+            self.aria2StateLabel.setToolTip(str(missions['ResultError']))
+            return
+        self.aria2StateLabel.setText('aria2：已连接')
+        self.aria2StateLabel.setToolTip(f'127.0.0.1:{self.aria2Operate.rpc_port}')
+        self.pageDownloading.updateSections({status: missions[status] for status in ('active', 'waiting', 'paused')})
+        self.pageDownloaded.updateSections({status: missions[status] for status in ('completed', 'error')})
+        self.downSpeedLabel.setText(self.getSpeedStr(int(globalStatus['downloadSpeed'])))
+        self.upSpeedLabel.setText(self.getSpeedStr(int(globalStatus['uploadSpeed'])))
+        current = {gid: status for status, group in missions.items() for gid in group}
+        self.notifiedDownloads.intersection_update({(gid, status) for gid in current for status in ('completed', 'error')})
+        if self.knownStatuses is not None:
+            for gid, status in current.items():
+                previous = self.knownStatuses.get(gid)
+                event = self.pendingNotifications.get(gid)
+                complete = status == 'completed' and (previous in ('active', 'waiting', 'paused') or event == 'aria2.onDownloadComplete')
+                btComplete = event == 'aria2.onBtDownloadComplete' and status == 'active'
+                failed = status == 'error' and (previous in ('active', 'waiting', 'paused') or event == 'aria2.onDownloadError')
+                outcome = 'error' if failed else 'completed' if complete or btComplete else None
+                if outcome and (gid, outcome) not in self.notifiedDownloads:
+                    name = missions[status][gid]['filename']
+                    self.showDownloadNotification(name, outcome)
+                    self.notifiedDownloads.add((gid, outcome))
+        self.knownStatuses = current
+        self.pendingNotifications.clear()
 
-    def setConnectByDic(self) -> None:
-        for item in self.pageDownloading.sectionsDic.values():
-            item.disconnect()
-            # 双击section和点击section中开始/暂停按钮效果同步
-            item.doubleClickOut.connect(self.slotDoubleClick)
-            item.openDirOut.connect(self.slotOpenFolder)
-            item.cpUrlOut.connect(self.slotcpUrl)
-            item.removeDelOut.connect(self.slotRemoveDel)
-        for item in self.pageDownloaded.sectionsDic.values():
-            item.disconnect()
-            # 双击section和点击section中开始/暂停按钮效果同步
-            item.doubleClickOut.connect(self.slotDoubleClick)
-            item.openDirOut.connect(self.slotOpenFolder)
-            item.cpUrlOut.connect(self.slotcpUrl)
-            item.removeDelOut.connect(self.slotRemoveDel)
+    def connectSection(self, item):
+        item.doubleClickOut.connect(self.slotDoubleClick)
+        item.openDirOut.connect(self.slotOpenFolder)
+        item.cpUrlOut.connect(self.slotcpUrl)
+        item.removeDelOut.connect(self.slotRemoveDel)
+
+    def slotAria2Notification(self, method, gid):
+        if method in ('aria2.onDownloadComplete', 'aria2.onBtDownloadComplete', 'aria2.onDownloadError'):
+            self.pendingNotifications[gid] = method
+        self.aria2Operate.poll()
+
+    def showDownloadNotification(self, name, status):
+        if QSystemTrayIcon.isSystemTrayAvailable() and QSystemTrayIcon.supportsMessages():
+            title = '下载完成' if status == 'completed' else '下载失败'
+            self.TrayIcon.showMessage(title, name)
 
     def bytesInt2Str(self, b:int) -> str:
         if b < 1024:
@@ -303,6 +323,8 @@ class Ashore(QMainWindow):
             s = '{:.2f}MB'.format(b/1048576)
         elif b < 1099511627776:
             s = '{:.2f}GB'.format(b/1073741824)
+        else:
+            s = '{:.2f}TB'.format(b/1099511627776)
         return s
 
     def getSpeedStr(self, speed:int) -> str:
@@ -333,22 +355,26 @@ class Ashore(QMainWindow):
             self.pageSetting.updateSettingPage(config)
             self.pageStack.setCurrentIndex(2)
 
-    def addNew(self, urlList:list=[]) -> None:
+    def addNew(self, urlList:list=None) -> None:
         """通过命令行参数或系统接口参数运行程序、添加新任务
         :param urlList: list类型的下载地址url
         """
         config = {'ResultError' : 0}
-        while 'ResultError' in config:
-            config = self.aria2Operate.getGlobalConfig()
+        config = self.aria2Operate.getGlobalConfig()
         if 'ResultError' in config:
             self.myPrint(config['ResultError'])
             return
         else:
             form = AddNewDialog(config['dir'], urlList)
-            form.sinOut.connect(self.aria2Operate.addUrls)
+            form.sinOut.connect(self.addUrls)
             form.show()
             form.exec()
-            self.updatePage()
+            self.aria2Operate.poll()
+
+    def addUrls(self, data):
+        result = self.aria2Operate.addUrls(data)
+        if 'ResultError' in result:
+            QMessageBox.warning(self, '添加任务失败', str(result['ResultError']))
 
     def slotClickBtnAddNew(self) -> None:
         """用户通过按钮触发的添加新任务,无参数
@@ -373,7 +399,7 @@ class Ashore(QMainWindow):
         infoLIcon.setScaledContents(True)
         infoLIcon.setFixedSize(180, 180)
         aria2Version = self.aria2Operate.getAria2Version()
-        aboutText = QLabel('由Python编写的aira2可视化程序<br>作者:PPPPAN<br>项目地址:<a href="https://github.com/PanZK/Ashore">Github/Ashore</a><br>Python version:3.10.6<br>Ashore version: 1.76.2<br>aria2 version:' + aria2Version)
+        aboutText = QLabel('由 Python 编写的 aria2 可视化程序<br>作者: PPPPAN<br>项目地址: <a href="https://github.com/FatesEdge/Ashore">GitHub/Ashore</a><br>Python version: ' + platform.python_version() + '<br>Ashore version: ' + APP_VERSION + '<br>aria2 version: ' + aria2Version)
         aboutText.setOpenExternalLinks(True)
         aboutText.setFixedWidth(300)
         aboutText.setMargin(30)
@@ -399,13 +425,27 @@ class Ashore(QMainWindow):
             self.myPrint(saveResult['ResultError'])
 
     def slotQuit(self):
+        if self.quitting:
+            return
+        self.quitting = True
+        self.aria2Operate.timer.stop()
+        self.aria2Events.stop()
+        self.aria2Operate.wait()
         self.aria2Operate.saveSession()
-        # print("调用sys.exit() 销毁对象，释放其空间")
         if self.aria2Operate.mainKillAria2():
-            sys.exit(0)
+            QApplication.instance().quit()
 
     def slotRestartAria2(self):
-        self.aria2Operate.restartAria2(self.BASEPATH)
+        self.aria2Operate.timer.stop()
+        self.aria2Operate.wait()
+        try:
+            self.aria2Operate.restartAria2(self.BASEPATH)
+        except RuntimeError as exc:
+            QMessageBox.warning(self, '无法重启 aria2', str(exc))
+        finally:
+            self.aria2Events.setPort(self.aria2Operate.rpc_port)
+            self.aria2Operate.timer.start()
+            self.aria2Operate.poll()
 
     def slotDoubleClick(self, data:tuple) -> None:
         gid = data[0]
@@ -423,7 +463,7 @@ class Ashore(QMainWindow):
                 QDesktopServices.openUrl(QUrl.fromLocalFile(filePathResult['filePath']))
         elif status == 'error':
             self.aria2Operate.retry(gid)
-        self.updatePage()
+        self.aria2Operate.poll()
 
     def slotOpenFolder(self, gid:str) -> None:
         OpenResult = self.aria2Operate.openFileDir(gid)
@@ -450,13 +490,12 @@ class Ashore(QMainWindow):
             self.myPrint(result['ResultError'])
         else:
             self.myPrint('删除成功')
-        self.updatePage()
+        self.aria2Operate.poll()
 
     def slotUpdateRunningAria2Config(self, conf:dict) -> None:
         # 将setting页面的设置信息更新到运行的aria2程序中
-        result = self.aria2Operate.setGlobalConfig(conf)
-        if 'ResultError' in result:
-            self.myPrint(result['ResultError'])
+        result = conf if 'ResultError' in conf else self.aria2Operate.setGlobalConfig(conf)
+        self.aria2ConfigError = result.get('ResultError') if isinstance(result, dict) else str(result)
 
     def slotUpdateRunningAshoreConfig(self, conf:dict) -> None:
         # 将setting页面的设置信息更新到运行的ashore程序中
@@ -464,8 +503,11 @@ class Ashore(QMainWindow):
             self.aria2Operate.QuitWithAria2 = False
         elif conf['quit_with_aria2'] == 'true':
             self.aria2Operate.QuitWithAria2 = True
-        self.aria2Operate.timer.setInterval(int(conf['update_interval']))
-        self.myPrint(conf['isSaved'])
+        self.aria2Operate.timer.setInterval(max(500, int(conf['update_interval'])))
+        if getattr(self, 'aria2ConfigError', None):
+            self.myPrint('配置已保存，但运行中 aria2 未能应用设置：' + str(self.aria2ConfigError))
+        else:
+            self.myPrint(conf['isSaved'])
 
     def myPrint(self, data, end=None):
         if type(data) == int:
@@ -479,22 +521,49 @@ class Ashore(QMainWindow):
                 #当程序处于coding阶段时允许输出，当为release时禁止输出
                 print(data, end=end)
 
-    def slotShowMessage(self, data:dict):
-        """保留函数
-            由于目前没有找到接收json-rpc信息的方法,故先保留信息推送功能
-        """
-        self.TrayIcon.showMessage('1111111','111111')
-
 class MyApplication(QApplication):
 
     fileOpenSignal = pyqtSignal(list)
+    instanceMessage = pyqtSignal(list)
 
     def __init__(self, arguments):
         super().__init__(arguments)
         self.setQuitOnLastWindowClosed(False)    #设置关闭窗口后最小化
-        self.setApplicationVersion('0.2.05')
+        self.setApplicationVersion(APP_VERSION)
         self.setOrganizationName('PanZK')
         self.setApplicationName("Ashore")
+
+    def forwardToExisting(self, urls):
+        name = 'Ashore-' + str(os.getuid() if hasattr(os, 'getuid') else os.environ.get('USERNAME', 'user'))
+        socket = QLocalSocket(self)
+        socket.connectToServer(name)
+        if socket.waitForConnected(300):
+            socket.write(json.dumps(urls).encode('utf-8'))
+            socket.waitForBytesWritten(1000)
+            socket.disconnectFromServer()
+            return True
+        if socket.error() == QLocalSocket.LocalSocketError.UnsupportedSocketOperationError:
+            return False
+        if socket.error() not in (QLocalSocket.LocalSocketError.ServerNotFoundError,
+                                  QLocalSocket.LocalSocketError.ConnectionRefusedError):
+            raise RuntimeError('无法连接正在运行的 Ashore 实例')
+        self.localServer = QLocalServer(self)
+        QLocalServer.removeServer(name)
+        if not self.localServer.listen(name):
+            raise RuntimeError('无法建立 Ashore 单实例通信通道')
+        self.localServer.newConnection.connect(self.receiveInstanceMessage)
+        return False
+
+    def receiveInstanceMessage(self):
+        socket = self.localServer.nextPendingConnection()
+        if not socket.bytesAvailable():
+            socket.waitForReadyRead(1000)
+        try:
+            urls = json.loads(bytes(socket.readAll()).decode('utf-8'))
+            self.instanceMessage.emit(urls)
+        except (ValueError, UnicodeDecodeError):
+            pass
+        socket.disconnectFromServer()
 
     def event(self, event):
         if event.type() == QEvent.Type.FileOpen:    # 对请求进行判断
@@ -502,10 +571,16 @@ class MyApplication(QApplication):
         return super().event(event)
 
 if __name__ == '__main__':
-    BASEPATH = ''
+    BASEPATH = str(RESOURCE_DIR) + '/'
     if getattr(sys, 'frozen', False):
         BASEPATH = sys._MEIPASS + '/'
     app = MyApplication(sys.argv)
+    try:
+        if app.forwardToExisting(sys.argv[1:]):
+            sys.exit(0)
+    except RuntimeError as exc:
+        QMessageBox.critical(None, 'Ashore 启动失败', str(exc))
+        sys.exit(1)
     splash = QSplashScreen(QPixmap(BASEPATH + 'static/img/cover.png'))
     splash.show()                               #展示启动图片
     app.processEvents()                         #防止进程卡死
@@ -514,12 +589,28 @@ if __name__ == '__main__':
         app.setWindowIcon(QIcon(BASEPATH + 'static/icon/icon.funtion/icon.icns'))
     elif platform.system() == 'Linux' or platform.system() == 'Windows':
         app.setWindowIcon(QIcon(BASEPATH + 'static/icon/icon.funtion/icon0.png'))
-    exe = Ashore()
+    try:
+        exe = Ashore()
+    except (RuntimeError, OSError, ValueError) as exc:
+        splash.close()
+        QMessageBox.critical(None, 'Ashore 启动失败', str(exc))
+        sys.exit(1)
     exe.show()
     splash.finish(exe)                  #关闭启动界面
     if len(sys.argv) != 1:
         exe.addNew(sys.argv[1:])
     app.fileOpenSignal.connect(exe.addNew)
+    def handleInstance(urls):
+        exe.show()
+        exe.raise_()
+        exe.activateWindow()
+        if urls:
+            exe.addNew(urls)
+    app.instanceMessage.connect(handleInstance)
+    signal.signal(signal.SIGINT, lambda *_: exe.slotQuit())
+    signalTimer = QTimer()
+    signalTimer.timeout.connect(lambda: None)
+    signalTimer.start(250)
     app.exec()
     del exe
     sys.exit()

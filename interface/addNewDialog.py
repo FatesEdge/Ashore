@@ -9,17 +9,11 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os, re
+import sys, os
+from pathlib import Path
+from urllib.parse import urlsplit, unquote
 from PyQt6.QtWidgets import QApplication, QPushButton, QFileDialog, QDialog, QTextEdit, QLineEdit, QGridLayout
 from PyQt6.QtCore import Qt, pyqtSignal
-
-REDIC = {
-    'url' : r'(http|ftp|https):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&:/~\+#]*[\w\-\@?^=%&/~\+#])?',
-    'magnet' : r'(magnet:\?xt=urn:btih:)[0-9a-fA-F]{40}',
-    'torrent0' : r'(http|ftp|https):\/\/(.*?\.torrent)',
-    'torrent1' : r'file://(/.*?\.torrent)',
-    'torrent2' : r'(/Users.*?\.torrent)',
-    }
 
 class AddNewDialog(QDialog):
 
@@ -70,27 +64,20 @@ class AddNewDialog(QDialog):
         if text != '':
             urls = {'urlList': [], 'torrentList': []}
             #校验是否为url或magnet
-            for item in text.split('\n'):
-                temp1 = re.findall(REDIC['url'], item)
-                temp2 = re.findall(REDIC['magnet'], item)
-                if temp1 != [] or temp2 != []:
-                    urls['urlList'].append(item)
-                    continue
-                temp3 = re.findall(REDIC['torrent1'], item)
-                temp4 = re.findall(REDIC['torrent2'], item)
-                temp0 = re.findall(REDIC['torrent0'], item)
-                if temp0 != []:
+            for raw in text.splitlines():
+                item = raw.strip()
+                parsed = urlsplit(item)
+                if parsed.scheme in ('http', 'https', 'ftp') and parsed.netloc:
+                    target = 'torrentList' if unquote(parsed.path).lower().endswith('.torrent') else 'urlList'
+                    urls[target].append(item)
+                elif parsed.scheme == 'magnet' and 'xt=urn:btih:' in parsed.query.lower():
                     urls['torrentList'].append(item)
-                    continue
-                elif temp3 != []:
-                    urls['torrentList'].append(temp3[0])
-                    continue
-                elif temp4 != []:
-                    urls['torrentList'].append(temp4[0])
-                    continue
+                elif parsed.scheme == 'file' and unquote(parsed.path).lower().endswith('.torrent'):
+                    urls['torrentList'].append(item)
+                elif Path(item).is_file() and item.lower().endswith('.torrent'):
+                    urls['torrentList'].append(item)
             dir = self.dirEdit.text()
             self.sinOut.emit((urls,dir))
-            print((urls,dir))
         self.close()
 
 if __name__ == '__main__':

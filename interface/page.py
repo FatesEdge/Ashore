@@ -11,10 +11,12 @@
 
 import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QScrollArea
-from PyQt6.QtCore import Qt
-from section import Section
+from PyQt6.QtCore import Qt, pyqtSignal
+from interface.section import Section
 
 class Page(QScrollArea):
+    sectionAdded = pyqtSignal(object)
+
     def __init__(self):
         super().__init__()
         self.sectionsDic = {}
@@ -44,17 +46,19 @@ class Page(QScrollArea):
                     #不在已有列表中，新建实例并添加进布局
                     self.sectionsDic.update({key : Section(gid=key, fileName=attribute['filename'], status=status, fileSize=attribute['totalLength'], completedSize=attribute['completedLength'], speed=attribute['downloadSpeed'], isTorrent=attribute['isTorrent'])})
                     self.sectionLayout.addWidget(self.sectionsDic[key])
+                    self.sectionAdded.emit(self.sectionsDic[key])
                     h = self.sectionListWidget.height()
                     self.sectionListWidget.resize(w, h+120)
                 else:
                     #在已有列表中，更新信息
-                    self.sectionsDic[key].updateInfo(status=status, fileSize=attribute['totalLength'], completedSize=attribute['completedLength'], speed=attribute['downloadSpeed'])
+                    self.sectionsDic[key].updateInfo(status=status, fileSize=attribute['totalLength'], completedSize=attribute['completedLength'], speed=attribute['downloadSpeed'], fileName=attribute['filename'], isTorrent=attribute['isTorrent'])
                 tempList.append(key)
         #把不在列表内的删除
         for gid,item in list(self.sectionsDic.items()):
             if gid not in tempList:
                 self.sectionLayout.removeWidget(item)
                 self.sectionsDic.pop(gid, '删除失败')
+                item.deleteLater()
                 h = self.sectionListWidget.height()
                 self.sectionListWidget.resize(w, h-120)
         self.update()

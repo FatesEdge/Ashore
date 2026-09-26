@@ -9,18 +9,14 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import urllib.request, urllib.error, urllib.parse, json, socket, sys, os ,platform , subprocess, time
-from time import sleep
+import urllib.request, urllib.error, urllib.parse, json, os, platform, subprocess, time, shutil, base64
+from pathlib import Path
+from paths import CONFIG_DIR, ensure_config
+from core.missionNames import MissionNames
 
 class Aria2Operate():
     totalNum = 1
-    missions = {
-        'active'    : {'913e29dd95f7313b' : {'filename' : 'aaa'}, '913e29dd95f731aa' : {'filename' : 'ccc'}},
-        'waiting'   : {'913e294495f7313b' : {'filename' : 'bbb'}},
-        'paused'    : {},
-        'completed' : {},
-        'error'     : {}
-        }
+    missions = {}
     globalStatus = {
         'downloadSpeed'     : None,
         'numActive'         : None,     #正在下载及暂停的任务数量
@@ -34,6 +30,7 @@ class Aria2Operate():
     ARIA2METHOD = {
         'getGlobalStat'         : 'aria2.getGlobalStat',
         'add'                   : 'aria2.addUri',
+        'addTorrent'            : 'aria2.addTorrent',
         'addMetalink'           : 'aria2.addMetalink',
         'remove'                : 'aria2.remove',
         'removeResult'          : 'aria2.removeDownloadResult',
@@ -73,41 +70,29 @@ class Aria2Operate():
         PlatformSystem = 'Windows'
 
     def __init__(self, BASEPATH:str=None, QuitWithAria2:bool=False) -> None:
-        self.isRelease = False
-        # getattr 函数判断第一参数中是否含有第二参数这个属性：有则返回True，若没有：当第三参数为空时返回error，第三参数存在则返回第三参数
-        if getattr(sys, 'frozen', False):
-            self.isRelease = True
-        #检验aria2是否安装
-        if not self.isAria2Installed():
-            # raise Exception('aria2 is not installed, please install it before.')
-            self.myPrint('aria2 is not installed, please install it before.')
-        #检验aria2是否已运行
-        if not self.isAria2rpcRunning():
-            #若未运行，则加载配置启动aria2
-            # 传递参数运行基本目录来加载运行配置
-            # cmd = self.loadConfig(BASEPATH)
-            # #用系统命令行运行aria2c
-            # subprocess.Popen([cmd],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # count = 0
-            # while True:
-            #     if self.isAria2rpcRunning():
-            #         break
-            #     else:
-            #         count += 1
-            #         time.sleep(3)
-            #     if count == 5:
-            #         raise Exception('aria2 RPC server started failure.')
-            # self.myPrint('aria2 RPC server is started.')
-            self.startAria2(BASEPATH)
-        else:
-            self.myPrint('aria2 RPC server is already running.')
-        socket.setdefaulttimeout(0.003) 
-        result = self.getGlobalStatus()
-        #若失败就不断尝试链接
-        while 'ResultError' in result:
-            result = self.getGlobalStatus()
+        self.isRelease = bool(getattr(__import__('sys'), 'frozen', False))
+        self.missions = {key: {} for key in ('active', 'waiting', 'paused', 'completed', 'error')}
+        self.missionNames = MissionNames()
+        self.globalStatus = {}
         self.QuitWithAria2 = QuitWithAria2
-        self.myPrint(self.globalStatus)
+        self.process = None
+        self.conf_path = ensure_config('aria2.conf')
+        ensure_config('aria2.session')
+        self._read_rpc_options()
+        if 'ResultError' in self.getGlobalStatus():
+            if not self.isAria2Installed():
+                raise RuntimeError('未检测到 aria2c。请先安装 aria2，再启动 Ashore。')
+            self.startAria2(BASEPATH)
+
+    def _read_rpc_options(self):
+        options = {}
+        for line in self.conf_path.read_text(encoding='utf-8').splitlines():
+            line = line.strip()
+            if line and not line.startswith(('#', ';', '[')) and '=' in line:
+                key, value = line.split('=', 1)
+                options[key.strip()] = value.strip()
+        self.rpc_port = int(options.get('rpc-listen-port', '6801'))
+        self.rpc_secret = options.get('rpc-secret', '')
 
     def addUrl(self, url:str, targetDir:str, rename:str=None, isTorrent:bool=None) -> dict:
         """添加单个下载任务
@@ -117,32 +102,34 @@ class Aria2Operate():
         :param isTorrent: bool类型是否为种子或bt链接
         :returns: 成功返回{}空字典,失败返回异常{'ResultError' : int}
         """
+        local_torrent = urllib.parse.urlsplit(url).scheme == 'file' or (not urllib.parse.urlsplit(url).scheme and url.lower().endswith('.torrent'))
+        if local_torrent:
+            path = Path(urllib.request.url2pathname(urllib.parse.urlsplit(url).path)) if url.startswith('file:') else Path(url)
+            try:
+                content = base64.b64encode(path.read_bytes()).decode('ascii')
+            except OSError as exc:
+                return {'ResultError': str(exc)}
+            return self.performan(data=self.produceJson(self.ARIA2METHOD['addTorrent'],
+                                                         [content, [], {'dir': targetDir}]))
         jsonData = None
         if isTorrent == None:
-            if url.startswith('magnet:?xt=urn:btih:') or url.endswith('.torrent'):
+            if url.startswith('magnet:?xt=urn:btih:') or urllib.parse.urlsplit(url).path.lower().endswith('.torrent'):
                 isTorrent = True
             else:
                 isTorrent = False
         if isTorrent == True:
             #种子或磁链
-            params = [[url], {
-                'dir' : targetDir,      # //下载根目录
-                'referer' : '*'         # //referer 用来绕开部分防盗链机制 星号表示使用url作为referer
-            }]
+            params = [[url], {'dir': targetDir, 'referer': '*'}]
             jsonData = self.produceJson(method = self.ARIA2METHOD['add'], params = params)
         else:
             #非种子或磁链
-            params = [[url], {
-                'dir' : targetDir,     # //下载根目录
-                'out' : rename,   # //目标文件名
-                'referer' : '*' # //referer 用来绕开部分防盗链机制 星号表示使用url作为referer
-            }]
+            options = {'dir': targetDir, 'referer': '*'}
+            if rename:
+                options['out'] = rename
+            params = [[url], options]
             jsonData = self.produceJson(method = self.ARIA2METHOD['add'], params = params)
         addReslut = self.performan(data=jsonData)   #执行添加操作得到返回结果
-        if 'ResultError' in addReslut:
-            return addReslut
-        else:
-            return {}
+        return addReslut if 'ResultError' in addReslut else {}
 
     def addUrls(self, data:tuple=None, rename:str=None) -> None:
         """添加多个下载任务
@@ -153,22 +140,12 @@ class Aria2Operate():
         torrentList = data[0]['torrentList']
         targetDir = data[1]
         #添加普通url列表
-        if len(urlList) > 0:
-            if len(urlList) == 1:
-                addResult = {'ResultError' : 0}
-                while 'ResultError' in addResult:
-                    addResult = self.addUrl(urlList[0], targetDir, rename)
-            else:
-                for url in urlList:
-                    addResult = {'ResultError' : 0}
-                    while 'ResultError' in addResult:
-                        addResult = self.addUrl(url, targetDir)
-        #添加磁链url列表
-        if len(torrentList) > 0:
-            for torrent in torrentList:
-                addResult = {'ResultError' : 0}
-                while 'ResultError' in addResult:
-                    addResult = self.addUrl(torrent, targetDir)
+        errors = []
+        for url in urlList + torrentList:
+            result = self.addUrl(url, targetDir, rename if len(urlList) == 1 and url == urlList[0] else None)
+            if 'ResultError' in result:
+                errors.append(f'{url}: {result["ResultError"]}')
+        return {'ResultError': '\n'.join(errors)} if errors else {}
 
 
     def addTorrent(self):
@@ -220,13 +197,11 @@ class Aria2Operate():
             url = missionResult['url']
             isTorrent = missionResult['isTorrent']
             targetDir = missionResult['dir']
-            delResult = self.delRemoveMission(gid, True)        #删除任务
+            delResult = self.delRemoveMission(gid, False)
             if 'ResultError' in delResult:
                 return delResult
             else:
-                addResult = {'ResultError' : 0}
-                while 'ResultError' in addResult:
-                    addResult = self.addUrl(url, targetDir, isTorrent)      #删除任务后添加下载任务
+                return self.addUrl(url, targetDir, isTorrent=isTorrent)
 
     def getGlobalStatus(self) -> dict:
         jsonData = self.produceJson(method = self.ARIA2METHOD['getGlobalStat'])
@@ -238,6 +213,10 @@ class Aria2Operate():
             return globalResult
 
     def getMissions(self) -> dict:
+        status_result = self.getGlobalStatus()
+        self.lastPollGlobalStatus = status_result
+        if 'ResultError' in status_result:
+            return status_result
         #对active队列进行处理
         activeData = self.produceJson(method = self.ARIA2METHOD['tellActive'])
         activeResult = self.performan(data = activeData)   #执行添加操作得到返回结果
@@ -254,7 +233,7 @@ class Aria2Operate():
                 # self.myPrint(item['files'][0]['path'])
             self.removeSuperfluous(newGids = activeGids, status = 'active')     #删除多余任务
         #对waiting队列进行处理,分别进入waiting等待队列和paused暂停队列
-        waitingData = self.produceJson(method = self.ARIA2METHOD['tellWaiting'],params=[0, int(self.globalStatus['numWaiting'])])
+        waitingData = self.produceJson(method = self.ARIA2METHOD['tellWaiting'],params=[0, 2000])
         waitingResult = self.performan(data = waitingData)   #执行添加操作得到返回结果
         if 'ResultError' in waitingResult:
             return waitingResult
@@ -274,7 +253,7 @@ class Aria2Operate():
             self.removeSuperfluous(newGids = waitingGids, status = 'waiting')     #删除多余任务
             self.removeSuperfluous(newGids = pausedGids, status = 'paused')     #删除多余任务
         #对stopped队列进行处理
-        stoppedData = self.produceJson(method = self.ARIA2METHOD['tellStopped'],params=[0, int(self.globalStatus['numStopped'])])
+        stoppedData = self.produceJson(method = self.ARIA2METHOD['tellStopped'],params=[0, 2000])
         stoppedResult = self.performan(data = stoppedData)   #执行添加操作得到返回结果
         if 'ResultError' in stoppedResult:
             return stoppedResult
@@ -295,7 +274,25 @@ class Aria2Operate():
             self.removeSuperfluous(newGids = completedGids, status = 'completed')     #删除多余任务
             self.removeSuperfluous(newGids = errorGids, status = 'error')     #删除多余任务
         # print(len(self.missions['active'])+len(self.missions['waiting'])+len(self.missions['paused'])+len(self.missions['completed'])+len(self.missions['error']))
+        self._merge_followed_tasks()
+        self.missionNames.sync(gid for group in self.missions.values() for gid in group)
         return self.missions
+
+    def _merge_followed_tasks(self):
+        """Use aria2's parent/child relation to display a torrent as one task."""
+        by_gid = {gid: (status, task) for status, group in self.missions.items()
+                  for gid, task in group.items()}
+        for gid, (status, task) in list(by_gid.items()):
+            parent = task.get('following')
+            if parent and parent in by_gid:
+                parent_status, parent_task = by_gid[parent]
+                task['url'] = parent_task.get('url') or task['url']
+                if not task['filename']:
+                    task['filename'] = parent_task['filename']
+                self.missions[parent_status].pop(parent, None)
+        for gid, (status, task) in by_gid.items():
+            if task.get('followedBy'):
+                self.missions[status].pop(gid, None)
 
     def getMissionFromAria2(self, gid:str) -> dict:
         jsonData = self.produceJson(method = self.ARIA2METHOD['getFiles'], params=[gid])
@@ -321,10 +318,9 @@ class Aria2Operate():
         :returns: 返回dict类型下载任务信息字典,或返回异常{'ResultError' : int}
         """
         for status,missionList in self.missions.items():
-            if gid in missionList:
-                mission = missionList[gid]
-                mission['status'] = status
-                return mission
+            mission = missionList.get(gid)
+            if mission is not None:
+                return {**mission, 'status': status}
         return {'ResultError' : -4}
 
     def getAria2Version(self) -> str:
@@ -335,48 +331,26 @@ class Aria2Operate():
         else:       #先回复一个好久不更新版本代替下
             return '1.36.0'
 
-    def seekFileName(self, item:dict, bittorrent:bool) -> str:
-        #因bt数据结构不同，故分开讨论
-        filename = ''
-        if bittorrent == False:
-            #若下载地址为常规链接
-            if 'path' in item.keys(): 
-                #若有路径可直接使用
-                if item['path'] != '':
-                    filename = self.splitUrlToName(item['path'])
-                else:
-                    self.myPrint(item)
-            elif 'uris' in item['files'][0].keys():
-                #从uris参数集中查找
-                if item['files'][0]['path'] != '':
-                    filename = self.splitUrlToName(item['files'][0]['path'])
-                elif item['files'][0]['uris'][0]['uri'] != None:
-                    filename = self.splitUrlToName(item['files'][0]['uris'][0]['uri'])
-                else:
-                    self.myPrint(item.keys())
-            else:
-                self.myPrint(item)
-            # 将url链接形式的文件名进行解码
-            filename = urllib.parse.unquote(filename)
-            self.totalNum += 1
-            #显示所有任务
-            # self.myPrint(str(self.totalNum) + ' ' + filename)
-        elif bittorrent == True:
-            if 'info' in item['bittorrent'].keys():
-                if item['bittorrent']['info']['name'] != None:
-                    filename = item['bittorrent']['info']['name']
-                else:
-                    self.myPrint(str(self.totalNum) +filename)
-            elif item['files'][0]['path'] != None:
-                filename = '[BT] ' + self.splitUrlToName(item['files'][0]['path'])
-            else:
-                self.myPrint(item.keys())
-            self.totalNum += 1
-            #显示所有任务
-            # self.myPrint(str(self.totalNum) + ' ' + filename)
-        else:
-            self.myPrint(item.keys())
-        return filename
+    def seekFileName(self, item:dict, bittorrent:bool) -> tuple[str, bool]:
+        """Return the best current name and whether it is worth retaining."""
+        files = item.get('files') or []
+        first = files[0] if files else {}
+        uris = first.get('uris') or []
+        url = uris[0].get('uri', '') if uris else ''
+        if bittorrent:
+            name = item.get('bittorrent', {}).get('info', {}).get('name')
+            if name:
+                return name, True
+            if first.get('path') and not Path(first['path']).name.startswith('[METADATA]'):
+                return Path(first['path']).name, True
+            magnet_name = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get('dn', [])
+            if magnet_name:
+                return magnet_name[0], True
+            return item.get('infoHash', '正在获取 BT 元数据'), False
+        if first.get('path'):
+            return urllib.parse.unquote(Path(first['path']).name), True
+        name = self.splitUrlToName(first.get('path') or url)
+        return urllib.parse.unquote(name) or '正在获取文件名', False
 
     def splitUrlToName(self, url:str) -> str:
         #从url中提取文件名
@@ -386,27 +360,26 @@ class Aria2Operate():
         return string
 
     def setAttribute(self, item:dict, gid:str, status:str) -> None: # 添加或修正mission字典中的任务信息
-        # 获取各项属性
-        if 'bittorrent' not in item.keys():
-            #若下载地址为常规链接
-            url = item['files'][0]['uris'][0]['uri']
-            filename = self.seekFileName(item=item, bittorrent=False)
-            isTorrent = False
-        else:
-            #若下载地址为BT链接
-            url = 'magnet:?xt=urn:btih:' + item['infoHash']
-            filename = self.seekFileName(item=item, bittorrent=True)
-            isTorrent = True
+        first = (item.get('files') or [{}])[0]
+        uris = first.get('uris') or []
+        source_url = uris[0].get('uri', '') if uris else ''
+        isTorrent = 'bittorrent' in item or bool(item.get('infoHash'))
+        url = ('magnet:?xt=urn:btih:' + item['infoHash']) if item.get('infoHash') else source_url
+        filename, retain = self.seekFileName(item, isTorrent)
+        filename = self.missionNames.resolve(gid, filename, retain)
         # 设置进任务mission字典
         self.missions[status][gid] = {
-            'totalLength'       : int(item['totalLength']),
-            'completedLength'   : int(item['completedLength']),
-            'dir'               : item['dir'],
+            'totalLength'       : int(item.get('totalLength', 0)),
+            'completedLength'   : int(item.get('completedLength', 0)),
+            'dir'               : item.get('dir', ''),
             'url'               : url,
-            'downloadSpeed'     : int(item['downloadSpeed']),
-            'uploadSpeed'       : int(item['uploadSpeed']),
+            'downloadSpeed'     : int(item.get('downloadSpeed', 0)),
+            'uploadSpeed'       : int(item.get('uploadSpeed', 0)),
             'filename'          : filename,
             'isTorrent'         : isTorrent,
+            'following'         : item.get('following'),
+            'followedBy'        : item.get('followedBy'),
+            'files'             : [file.get('path', '') for file in item.get('files', [])],
             }
 
     def removeSuperfluous(self, newGids:set, status:str) -> None:
@@ -453,21 +426,42 @@ class Aria2Operate():
             if 'ResultError' in result:
                 return result       #若报错直接返回错误
 
-            # 删除文件，看文件路径print('\033[1;44m file name: \033[0m' + mission['dir'] + '/' + mission['filename'])
-            file = mission['dir'] + '/' + mission['filename']
-            if file != '':
-                #若命令文件名为空，避免出现rm —rf致命问题
-                filecmd = 'rm -rf ' + file
-                aria2cmd = filecmd + '.aria2'
-                #无论下载文件是否删除都先删除aria2记录文件
-                subprocess.Popen([aria2cmd],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if delFile == True:
-                    #若需要删除下载的文件
-                    subprocess.Popen([filecmd],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                return {} #处理完毕返回空字典表示0
-            else:
-                #若命令文件名为空返回错误代码-5
-                return {'ResultError' : -5}
+            if delFile:
+                try:
+                    self._delete_task_files(mission)
+                except (OSError, ValueError) as exc:
+                    return {'ResultError': str(exc)}
+            return {}
+
+    def _delete_task_files(self, mission):
+        root = Path(mission['dir']).resolve()
+        if not root.is_dir():
+            raise ValueError('下载目录不存在，未删除任何文件')
+        files = mission.get('files') or [str(root / mission['filename'])]
+        targets = []
+        for name in files:
+            if not name:
+                continue
+            candidate = Path(name)
+            if not candidate.is_absolute():
+                candidate = root / candidate
+            # Validate the complete set before touching any files.
+            if candidate.is_symlink() or not candidate.resolve().is_relative_to(root) or candidate.resolve() == root:
+                raise ValueError('任务文件超出下载目录，拒绝删除')
+            targets.append(candidate)
+        if not targets:
+            raise ValueError('无法确定任务文件，拒绝删除')
+        for path in targets:
+            for item in (path, Path(str(path) + '.aria2')):
+                if item.is_file() and not item.is_symlink():
+                    item.unlink()
+            parent = path.parent
+            while parent != root and parent.is_relative_to(root):
+                try:
+                    parent.rmdir()
+                except OSError:
+                    break
+                parent = parent.parent
 
     def openFileDir(self, gid:str) -> dict:
         mission = self.getMission(gid)
@@ -477,24 +471,18 @@ class Aria2Operate():
         else:
             platformSystem = self.PlatformSystem
             filePath = mission['dir'] + '/' + mission['filename']
-            cmd = ''
             if platformSystem == 'MacOS':           # MacOS
-                cmd = 'open "' + filePath + '" --reveal'
+                cmd = ['open', '-R', filePath]
             elif platformSystem == 'Linux':         # Linux
-                #先检测文件管理器nautilus是否存在
-                cmd = 'which nautilus'
-                isNautilus = subprocess.Popen([cmd],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,encoding='utf-8')
-                if isNautilus.communicate()[0] != '':
-                    #若返回结果非空，则nautilus存在
-                    cmd = 'nautilus "' + filePath + '" --select'
+                if shutil.which('nautilus') and os.path.exists(filePath):
+                    cmd = ['nautilus', '--select', filePath]
                 else:
-                    #若返回结果空，返回文件夹路径使用pyqt通用方法
                     return {'dir' : mission['dir']}
             elif platformSystem == 'Windows':       # Windows
-                cmd = 'explorer /select,"' + filePath + '"'
+                cmd = ['explorer', '/select,', filePath]
             else:           #防止其他情况
                 return {'dir' : mission['dir']}
-            subprocess.Popen([cmd],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return {} #返回空字典表示0成功
 
     def getFilePath(self, gid:str) -> dict:
@@ -514,103 +502,40 @@ class Aria2Operate():
     def setGlobalConfig(self, conf:dict=None) -> dict:
         jsonData = self.produceJson(method = self.ARIA2METHOD['changeGlobalOption'], params = [conf])
         result = self.performan(data=jsonData)   #执行添加操作得到返回结果
-        if result != 'OK':
+        if result == 'OK':
             return {}       #设置成功返回空字典表示0
         else:
             return result   #设置失败返回带错误字典
 
-    def produceJson(self, method:str, params:list=[]) -> str:
+    def produceJson(self, method:str, params:list=None) -> str:
         #生成json格式数据
-        data = json.dumps({'jsonrpc' : '2.0', 'id' : 'qwer', 'method' : method, 'params' : params})
-        self.myPrint(data)
+        data = json.dumps({'jsonrpc' : '2.0', 'id' : 'qwer', 'method' : method, 'params' : params or []})
         return data
 
-    def performan(self, host="http://localhost", port=6801, secret="", data:str='{}', numRetry:int=7) -> dict:
-        url = host + ':' + str(port) + '/jsonrpc'
-        count = 0
-        sleepSecond = 0.5
-        result = 0
-        while count < numRetry:
-            try:
-                jsonResponse = urllib.request.urlopen(url, data.encode(encoding='UTF8'), timeout=self.TIMEOUTSED)
-                dictResponse = json.loads(jsonResponse.read().decode())
-                result = dictResponse['result']
-                #通信成功直接将cout赋值跳过循环
-                count = numRetry
-            except urllib.error.HTTPError as e:
-                count += 1
-                self.myPrint('\033[0;37;41m 报错啦!!!!!! \033[0m')
-                if hasattr(e, 'code'):
-                    self.myPrint(e.code, end='\t')
-                if hasattr(e, 'reason'):
-                    self.myPrint(e.reason)
-                result = {'ResultError' : -1}
-                time.sleep(sleepSecond)
-            except urllib.error.URLError as e:
-                count += 1
-                self.myPrint('\033[0;37;41m 报错啦!!!!!! \033[0m')
-                if hasattr(e, 'code'):
-                    self.myPrint(e.code, end='\t')
-                if hasattr(e, 'reason'):
-                    self.myPrint(e.reason)
-                result = {'ResultError' : -2}
-                time.sleep(sleepSecond)
-            except socket.error as e:
-                count += 1
-                self.myPrint('\033[0;37;41m 报错啦!!!!!! \033[0m')
-                self.myPrint('Socket\t' + str(e))
-                result = {'ResultError' : -3}
-                #若超时返回‘timed out’,被其他程序挤掉返回’[Errno 54] Connection reset by peer‘
-                time.sleep(sleepSecond)
-            except Exception as e:
-                #未知异常代码-5，-4代码为not found
-                count += 1
-                self.myPrint('\033[0;37;41m 报错啦!!!!!! \033[0m')
-                self.myPrint(str(e))
-                result = {'ResultError' : -5}
-                time.sleep(sleepSecond)
-        return result
+    def performan(self, data:str='{}') -> dict:
+        payload = json.loads(data)
+        if self.rpc_secret:
+            payload['params'].insert(0, 'token:' + self.rpc_secret)
+        url = f'http://127.0.0.1:{self.rpc_port}/jsonrpc'
+        try:
+            request = urllib.request.Request(url, json.dumps(payload).encode('utf-8'),
+                                             {'Content-Type': 'application/json'})
+            with urllib.request.urlopen(request, timeout=self.TIMEOUTSED) as response:
+                result = json.load(response)
+            if 'error' in result:
+                return {'ResultError': result['error'].get('message', 'aria2 RPC 错误')}
+            return result['result']
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
+            return {'ResultError': str(exc)}
 
     def loadConfig(self, BASEPATH:str=None) -> str:
-        # os.system('aria2c --conf-path="/Users/panzk/.config/aria2/aria2.conf" -D')为原始命令，但发布软件运行后的目录有动态变化，故用下面方法找出运行目录及配置目录
-        #判断配置文件夹及配置文件是否存在
-        # BASEPATH = ''
-        # if getattr(sys, 'frozen', False):
-        #     #判断是否为发布状态，利用系统方法找到运行目录
-        #     BASEPATH = sys._MEIPASS + '/'
-        if not os.path.exists(os.path.expanduser('~/.config/ashore')):
-            #查看配置目录是否存在，若不存在则复制一份到默认目录
-            os.system('mkdir ~/.config/ashore')
-            os.system('cp ' + BASEPATH + 'config/aria2.conf ~/.config/ashore/aria2.conf')
-            os.system('cp ' + BASEPATH + 'config/aria2.session ~/.config/ashore/aria2.session')
-        if not os.path.exists(os.path.expanduser('~/.config/ashore/aria2.conf')):
-            #查看配置文件是否还在，若不在复制一份到配置目录
-            os.system('cp ' + BASEPATH + 'config/aria2.conf ~/.config/ashore/aria2.conf')
-        if not os.path.exists(os.path.expanduser('~/.config/ashore/aria2.session')):
-            os.system('cp ' + BASEPATH + 'config/aria2.session ~/.config/ashore/aria2.session')
-        cmd = ''
-        if os.path.exists('/usr/bin/aria2c'):
-            cmd = '/usr/bin/aria2c --conf-path="' + os.path.expanduser('~') + '/.config/ashore/aria2.conf" -D'
-            self.myPrint(cmd)
-            return cmd
-        elif os.path.exists('/usr/local/bin/aria2c'):
-            cmd = '/usr/local/bin/aria2c --conf-path="' + os.path.expanduser('~') + '/.config/ashore/aria2.conf" -D'
-            self.myPrint(cmd)
-            return cmd
-        else:
-            exit(2)
+        return str(self.conf_path)
 
     def isAria2Installed(self) -> bool:
-        for cmdpath in os.environ['PATH'].split(':'):
-            if os.path.isdir(cmdpath) and 'aria2c' in os.listdir(cmdpath):
-                return True
+        return shutil.which('aria2c') is not None
 
     def isAria2rpcRunning(self) -> bool:
-        pgrep_process = subprocess.Popen('pgrep -l aria2', shell=True, stdout=subprocess.PIPE)
-        if pgrep_process.stdout.readline() == b'':
-            return False
-        else:
-            return True
+        return 'ResultError' not in self.getGlobalStatus()
 
     def myPrint(self, data, end=None):
         # getattr 函数判断第一参数中是否含有第二参数这个属性：有则返回True，若没有：当第三参数为空时返回error，第三参数存在则返回第三参数
@@ -627,34 +552,41 @@ class Aria2Operate():
             return saveResult   #设置失败返回带错误字典
 
     def startAria2(self, BASEPATH:str) -> None:
-        # 传递参数运行基本目录来加载运行配置
-        cmd = self.loadConfig(BASEPATH)
-        #用系统命令行运行aria2c
-        subprocess.Popen([cmd],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        count = 0
-        while True:
+        executable = shutil.which('aria2c')
+        if not executable:
+            raise RuntimeError('未检测到 aria2c。请先安装 aria2，再启动 Ashore。')
+        self._read_rpc_options()
+        with open(CONFIG_DIR / 'aria2-startup.log', 'ab') as log:
+            self.process = subprocess.Popen([executable, f'--conf-path={self.conf_path}'],
+                                            stdin=subprocess.DEVNULL, stdout=log, stderr=log)
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
             if self.isAria2rpcRunning():
+                return
+            if self.process.poll() is not None:
                 break
-            else:
-                count += 1
-                time.sleep(3)
-            if count == 5:
-                raise Exception('aria2 RPC server started failure.')
-        self.myPrint('aria2 RPC server is started.')
+            time.sleep(0.25)
+        if self.process.poll() is None:
+            self.killAria2()
+        raise RuntimeError(f'aria2 RPC 未能在端口 {self.rpc_port} 启动。请检查 {CONFIG_DIR / "aria2-startup.log"} 和 aria2.conf。')
 
     def restartAria2(self, BASEPATH:str):
+        if self.process is None or self.process.poll() is not None:
+            raise RuntimeError('当前 aria2 不是由 Ashore 启动，不能替你重启其他进程。')
         self.saveSession()
-        if self.killAria2():
-            # 传递参数运行基本目录来加载运行配置
-            self.startAria2(BASEPATH)
+        self.killAria2()
+        self.startAria2(BASEPATH)
 
     def killAria2(self) -> bool:
-        killAria2Cmd = 'pkill -f aria2c'
-        isQuit = subprocess.Popen([killAria2Cmd],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-        if isQuit.communicate()[0] == '':
-            return True
-        else:
-            return False
+        if self.process is not None and self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+        self.process = None
+        return True
 
     def mainKillAria2(self) -> bool:
         """结束主程序时运行,通过self.QuitWithAria2自行判断是否在关闭程序时结束aria2
@@ -663,28 +595,3 @@ class Aria2Operate():
             return self.killAria2()
         else:
             return True
-
-
-if __name__ == '__main__':
-    aria2 = Aria2Operate()
-    # aria2.addUrls(urls=[
-    #     'https://xt2-ddbxs-com.supergslb.com/2022/win10/02/GHOST_WIN10_X64_V2022.03A.iso?auth_key=1647751253-0-0-fa0d22f1a999bac48a84b0dce65dfaa7',
-    #     'https://cdn.shemaleleaks.com/content/03/Pack_000/vicats/video_vicats_nude_leaks_shemaleleaks.com_001.mp4?_=2'
-    #     ,'magnet:?xt=urn:btih:99C82BB73505A3C0B453F9FA0E881D6E5A32A0C1&dn=ubuntu-22.10-desktop-amd64.iso'
-    #     ,'https://www.btnull.org/down/be08CkdzrOSIR_C3D9AC2udNgjtOU-U_FBzuf5r1EtwXqsutaDWOMwW1MFtD3sl9A2m_LIR69NSrjDd2Z2rhRSmR5vDB-omPDgp7lAVm5IfJjcFfGRibQg5a_SgUaOk28ifJ1iIwPUTLrHw4owRTGlLcvqeDYzjbvTs-18PBz6ghLdssebIObya2hC9i/'])
-    # aria2.addUrl(url='https://cdn.shemaleleaks.com/content/03/Pack_000/vicats/video_vicats_nude_leaks_shemaleleaks.com_001.mp4?_=2')
-    print(aria2.getAria2Version())
-    for i in range(1,30):
-        aria2.getMissions()
-        a = aria2.getMission('c8ce4adfe497a09e')
-        bb= aria2.getMissionFromAria2('c8ce4adfe497a09e')
-        filename= a['filename']
-        print(urllib.parse.unquote(filename))
-        print('第%d次完成' % i)
-        sleep(2)
-
-    # aria2.updateMissionsFromAria2(['active'])
-    # path = aria2.getMissionFromAria2('1a4e6e90cd8ec62e')
-    # jsonreq = json.dumps({'jsonrpc':'2.0', 'id':'qwer',
-    #                   'method':'aria2.addUri',
-    #                   'params':[['https://xt2-ddbxs-com.supergslb.com/2022/win10/02/GHOST_WIN10_X64_V2022.03A.iso?auth_key=1647751253-0-0-fa0d22f1a999bac48a84b0dce65dfaa7']]})

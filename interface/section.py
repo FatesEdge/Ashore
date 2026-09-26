@@ -9,12 +9,11 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-FILETYPE = ['iso', 'jpg', 'bmp', 'svg', 'gif', 'zip', 'rar', 'dmg', 'psd', 'exe', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'mp4', 'pdf', 'php', 'mkv', 'avi', 'mov', 'mpg', 'ppt', 'ai', 'swf', 'html', 'htm', 'js', 'css', 'bin', 'flac', 'aac', 'mp3', 'ini', 'db', 'tiff', 'java', 'cad', 'rss', 'sys', 'dwg', 'dwf', 'ps', 'aut', 'ace', 'eps', 'cdr', 'hlp', 'rtf']
-
 import sys, os
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QHBoxLayout, QProgressBar, QFrame, QGridLayout, QSpacerItem,QSizePolicy
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import pyqtSignal, QSize
+from interface.fileIcons import iconForFile
 
 class Section(QFrame):
     count = 0
@@ -176,7 +175,12 @@ class Section(QFrame):
         # self.setLineWidth(3)
         # self.setMidLineWidth(3)
 
-    def updateInfo(self, status:str, fileSize:int, completedSize:int, speed:int):
+    def updateInfo(self, status:str, fileSize:int, completedSize:int, speed:int, fileName:str=None, isTorrent:bool=None):
+        if fileName is not None and fileName != self.fileName:
+            self.fileName = fileName
+            self.nameLabel.setText(fileName)
+        if isTorrent is not None:
+            self.isTorrent = isTorrent
         self.fileSize = fileSize
         self.status = status
         self.speed = speed
@@ -205,21 +209,9 @@ class Section(QFrame):
         self.setIcon(status)
     
     def setIcon(self, status:str):
-        fileType = self.fileName.split('.')[-1]
-        if status == 'active' or status == 'completed':
-            if fileType in FILETYPE:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.ing/' + fileType + '.png'))
-            elif self.isTorrent == True:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.ing/bt.png'))
-            else:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.ing/paper.png'))
-        else:
-            if fileType in FILETYPE:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.stop/' + fileType + '.png'))
-            elif self.isTorrent == True:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.stop/bt.png'))
-            else:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.stop/paper.png'))
+        folder = 'icon.ing' if status in ('active', 'completed') else 'icon.stop'
+        icon = iconForFile(self.fileName, self.isTorrent)
+        self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/' + folder + '/' + icon + '.png'))
 
     def mousePressEvent(self,event):
         # print('鼠标按下')
@@ -278,6 +270,8 @@ class Section(QFrame):
             s = '{:.2f}MB'.format(b/1048576)
         elif b < 1099511627776:
             s = '{:.2f}GB'.format(b/1073741824)
+        else:
+            s = '{:.2f}TB'.format(b/1099511627776)
         return s
 
     def getFileSizeStr(self) -> str:

@@ -1,0 +1,18 @@
+import configparser
+import unittest
+from pathlib import Path
+
+
+class DesktopTests(unittest.TestCase):
+    def test_magnet_and_torrent_open_as_arguments(self):
+        desktop = Path(__file__).resolve().parents[1] / 'bale/ashore.desktop'
+        config = configparser.ConfigParser(interpolation=None)
+        config.read(desktop, encoding='utf-8')
+        entry = config['Desktop Entry']
+        self.assertIn('%u', entry['Exec'])
+        self.assertIn('x-scheme-handler/magnet;', entry['MimeType'])
+        self.assertIn('application/x-bittorrent;', entry['MimeType'])
+
+
+if __name__ == '__main__':
+    unittest.main()
