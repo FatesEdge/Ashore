@@ -26,4 +26,7 @@ install -m 644 "$package_dir/icon.png" /opt/Ashore/icon.png
 install -m 644 "$package_dir/ashore.desktop" /usr/local/share/applications/ashore.desktop
 chmod -R a+rX /opt/Ashore
 chmod a+x /opt/Ashore/Ashore
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/local/share/applications
+fi
 echo 'Ashore 已安装到 /opt/Ashore。'

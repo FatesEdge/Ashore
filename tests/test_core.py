@@ -5,17 +5,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from aria2Operate import Aria2Operate
+from core.aria2Operate import Aria2Operate
 import paths
-from settingPage import parse_trackers
-from settingPage import SettingPage
+from core.trackerSources import parseTrackers
+from interface.settingPage import SettingPage
 from PyQt6.QtWidgets import QApplication
 
 
 class Aria2Tests(unittest.TestCase):
     def test_tracker_response_requires_announce_urls(self):
-        self.assertEqual(parse_trackers('<html>down</html>'), [])
-        self.assertEqual(parse_trackers('udp://host:80/announce\n\nhttps://example.org/announce,udp://host:80/announce'),
+        self.assertEqual(parseTrackers('<html>down</html>'), [])
+        self.assertEqual(parseTrackers('udp://host:80/announce\n\nhttps://example.org/announce,udp://host:80/announce'),
                          ['udp://host:80/announce', 'https://example.org/announce'])
 
     def test_settings_page_reloads_saved_tracker_date(self):
@@ -46,9 +46,9 @@ class Aria2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             conf = Path(folder) / 'aria2.conf'
             conf.write_text('rpc-listen-port=6801\n', encoding='utf-8')
-            with patch('aria2Operate.ensure_config', return_value=conf), \
+            with patch('core.aria2Operate.ensure_config', return_value=conf), \
                  patch.object(Aria2Operate, 'getGlobalStatus', return_value={'ResultError': 'offline'}), \
-                 patch('aria2Operate.shutil.which', return_value=None):
+                 patch('core.aria2Operate.shutil.which', return_value=None):
                 with self.assertRaisesRegex(RuntimeError, 'aria2c'):
                     Aria2Operate()
 
@@ -67,7 +67,7 @@ class Aria2Tests(unittest.TestCase):
             def read(self):
                 return b'{"jsonrpc":"2.0","error":{"message":"denied"}}'
 
-        with patch('aria2Operate.urllib.request.urlopen', return_value=Reply()) as call:
+        with patch('core.aria2Operate.urllib.request.urlopen', return_value=Reply()) as call:
             result = client.performan(data=client.produceJson('aria2.getVersion'))
         self.assertEqual(result, {'ResultError': 'denied'})
         request = call.call_args.args[0]

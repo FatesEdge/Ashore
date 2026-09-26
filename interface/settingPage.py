@@ -9,59 +9,20 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os, time, configparser, platform, urllib.request, urllib.parse
+import sys, os, time, configparser, platform, urllib.parse
 from paths import CONFIG_DIR, RESOURCE_DIR, ensure_config
+from core.trackerSources import fetchTrackers, parseTrackers
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea, QFormLayout, QLineEdit, QTextEdit,QGridLayout, QComboBox, QCompleter, QSpinBox, QSpacerItem
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0',
-    'Accept' : 'image/avif,image/webp,*/*;video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
-    'Accept-Encoding': 'UTF-8',
-    'Connection': 'keep-alive',
-    }
-TRACKERURL = [
-    'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt',
-    'https://ngosang.github.io/trackerslist/trackers_best_ip.txt',
-    'https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best_ip.txt',
-    'https://trackerslist.com/best_aria2.txt',
-    'https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection/best_aria2.txt',
-    'https://trackerslist.com/best.txt',
-    ]
 class Thread(QThread):
 
     sinOut = pyqtSignal(list, str)
 
     def run(self):
-        error = '所有 Tracker 来源均不可用'
-        for url in TRACKERURL:
-            request = urllib.request.Request(url=url, headers=HEADERS)
-            try:
-                with urllib.request.urlopen(request, timeout=10) as response:
-                    trackers = parse_trackers(response.read().decode('utf-8'))
-                if trackers:
-                    self.sinOut.emit(trackers, '')
-                    return
-                error = f'{url} 未返回有效的 Tracker 地址'
-            except (OSError, UnicodeError) as exc:
-                error = str(exc)
-        self.sinOut.emit([], error)
-
-
-def parse_trackers(text: str) -> list[str]:
-    """Accept newline or comma separated announce URLs, without duplicates."""
-    trackers = []
-    for value in text.replace(',', '\n').splitlines():
-        url = value.strip()
-        try:
-            parsed = urllib.parse.urlsplit(url)
-        except ValueError:
-            continue
-        if (parsed.scheme in ('udp', 'http', 'https') and parsed.netloc
-                and not any(char.isspace() for char in url) and url not in trackers):
-            trackers.append(url)
-    return trackers
+        trackers, source = fetchTrackers()
+        self.sinOut.emit(trackers, source)
 
 
 class SettingPage(QWidget):
@@ -92,6 +53,7 @@ class SettingPage(QWidget):
 
     AshoreConfig = {
         'trackers_list_time'    : None,
+        'trackers_list_source'  : None,
         'quit_with_aria2'       : None,
         'update_interval'       : None,
         'rpc_port_changeable'   : None,
@@ -177,10 +139,13 @@ class SettingPage(QWidget):
         self.trackerBtn = QPushButton('更新Tracker')
         self.trackerBtn.setFixedWidth(100)
         self.trackerInfo = QLabel('1')
+        self.trackerStatus = QLabel('')
+        self.trackerSource = self.AshoreConfig['trackers_list_source']
         trackerLayout = QGridLayout()
         trackerLayout.addWidget(self.btTracker, 0, 0, 1, 2)
         trackerLayout.addWidget(self.trackerInfo, 1, 0, 1, 1)
         trackerLayout.addWidget(self.trackerBtn, 1, 1, 1, 1)
+        trackerLayout.addWidget(self.trackerStatus, 2, 0, 1, 2)
         formLayout.addRow('btTracker:', trackerLayout)
 
         # Ashore设置控件 开始
@@ -261,9 +226,12 @@ class SettingPage(QWidget):
         self.setMaxLimit(aria2Config['max-overall-download-limit'], 'download')
         self.rpcPortLineEdit.setText(aria2Config['rpc-listen-port'])
         self.btTracker.setText(aria2Config['bt-tracker'])
+        self.showTrackerStatus()
 
     def updateAhoreSetting(self, ashoreConfig:dict):
         self.trackerInfo.setText(ashoreConfig['trackers_list_time'])
+        self.trackerSource = ashoreConfig['trackers_list_source']
+        self.showTrackerStatus()
         self.setBoolOption(self.withAria2QuitComboBox, ashoreConfig['quit_with_aria2'])
         self.setBoolOption(self.rpcPortChangeableComboBox, ashoreConfig['rpc_port_changeable'])
         self.updateIntervalSpin.setValue(int(ashoreConfig['update_interval']))
@@ -367,14 +335,21 @@ class SettingPage(QWidget):
         self.trakersThreading.sinOut.connect(self.slotShowTrakers)
         self.trakersThreading.start()
 
-    def slotShowTrakers(self, trackers:list, error:str):
+    def showTrackerStatus(self):
+        count = len(parseTrackers(self.btTracker.toPlainText()))
+        source = urllib.parse.urlsplit(self.trackerSource).netloc if self.trackerSource else '手动配置'
+        self.trackerStatus.setText(f'当前列表 {count} 条；来源：{source}。列表数量不代表连接有效。')
+
+    def slotShowTrakers(self, trackers:list, sourceOrError:str):
         if not trackers:
-            self.trackerBtn.setToolTip(error)
+            self.trackerStatus.setText(f'更新失败：{sourceOrError}；保留原列表。')
             self.trackerBtn.setText('更新失败')
         else:
+            self.trackerSource = sourceOrError
             self.trackerInfo.setText(time.strftime("%Y.%m.%d %H:%M", time.localtime()))
             self.btTracker.setText(','.join(trackers))
-            self.trackerBtn.setToolTip('列表已更新；保存后用于新建任务，现有任务可能仍使用旧列表')
+            source = urllib.parse.urlsplit(sourceOrError).netloc
+            self.trackerStatus.setText(f'获取 {len(trackers)} 条；来源：{source}。尚未保存。')
             self.trackerBtn.setText('更新Tracker')
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
@@ -383,7 +358,7 @@ class SettingPage(QWidget):
         #用户配置界面有的选项
         UserAria2Conf = {
             'dir'                       :   self.pathLineEdit.text(),
-            'bt-tracker'                :   self.btTracker.toPlainText(),
+            'bt-tracker'                :   ','.join(parseTrackers(self.btTracker.toPlainText())),
             'max-concurrent-downloads'  :   str(self.maxDownloadsSpin.value()),
             'max-connection-per-server' :   str(self.maConnectionSpin.value()),
             'user-agent'                :   self.userAgentLineEdit.text(),
@@ -393,17 +368,22 @@ class SettingPage(QWidget):
             }
         UserAshoreConf ={
             'trackers_list_time'    :   self.trackerInfo.text(),
+            'trackers_list_source'  :   self.trackerSource,
             'quit_with_aria2'       :   self.getBoolOption(self.withAria2QuitComboBox),
             'update_interval'       :   str(self.updateIntervalSpin.value()),
             'rpc_port_changeable'   :   self.getBoolOption(self.rpcPortChangeableComboBox),
         }
-        if self.saveAria2Conf(UserAria2Conf) == 0:
+        aria2Saved = self.saveAria2Conf(UserAria2Conf) == 0
+        if aria2Saved:
             running_options = {key: value for key, value in UserAria2Conf.items()
                                if key != 'rpc-listen-port'}
             self.aria2ConfSinOut.emit(running_options)
         else:
-            self.aria2ConfSinOut.emit(self.UserAria2Conf)                   #若报错则发射用户界面配置信息
+            self.trackerStatus.setText('aria2 配置未能保存，请检查配置目录权限。')
+            self.aria2ConfSinOut.emit({'ResultError': 'aria2 配置写入失败'})
         if self.saveAshoreConf(UserAshoreConf) == 0:
+            if aria2Saved:
+                self.showTrackerStatus()
             UserAshoreConf.update({'isSaved' : '保存成功'})                    #成功则增加一条信息‘保存成功’
             self.ashoreConfigSinOut.emit(UserAshoreConf)                        #发射信号
         else:
@@ -413,19 +393,22 @@ class SettingPage(QWidget):
     def saveAria2Conf(self, UserAria2Conf:dict) -> int:
         remaining = dict(UserAria2Conf)
         lines = []
-        with open(self.aria2ConfPath, encoding='utf-8') as file:
-            for line in file:
-                stripped = line.strip()
-                if stripped == '[global]':
-                    continue
-                key = stripped.split('=', 1)[0].strip() if '=' in stripped else ''
-                if key in remaining:
-                    lines.append(f'{key}={remaining.pop(key)}\n')
-                else:
-                    lines.append(line)
-        lines.extend(f'{key}={value}\n' for key, value in remaining.items())
-        with open(self.aria2ConfPath, 'w', encoding='utf-8') as file:
-            file.writelines(lines)
+        try:
+            with open(self.aria2ConfPath, encoding='utf-8') as file:
+                for line in file:
+                    stripped = line.strip()
+                    if stripped == '[global]':
+                        continue
+                    key = stripped.split('=', 1)[0].strip() if '=' in stripped else ''
+                    if key in remaining:
+                        lines.append(f'{key}={remaining.pop(key)}\n')
+                    else:
+                        lines.append(line)
+            lines.extend(f'{key}={value}\n' for key, value in remaining.items())
+            with open(self.aria2ConfPath, 'w', encoding='utf-8') as file:
+                file.writelines(lines)
+        except OSError:
+            return -1
         self.globalAria2Conf.update(UserAria2Conf)
         return 0
 
@@ -435,8 +418,11 @@ class SettingPage(QWidget):
         #更新程序内存中configFile与运行中Ashore的配置，准备发送
         for key,value in UserAshoreConf.items():
             configFile.set('global', key, value)                        #修改Ashore配置文件
-        with open(self.ashoreConfPath, 'w', encoding='utf-8') as file:  #写入Ashore配置文件
-            configFile.write(file)
+        try:
+            with open(self.ashoreConfPath, 'w', encoding='utf-8') as file:
+                configFile.write(file)
+        except OSError:
+            return -1
         self.AshoreConfig = self.getAshoreConfig()
         return 0
 
@@ -449,22 +435,3 @@ class SettingPage(QWidget):
 
     def slotScrollToAshore(self) -> None:
         self.scrollArea.verticalScrollBar().setValue(self.ashoreSettingLabel.y())
-
-
-if __name__ == '__main__':
-    TESTDIC  = {
-    # 'conf-path' :   '/Users/panzk/.config/ashore/aria2.conf',
-    'dir'       :   os.path.expanduser('~')+'/下载',
-    'user-agent':   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0',
-    'max-concurrent-downloads'      :   '20',
-    'max-connection-per-server'     :   '16',
-    'max-overall-upload-limit'      :   '11K',
-    'max-overall-download-limit'    :   '0',
-    'rpc-listen-port'               :   '6801',
-    'bt-tracker':   'udp://tracker.coppersurfer.tk:6969/announce,udp://tracker.leechers-paradise.org:6969/announce,udp://tracker.opentrackr.org:1337/announce,udp://p4p.arenabg.com:1337/announce,udp://9.rarbg.to:2710/announce,udp://9.rarbg.me:2710/announce,udp://tracker.internetwarriors.net:1337/announce,udp://exodus.desync.com:6969/announce,udp://tracker.tiny-vps.com:6969/announce,udp://tracker.moeking.me:6969/announce,',
-    }
-    app = QApplication(sys.argv)
-    exe = SettingPage()
-    exe.updateSettingPage(TESTDIC)
-    exe.show()
-    sys.exit(app.exec())

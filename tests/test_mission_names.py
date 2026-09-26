@@ -1,12 +1,28 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from aria2Operate import Aria2Operate
-from missionNames import MissionNames
+from core.aria2Operate import Aria2Operate
+from core.missionNames import MissionNames
 
 
 class MissionNamesTests(unittest.TestCase):
+    def test_failed_poll_preserves_names_on_disk(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'names.json'
+            client = Aria2Operate.__new__(Aria2Operate)
+            client.missionNames = MissionNames(path)
+            client.missions = {key: {} for key in ('active', 'waiting', 'paused', 'completed', 'error')}
+            active = {'gid': 'gid', 'status': 'active',
+                      'files': [{'path': '/downloads/已知名称.pdf'}]}
+            with patch.object(client, 'getGlobalStatus', return_value={'downloadSpeed': '0'}), \
+                 patch.object(client, 'performan', side_effect=[[active], [], []]):
+                self.assertEqual(client.getMissions()['active']['gid']['filename'], '已知名称.pdf')
+            with patch.object(client, 'getGlobalStatus', return_value={'ResultError': '断线'}):
+                self.assertIn('ResultError', client.getMissions())
+            self.assertEqual(MissionNames(path).names, {'gid': '已知名称.pdf'})
+
     def test_name_survives_restart_and_new_metadata_replaces_it(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'names.json'

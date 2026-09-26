@@ -12,7 +12,7 @@
 import urllib.request, urllib.error, urllib.parse, json, os, platform, subprocess, time, shutil, base64
 from pathlib import Path
 from paths import CONFIG_DIR, ensure_config
-from missionNames import MissionNames
+from core.missionNames import MissionNames
 
 class Aria2Operate():
     totalNum = 1
@@ -214,6 +214,7 @@ class Aria2Operate():
 
     def getMissions(self) -> dict:
         status_result = self.getGlobalStatus()
+        self.lastPollGlobalStatus = status_result
         if 'ResultError' in status_result:
             return status_result
         #对active队列进行处理
@@ -317,10 +318,9 @@ class Aria2Operate():
         :returns: 返回dict类型下载任务信息字典,或返回异常{'ResultError' : int}
         """
         for status,missionList in self.missions.items():
-            if gid in missionList:
-                mission = missionList[gid]
-                mission['status'] = status
-                return mission
+            mission = missionList.get(gid)
+            if mission is not None:
+                return {**mission, 'status': status}
         return {'ResultError' : -4}
 
     def getAria2Version(self) -> str:
@@ -559,12 +559,15 @@ class Aria2Operate():
         with open(CONFIG_DIR / 'aria2-startup.log', 'ab') as log:
             self.process = subprocess.Popen([executable, f'--conf-path={self.conf_path}'],
                                             stdin=subprocess.DEVNULL, stdout=log, stderr=log)
-        for _ in range(20):
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
             if self.isAria2rpcRunning():
                 return
             if self.process.poll() is not None:
                 break
             time.sleep(0.25)
+        if self.process.poll() is None:
+            self.killAria2()
         raise RuntimeError(f'aria2 RPC 未能在端口 {self.rpc_port} 启动。请检查 {CONFIG_DIR / "aria2-startup.log"} 和 aria2.conf。')
 
     def restartAria2(self, BASEPATH:str):
@@ -592,28 +595,3 @@ class Aria2Operate():
             return self.killAria2()
         else:
             return True
-
-
-if __name__ == '__main__':
-    aria2 = Aria2Operate()
-    # aria2.addUrls(urls=[
-    #     'https://xt2-ddbxs-com.supergslb.com/2022/win10/02/GHOST_WIN10_X64_V2022.03A.iso?auth_key=1647751253-0-0-fa0d22f1a999bac48a84b0dce65dfaa7',
-    #     'https://cdn.shemaleleaks.com/content/03/Pack_000/vicats/video_vicats_nude_leaks_shemaleleaks.com_001.mp4?_=2'
-    #     ,'magnet:?xt=urn:btih:99C82BB73505A3C0B453F9FA0E881D6E5A32A0C1&dn=ubuntu-22.10-desktop-amd64.iso'
-    #     ,'https://www.btnull.org/down/be08CkdzrOSIR_C3D9AC2udNgjtOU-U_FBzuf5r1EtwXqsutaDWOMwW1MFtD3sl9A2m_LIR69NSrjDd2Z2rhRSmR5vDB-omPDgp7lAVm5IfJjcFfGRibQg5a_SgUaOk28ifJ1iIwPUTLrHw4owRTGlLcvqeDYzjbvTs-18PBz6ghLdssebIObya2hC9i/'])
-    # aria2.addUrl(url='https://cdn.shemaleleaks.com/content/03/Pack_000/vicats/video_vicats_nude_leaks_shemaleleaks.com_001.mp4?_=2')
-    print(aria2.getAria2Version())
-    for i in range(1,30):
-        aria2.getMissions()
-        a = aria2.getMission('c8ce4adfe497a09e')
-        bb= aria2.getMissionFromAria2('c8ce4adfe497a09e')
-        filename= a['filename']
-        print(urllib.parse.unquote(filename))
-        print('第%d次完成' % i)
-        sleep(2)
-
-    # aria2.updateMissionsFromAria2(['active'])
-    # path = aria2.getMissionFromAria2('1a4e6e90cd8ec62e')
-    # jsonreq = json.dumps({'jsonrpc':'2.0', 'id':'qwer',
-    #                   'method':'aria2.addUri',
-    #                   'params':[['https://xt2-ddbxs-com.supergslb.com/2022/win10/02/GHOST_WIN10_X64_V2022.03A.iso?auth_key=1647751253-0-0-fa0d22f1a999bac48a84b0dce65dfaa7']]})

@@ -20,6 +20,8 @@
 - RPC 默认端口为 `6801`，Ashore 会读取用户配置的端口与密钥
 - Ashore配置文件单独存放于ashore.conf文件中
 - 程序中可对aria2的配置简单进行更改，后续可以加入更多配置选项（[Mac下配置Aria2](https://gist.github.com/sumpeter/9f71b26b0e79cfd3bae39c3bdf6cfd8c)这里讲的非常细致）
+- 主界面显示 aria2 RPC 连接状态；WebSocket 通知促使任务立即刷新，定时查询用于同步进度及断线恢复
+- 下载完成或出错时通过系统通知提示；已获取的任务名称保存在用户配置目录中
 
 ## Stand by
 
@@ -83,12 +85,22 @@
 
 首次运行时，配置写入 `~/.config/ashore/`（设置了 `XDG_CONFIG_HOME` 时使用对应目录）。默认允许外部 RPC 访问，并为新配置自动生成 `rpc-secret`；请勿公开 `aria2.conf` 中的密钥。修改 RPC 端口后重启由 Ashore 启动的 aria2 才能生效。启动失败可查看同目录的 `aria2-startup.log`。
 
+首次配置不预置可能过期的 Tracker 地址。可在设置页获取列表并保存；界面显示来源、数量和更新时间，实际能否连通取决于任务和网络。
+
+## 代码结构
+
+- `Ashore.py`：应用入口、任务页面、连接状态和系统通知
+- `core/aria2Operate.py`：aria2 进程与 HTTP RPC、任务整理
+- `core/aria2Events.py`：WebSocket 事件及重连；不可用时仍按间隔查询
+- `core/missionNames.py`、`core/trackerSources.py`：名称保存与 Tracker 来源
+- `interface/`：保留 `page.py`、`section.py`、`settingPage.py`、`addNewDialog.py` 的文件名，集中管理界面
+- `paths.py`：源代码及打包运行共用的资源、配置路径
+
 ## Development
 
 1. 上一版是通过[aria2p](https://github.com/pawamoy/aria2p)实现，后面感觉过于繁琐，故自行写了一版，目前仍有许多不足，后续继续努力；
-2. 欠缺一套常用文件类型的系列图标；
+2. 后续可继续补充常用文件类型图标；
 3. 界面也没好好写，后续考虑加入深浅色配置并优化界面；
-4. 对于rpcserver发送出来的消息不知如何获取，暨aria2在任务完成/出错等情况时发送的消息不知如何接收，后面想办法；
 5. 目前手头没有Windows实体机及虚拟机，还未对win平台做测试；
 6. 添加多语言选项；
 7. 后续考虑对任务管理添加多选功能。

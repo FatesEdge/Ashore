@@ -9,16 +9,17 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os, platform, json
+import sys, os, platform, json, copy, signal
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon, QMessageBox
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QDesktopServices, QFont
 from PyQt6.QtCore import QTimer, QSize, QEvent, QUrl, pyqtSignal, QObject, QThread, Qt
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
-from page import Page
-from aria2Operate import Aria2Operate
-from addNewDialog import AddNewDialog
-from settingPage import SettingPage
+from interface.page import Page
+from core.aria2Operate import Aria2Operate
+from interface.addNewDialog import AddNewDialog
+from interface.settingPage import SettingPage
 from paths import RESOURCE_DIR
+from core.aria2Events import Aria2Events
 
 DEFAULTPATH = os.path.expanduser('~/Downloads')
 APP_VERSION = '0.7.66'
@@ -38,14 +39,9 @@ class Aria2Thread(Aria2Operate, QThread):
             self.start()
 
     def run(self):
-        # self.timer.stop()
-        self.updatedSignal.emit(self.getMissions())
-        # missions = self.getMissions()
-        # if 'ResultError' in missions:
-        # # # self.timer.start()
-        #     self.updatedSignal.emit((0, missions))
-        # else:
-        #     self.updatedSignal.emit((missions, 0)
+        missions = self.getMissions()
+        status = self.lastPollGlobalStatus
+        self.updatedSignal.emit({'missions': copy.deepcopy(missions), 'globalStatus': dict(status)})
 
 class Ashore(QMainWindow):
     def __init__(self):
@@ -78,7 +74,14 @@ class Ashore(QMainWindow):
         self.initUI()
         self.setConnect()
         self.aria2Operate.updatedSignal.connect(self.updatePage)
-        self.updatePage()
+        self.knownStatuses = None
+        self.pendingNotifications = {}
+        self.notifiedDownloads = set()
+        self.aria2ConfigError = None
+        self.quitting = False
+        self.aria2Events = Aria2Events(self.aria2Operate.rpc_port, self)
+        self.aria2Events.notification.connect(self.slotAria2Notification)
+        self.aria2Operate.poll()
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -165,6 +168,8 @@ class Ashore(QMainWindow):
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
         self.statusBar.addPermanentWidget(self.upSpeedIcon)
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
+        self.aria2StateLabel = QLabel('aria2：连接中')
+        self.statusBar.addPermanentWidget(self.aria2StateLabel)
         self.setStatusBar(self.statusBar)
 
     def initUI(self) -> None:
@@ -254,43 +259,60 @@ class Ashore(QMainWindow):
         self.tabSetting.clicked.connect(self.slotSwitchSetting)
         self.pageSetting.aria2ConfSinOut.connect(self.slotUpdateRunningAria2Config)
         self.pageSetting.ashoreConfigSinOut.connect(self.slotUpdateRunningAshoreConfig)
+        self.pageDownloading.sectionAdded.connect(self.connectSection)
+        self.pageDownloaded.sectionAdded.connect(self.connectSection)
 
-    def updatePage(self, missions:dict=None) -> None:
-        #先获取全局状态信息
-        globalStatus = self.aria2Operate.getGlobalStatus()
+    def updatePage(self, snapshot:dict) -> None:
+        missions = snapshot['missions']
+        globalStatus = snapshot['globalStatus']
         if 'ResultError' in globalStatus:
-             #包含错误信息，认为任务信息有误，直接报错
-            self.myPrint(globalStatus['ResultError'])
+            self.aria2StateLabel.setText('aria2：未连接')
+            self.aria2StateLabel.setToolTip(str(globalStatus['ResultError']))
+            self.downSpeedLabel.setText('—')
+            self.upSpeedLabel.setText('—')
             return
-        else:
-            #没报错处理任务字典
-            if missions == None:
-                #若为空调用，则主动获取
-                missions = self.aria2Operate.getMissions()
-            if 'ResultError' in missions:
-                self.myPrint(missions['ResultError'])
-                return
-            self.pageDownloading.updateSections({'active' : missions['active'], 'waiting' : missions['waiting'], 'paused' : missions['paused']})
-            self.pageDownloaded.updateSections({'completed' : missions['completed'] , 'error' : missions['error']})
-            self.downSpeedLabel.setText(self.getSpeedStr(int(globalStatus['downloadSpeed'])))
-            self.upSpeedLabel.setText(self.getSpeedStr(int(globalStatus['uploadSpeed'])))
-        self.setConnectByDic()
+        if 'ResultError' in missions:
+            self.aria2StateLabel.setText('aria2：查询失败')
+            self.aria2StateLabel.setToolTip(str(missions['ResultError']))
+            return
+        self.aria2StateLabel.setText('aria2：已连接')
+        self.aria2StateLabel.setToolTip(f'127.0.0.1:{self.aria2Operate.rpc_port}')
+        self.pageDownloading.updateSections({status: missions[status] for status in ('active', 'waiting', 'paused')})
+        self.pageDownloaded.updateSections({status: missions[status] for status in ('completed', 'error')})
+        self.downSpeedLabel.setText(self.getSpeedStr(int(globalStatus['downloadSpeed'])))
+        self.upSpeedLabel.setText(self.getSpeedStr(int(globalStatus['uploadSpeed'])))
+        current = {gid: status for status, group in missions.items() for gid in group}
+        self.notifiedDownloads.intersection_update({(gid, status) for gid in current for status in ('completed', 'error')})
+        if self.knownStatuses is not None:
+            for gid, status in current.items():
+                previous = self.knownStatuses.get(gid)
+                event = self.pendingNotifications.get(gid)
+                complete = status == 'completed' and (previous in ('active', 'waiting', 'paused') or event == 'aria2.onDownloadComplete')
+                btComplete = event == 'aria2.onBtDownloadComplete' and status == 'active'
+                failed = status == 'error' and (previous in ('active', 'waiting', 'paused') or event == 'aria2.onDownloadError')
+                outcome = 'error' if failed else 'completed' if complete or btComplete else None
+                if outcome and (gid, outcome) not in self.notifiedDownloads:
+                    name = missions[status][gid]['filename']
+                    self.showDownloadNotification(name, outcome)
+                    self.notifiedDownloads.add((gid, outcome))
+        self.knownStatuses = current
+        self.pendingNotifications.clear()
 
-    def setConnectByDic(self) -> None:
-        for item in self.pageDownloading.sectionsDic.values():
-            item.disconnect()
-            # 双击section和点击section中开始/暂停按钮效果同步
-            item.doubleClickOut.connect(self.slotDoubleClick)
-            item.openDirOut.connect(self.slotOpenFolder)
-            item.cpUrlOut.connect(self.slotcpUrl)
-            item.removeDelOut.connect(self.slotRemoveDel)
-        for item in self.pageDownloaded.sectionsDic.values():
-            item.disconnect()
-            # 双击section和点击section中开始/暂停按钮效果同步
-            item.doubleClickOut.connect(self.slotDoubleClick)
-            item.openDirOut.connect(self.slotOpenFolder)
-            item.cpUrlOut.connect(self.slotcpUrl)
-            item.removeDelOut.connect(self.slotRemoveDel)
+    def connectSection(self, item):
+        item.doubleClickOut.connect(self.slotDoubleClick)
+        item.openDirOut.connect(self.slotOpenFolder)
+        item.cpUrlOut.connect(self.slotcpUrl)
+        item.removeDelOut.connect(self.slotRemoveDel)
+
+    def slotAria2Notification(self, method, gid):
+        if method in ('aria2.onDownloadComplete', 'aria2.onBtDownloadComplete', 'aria2.onDownloadError'):
+            self.pendingNotifications[gid] = method
+        self.aria2Operate.poll()
+
+    def showDownloadNotification(self, name, status):
+        if QSystemTrayIcon.isSystemTrayAvailable() and QSystemTrayIcon.supportsMessages():
+            title = '下载完成' if status == 'completed' else '下载失败'
+            self.TrayIcon.showMessage(title, name)
 
     def bytesInt2Str(self, b:int) -> str:
         if b < 1024:
@@ -333,7 +355,7 @@ class Ashore(QMainWindow):
             self.pageSetting.updateSettingPage(config)
             self.pageStack.setCurrentIndex(2)
 
-    def addNew(self, urlList:list=[]) -> None:
+    def addNew(self, urlList:list=None) -> None:
         """通过命令行参数或系统接口参数运行程序、添加新任务
         :param urlList: list类型的下载地址url
         """
@@ -347,7 +369,7 @@ class Ashore(QMainWindow):
             form.sinOut.connect(self.addUrls)
             form.show()
             form.exec()
-            self.updatePage()
+            self.aria2Operate.poll()
 
     def addUrls(self, data):
         result = self.aria2Operate.addUrls(data)
@@ -403,16 +425,27 @@ class Ashore(QMainWindow):
             self.myPrint(saveResult['ResultError'])
 
     def slotQuit(self):
+        if self.quitting:
+            return
+        self.quitting = True
+        self.aria2Operate.timer.stop()
+        self.aria2Events.stop()
+        self.aria2Operate.wait()
         self.aria2Operate.saveSession()
-        # print("调用sys.exit() 销毁对象，释放其空间")
         if self.aria2Operate.mainKillAria2():
-            sys.exit(0)
+            QApplication.instance().quit()
 
     def slotRestartAria2(self):
+        self.aria2Operate.timer.stop()
+        self.aria2Operate.wait()
         try:
             self.aria2Operate.restartAria2(self.BASEPATH)
         except RuntimeError as exc:
             QMessageBox.warning(self, '无法重启 aria2', str(exc))
+        finally:
+            self.aria2Events.setPort(self.aria2Operate.rpc_port)
+            self.aria2Operate.timer.start()
+            self.aria2Operate.poll()
 
     def slotDoubleClick(self, data:tuple) -> None:
         gid = data[0]
@@ -430,7 +463,7 @@ class Ashore(QMainWindow):
                 QDesktopServices.openUrl(QUrl.fromLocalFile(filePathResult['filePath']))
         elif status == 'error':
             self.aria2Operate.retry(gid)
-        self.updatePage()
+        self.aria2Operate.poll()
 
     def slotOpenFolder(self, gid:str) -> None:
         OpenResult = self.aria2Operate.openFileDir(gid)
@@ -457,11 +490,11 @@ class Ashore(QMainWindow):
             self.myPrint(result['ResultError'])
         else:
             self.myPrint('删除成功')
-        self.updatePage()
+        self.aria2Operate.poll()
 
     def slotUpdateRunningAria2Config(self, conf:dict) -> None:
         # 将setting页面的设置信息更新到运行的aria2程序中
-        result = self.aria2Operate.setGlobalConfig(conf)
+        result = conf if 'ResultError' in conf else self.aria2Operate.setGlobalConfig(conf)
         self.aria2ConfigError = result.get('ResultError') if isinstance(result, dict) else str(result)
 
     def slotUpdateRunningAshoreConfig(self, conf:dict) -> None:
@@ -487,12 +520,6 @@ class Ashore(QMainWindow):
             if not self.isRelease:
                 #当程序处于coding阶段时允许输出，当为release时禁止输出
                 print(data, end=end)
-
-    def slotShowMessage(self, data:dict):
-        """保留函数
-            由于目前没有找到接收json-rpc信息的方法,故先保留信息推送功能
-        """
-        self.TrayIcon.showMessage('1111111','111111')
 
 class MyApplication(QApplication):
 
@@ -580,6 +607,10 @@ if __name__ == '__main__':
         if urls:
             exe.addNew(urls)
     app.instanceMessage.connect(handleInstance)
+    signal.signal(signal.SIGINT, lambda *_: exe.slotQuit())
+    signalTimer = QTimer()
+    signalTimer.timeout.connect(lambda: None)
+    signalTimer.start(250)
     app.exec()
     del exe
     sys.exit()

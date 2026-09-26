@@ -78,7 +78,6 @@ class AddNewDialog(QDialog):
                     urls['torrentList'].append(item)
             dir = self.dirEdit.text()
             self.sinOut.emit((urls,dir))
-            print((urls,dir))
         self.close()
 
 if __name__ == '__main__':

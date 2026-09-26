@@ -1,6 +1,6 @@
 import unittest
 
-from fileIcons import iconForFile
+from interface.fileIcons import iconForFile
 
 
 class FileIconTests(unittest.TestCase):

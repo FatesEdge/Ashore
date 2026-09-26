@@ -13,7 +13,7 @@ import sys, os
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QHBoxLayout, QProgressBar, QFrame, QGridLayout, QSpacerItem,QSizePolicy
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import pyqtSignal, QSize
-from fileIcons import iconForFile
+from interface.fileIcons import iconForFile
 
 class Section(QFrame):
     count = 0
