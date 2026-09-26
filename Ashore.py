@@ -39,7 +39,6 @@ class Aria2Thread(Aria2Operate, QThread):
 
     def run(self):
         # self.timer.stop()
-        self.myPrint('----------------new request-----------------')
         self.updatedSignal.emit(self.getMissions())
         # missions = self.getMissions()
         # if 'ResultError' in missions:
