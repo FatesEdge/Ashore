@@ -176,7 +176,12 @@ class Section(QFrame):
         # self.setLineWidth(3)
         # self.setMidLineWidth(3)
 
-    def updateInfo(self, status:str, fileSize:int, completedSize:int, speed:int):
+    def updateInfo(self, status:str, fileSize:int, completedSize:int, speed:int, fileName:str=None, isTorrent:bool=None):
+        if fileName is not None and fileName != self.fileName:
+            self.fileName = fileName
+            self.nameLabel.setText(fileName)
+        if isTorrent is not None:
+            self.isTorrent = isTorrent
         self.fileSize = fileSize
         self.status = status
         self.speed = speed
@@ -278,6 +283,8 @@ class Section(QFrame):
             s = '{:.2f}MB'.format(b/1048576)
         elif b < 1099511627776:
             s = '{:.2f}GB'.format(b/1073741824)
+        else:
+            s = '{:.2f}TB'.format(b/1099511627776)
         return s
 
     def getFileSizeStr(self) -> str:

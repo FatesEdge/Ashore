@@ -10,6 +10,7 @@
 '''
 
 import sys, os, time, configparser, platform, urllib.request
+from paths import CONFIG_DIR, RESOURCE_DIR, ensure_config
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea, QFormLayout, QLineEdit, QTextEdit,QGridLayout, QComboBox, QCompleter, QSpinBox, QSpacerItem
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QMutex
@@ -53,7 +54,7 @@ class Thread(QThread):
                 self.text = 'URLError:\t'
                 if hasattr(e, 'code'):
                     # print(e.code)
-                    self.text += e.code
+                    self.text += str(e.code)
                 if hasattr(e, 'reason'):
                     # print(e.reason)
                     self.text += str(e.reason)
@@ -61,7 +62,7 @@ class Thread(QThread):
                 self.text = 'HTTPError:\t'
                 if hasattr(e, 'code'):
                     # print(e.code)
-                    self.text += e.code
+                    self.text += str(e.code)
                 if hasattr(e, 'reason'):
                     # print(e.reason)
                     self.text += str(e.reason)
@@ -86,18 +87,8 @@ class SettingPage(QWidget):
     #      修改main.spec中的datas，
     #      如datas=[('res', 'res')]，意思是当前目录下的res目录加入目标exe中，在运行时放在零时文件的根目录下，名称为res
     BASEPATH = ''
-    aria2ConfPath = os.path.expanduser('~') + '/.config/ashore/aria2.conf'
-    ashoreConfDir = 'config'
-    if getattr(sys, 'frozen', False):
-        #程序运行可能会被加载一个动态生成的虚拟目录或临时目录，以此来获取程序运行真实目录
-        BASEPATH = sys._MEIPASS
-        #根据系统平台不同，获取不同的程序存放地址（不一定为真实运行目录）
-        if platform.system() == 'Darwin':
-            ashoreConfDir = os.path.dirname(os.path.dirname(sys.executable)) + '/Resources/config'
-        elif platform.system() == 'Linux':
-            ashoreConfDir = os.path.dirname(os.path.dirname(sys.executable)) + '/Ashore/config'
-        elif platform.system() == 'Windows':
-            ashoreConfDir = os.path.dirname(os.path.dirname(sys.executable))
+    aria2ConfPath = str(CONFIG_DIR / 'aria2.conf')
+    ashoreConfDir = str(CONFIG_DIR)
 
     Aria2Config = {
         'dir'                           :   None,
@@ -120,15 +111,11 @@ class SettingPage(QWidget):
     def __init__(self):
         super().__init__()
         #定义aria2配置字典
-        self.globalAria2Conf = self.Aria2Config
+        self.globalAria2Conf = dict(self.Aria2Config)
         #ashore.conf配置文件路径
         self.ashoreConfPath = self.ashoreConfDir + '/ashore.conf'
         # 可能因第一次运行或目录损坏导致conf目录不存在，则新建目录
-        if not os.path.exists(self.ashoreConfDir):
-            os.system('mkdir ' + self.ashoreConfDir)
-        # 可能因第一次运行或文件损坏导致ashore.conf不存在，将程序自带的复制过去
-        if not os.path.exists(self.ashoreConfPath):
-            os.system('cp ' + self.BASEPATH + '/config/ashore.conf ' + self.ashoreConfDir)
+        ensure_config('ashore.conf')
         #在生成settinpage时就将AshoreConfig注入进来，关于aria2的配置已在aria2Operate加载，则在点开settpage时显示出即可
         self.AshoreConfig = self.getAshoreConfig()
         self.initUI()
@@ -365,7 +352,7 @@ class SettingPage(QWidget):
 
     def getAshoreConfig(self) -> dict:
         ashoreConfig = configparser.ConfigParser()
-        ashoreConfig.read(self.ashoreConfPath, encoding='UTF-8')
+        ashoreConfig.read([str(RESOURCE_DIR / 'config/ashore.conf'), self.ashoreConfPath], encoding='UTF-8')
         tempDict = {}
         for key in self.AshoreConfig.keys():
             value = ashoreConfig.get('global', key)
@@ -428,7 +415,9 @@ class SettingPage(QWidget):
             'rpc_port_changeable'   :   self.getBoolOption(self.rpcPortChangeableComboBox),
         }
         if self.saveAria2Conf(UserAria2Conf) == 0:
-            self.aria2ConfSinOut.emit(self.globalAria2Conf)                 #把修改好的aria2的全局配置字典发射信号给主程序,让主程序配置运行中的aria2
+            running_options = {key: value for key, value in UserAria2Conf.items()
+                               if key != 'rpc-listen-port'}
+            self.aria2ConfSinOut.emit(running_options)
         else:
             self.aria2ConfSinOut.emit(self.UserAria2Conf)                   #若报错则发射用户界面配置信息
         if self.saveAshoreConf(UserAshoreConf) == 0:
@@ -444,18 +433,26 @@ class SettingPage(QWidget):
         # configparser读取了配置文件以后还会抹掉注释，不得不修改注释的开头为/，并且允许无值配置
         ######################!!!!!!!!!!!!!!######################
     def saveAria2Conf(self, UserAria2Conf:dict) -> int:
-        configFile = configparser.ConfigParser(comment_prefixes='/', allow_no_value=True)#得到aria2配置文件
-        configFile.read(self.aria2ConfPath, encoding='UTF-8')
-        #更新程序内存中configFile与运行中aria2的配置，准备发送
-        for key,value in UserAria2Conf.items():
-            self.globalAria2Conf[key] = value                           #修改aria2的全局配置字典
-            configFile.set('global', key, value)                        #修改aria2配置文件
-        with open(self.aria2ConfPath, 'w', encoding='utf-8') as file:   #写入aria2配置文件
-            configFile.write(file)
+        remaining = dict(UserAria2Conf)
+        lines = []
+        with open(self.aria2ConfPath, encoding='utf-8') as file:
+            for line in file:
+                stripped = line.strip()
+                if stripped == '[global]':
+                    continue
+                key = stripped.split('=', 1)[0].strip() if '=' in stripped else ''
+                if key in remaining:
+                    lines.append(f'{key}={remaining.pop(key)}\n')
+                else:
+                    lines.append(line)
+        lines.extend(f'{key}={value}\n' for key, value in remaining.items())
+        with open(self.aria2ConfPath, 'w', encoding='utf-8') as file:
+            file.writelines(lines)
+        self.globalAria2Conf.update(UserAria2Conf)
         return 0
 
     def saveAshoreConf(self, UserAshoreConf:dict) -> int:
-        configFile = configparser.ConfigParser(comment_prefixes='/', allow_no_value=True)#得到Ashore配置文件
+        configFile = configparser.ConfigParser()
         configFile.read(self.ashoreConfPath, encoding='UTF-8')
         #更新程序内存中configFile与运行中Ashore的配置，准备发送
         for key,value in UserAshoreConf.items():

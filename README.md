@@ -5,7 +5,7 @@
 <p align="center"><br>Ashore 是一个用Python编写的内核为aria2的界面管理程序。<br><br>
 </p>
 
-&emsp;&emsp;![](https://img.shields.io/badge/python-v3.10-blue)&ensp;![](https://img.shields.io/badge/PyQt-v6-yellowgreen)&ensp;![PyPI - License](https://img.shields.io/badge/license-GPL-blue)&ensp;[![download](https://img.shields.io/badge/download-50M-brightgreen)](https://github.com/PanZK/Ashore/releases)
+&emsp;&emsp;![](https://img.shields.io/badge/python-v3.10-blue)&ensp;![](https://img.shields.io/badge/PyQt-v6-yellowgreen)&ensp;![License](https://img.shields.io/badge/license-MPL--2.0-blue)&ensp;[Releases](https://github.com/FatesEdge/Ashore/releases)
 
 ---
 
@@ -17,7 +17,7 @@
 
 - 下载内核部分直接使用[aria2](https://github.com/aria2/aria2)
 - 程序界面使用[PyQt6](https://pypi.org/project/PyQt6/)制作
-- aria2的设置默认为localhost、RPC端口号为 `6801`避免冲突
+- RPC 默认端口为 `6801`，Ashore 会读取用户配置的端口与密钥
 - Ashore配置文件单独存放于ashore.conf文件中
 - 程序中可对aria2的配置简单进行更改，后续可以加入更多配置选项（[Mac下配置Aria2](https://gist.github.com/sumpeter/9f71b26b0e79cfd3bae39c3bdf6cfd8c)这里讲的非常细致）
 
@@ -31,7 +31,7 @@
 ### 	MacOS
 
 1. 确认已安装好[aria2](https://github.com/aria2/aria2)；
-2. 下载[release](https://github.com/PanZK/videoSorter/releases)中的 `dmg` 文件；
+2. 下载 [release](https://github.com/FatesEdge/Ashore/releases) 中的 `dmg` 文件；
 3. 双击运行 `dmg` 文件，将Ashorer拉进 `Applications` 文件夹；
 4. 程序坞中找到，点击运行。
 
@@ -39,18 +39,17 @@
 
 1. 确认已安装好[aria2](https://github.com/aria2/aria2)；
 
-2. 下载Linux系统载[release](https://github.com/PanZK/videoSorter/releases)中的zip并解压；
+2. 下载 [release](https://github.com/FatesEdge/Ashore/releases) 中的 Linux 包并解压；
 
 3. 终端进入解压目录执行
 
    ```
-   sudo chmod +x make.sh
-   sudo ./make.sh
+   sudo ./install.sh
    ```
 
    赋予权限后运行
 
-4. Ashore将会被安装在 `/opt/Ashore` 文件夹，同时应用程序列表中也会列出；
+4. Ashore 安装在 `/opt/Ashore`，桌面入口安装在 `/usr/local/share/applications/ashore.desktop`。
 
 ### 	Windows
 
@@ -73,14 +72,16 @@
 
 1. 编程环境vscode、python3.10、pyqt6
 
-2. clone项目后解压，终端进入解压目录执行
+2. 安装 `PyQt6` 和 `PyInstaller` 后，在项目根目录执行
 
    ```
-   sudo chmod +x make.py
-   python3 make.py
+   python3 make.py onedir
+   # 或 python3 make.py onefile
    ```
 
-   按提示操作
+   Linux 包位于 `dist/Ashore.Linux.onedir/` 或 `dist/Ashore.Linux.onefile/`，两种包均有独立的 `install.sh`。`onedir` 的 `_internal` 是 PyInstaller 运行时依赖目录，必须与可执行文件一起保留。macOS 使用 `python3 make.py app` 或 `python3 make.py dmg`，需在 macOS 上执行。
+
+首次运行时，配置写入 `~/.config/ashore/`（设置了 `XDG_CONFIG_HOME` 时使用对应目录）。默认允许外部 RPC 访问，并为新配置自动生成 `rpc-secret`；请勿公开 `aria2.conf` 中的密钥。修改 RPC 端口后重启由 Ashore 启动的 aria2 才能生效。启动失败可查看同目录的 `aria2-startup.log`。
 
 ## Development
 

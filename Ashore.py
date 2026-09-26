@@ -9,27 +9,33 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os, platform
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon
+import sys, os, platform, json
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon, QMessageBox
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QDesktopServices, QFont
 from PyQt6.QtCore import QTimer, QSize, QEvent, QUrl, pyqtSignal, QObject, QThread, Qt
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from page import Page
 from aria2Operate import Aria2Operate
 from addNewDialog import AddNewDialog
 from settingPage import SettingPage
+from paths import RESOURCE_DIR
 
 DEFAULTPATH = os.path.expanduser('~/Downloads')
+APP_VERSION = '0.7.66'
 class Aria2Thread(Aria2Operate, QThread):
 
     updatedSignal = pyqtSignal(dict)
 
     def __init__(self, BASEPATH:str=None, QuitWithAria2:bool=False, UpdateInterval:int=2000):
-        #传递参数运行基本目录
-        super().__init__(BASEPATH=BASEPATH, QuitWithAria2=QuitWithAria2)
-        QObject.__init__(self)
-        self.timer = QTimer()  # 初始化一个定时器
-        self.timer.timeout.connect(self.start)  # 每次计时到时间时发出信号
-        self.timer.start(UpdateInterval)  # 设置计时间隔并启动；单位毫秒
+        QThread.__init__(self)
+        Aria2Operate.__init__(self, BASEPATH=BASEPATH, QuitWithAria2=QuitWithAria2)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.poll)
+        self.timer.start(max(500, UpdateInterval))
+
+    def poll(self):
+        if not self.isRunning():
+            self.start()
 
     def run(self):
         # self.timer.stop()
@@ -41,10 +47,6 @@ class Aria2Thread(Aria2Operate, QThread):
         #     self.updatedSignal.emit((0, missions))
         # else:
         #     self.updatedSignal.emit((missions, 0)
-
-    def performan(self, host="http://localhost", port=6801, secret="", data:str='{}', numRetry:int=7) -> dict:
-        result = Aria2Operate.performan(self, host=host, port=port, secret=secret, data=data, numRetry=numRetry)
-        return result
 
 class Ashore(QMainWindow):
     def __init__(self):
@@ -59,12 +61,12 @@ class Ashore(QMainWindow):
         #      修改main.spec中的datas，
         #      如datas=[('res', 'res')]，意思是当前目录下的res目录加入目标exe中，在运行时放在零时文件的根目录下，名称为res
         self.isRelease = False
-        self.BASEPATH = ''
+        self.BASEPATH = str(RESOURCE_DIR) + '/'
         # getattr 函数判断第一参数中是否含有第二参数这个属性：有则返回True，若没有：当第三参数为空时返回error，第三参数存在则返回第三参数
         if getattr(sys, 'frozen', False):
             self.isRelease = True
             #判断是否为发布状态，利用系统方法找到运行目录
-            self.BASEPATH = sys._MEIPASS + '/'        
+            self.BASEPATH = sys._MEIPASS + '/'
         self.pageSetting = SettingPage()
         #获取ashore配置信息
         ashoreConfig = self.pageSetting.getAshoreConfig()
@@ -76,8 +78,8 @@ class Ashore(QMainWindow):
 
         self.initUI()
         self.setConnect()
-        self.updatePage()
         self.aria2Operate.updatedSignal.connect(self.updatePage)
+        self.updatePage()
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -266,12 +268,9 @@ class Ashore(QMainWindow):
             if missions == None:
                 #若为空调用，则主动获取
                 missions = self.aria2Operate.getMissions()
-            else:
-                #若为参数调用，判断参数内容
-                if 'ResultError' in missions:
-                    #包含错误信息，认为任务信息有误，直接报错
-                    self.myPrint(missions['ResultError'])
-                    return
+            if 'ResultError' in missions:
+                self.myPrint(missions['ResultError'])
+                return
             self.pageDownloading.updateSections({'active' : missions['active'], 'waiting' : missions['waiting'], 'paused' : missions['paused']})
             self.pageDownloaded.updateSections({'completed' : missions['completed'] , 'error' : missions['error']})
             self.downSpeedLabel.setText(self.getSpeedStr(int(globalStatus['downloadSpeed'])))
@@ -303,6 +302,8 @@ class Ashore(QMainWindow):
             s = '{:.2f}MB'.format(b/1048576)
         elif b < 1099511627776:
             s = '{:.2f}GB'.format(b/1073741824)
+        else:
+            s = '{:.2f}TB'.format(b/1099511627776)
         return s
 
     def getSpeedStr(self, speed:int) -> str:
@@ -338,17 +339,21 @@ class Ashore(QMainWindow):
         :param urlList: list类型的下载地址url
         """
         config = {'ResultError' : 0}
-        while 'ResultError' in config:
-            config = self.aria2Operate.getGlobalConfig()
+        config = self.aria2Operate.getGlobalConfig()
         if 'ResultError' in config:
             self.myPrint(config['ResultError'])
             return
         else:
             form = AddNewDialog(config['dir'], urlList)
-            form.sinOut.connect(self.aria2Operate.addUrls)
+            form.sinOut.connect(self.addUrls)
             form.show()
             form.exec()
             self.updatePage()
+
+    def addUrls(self, data):
+        result = self.aria2Operate.addUrls(data)
+        if 'ResultError' in result:
+            QMessageBox.warning(self, '添加任务失败', str(result['ResultError']))
 
     def slotClickBtnAddNew(self) -> None:
         """用户通过按钮触发的添加新任务,无参数
@@ -373,7 +378,7 @@ class Ashore(QMainWindow):
         infoLIcon.setScaledContents(True)
         infoLIcon.setFixedSize(180, 180)
         aria2Version = self.aria2Operate.getAria2Version()
-        aboutText = QLabel('由Python编写的aira2可视化程序<br>作者:PPPPAN<br>项目地址:<a href="https://github.com/PanZK/Ashore">Github/Ashore</a><br>Python version:3.10.6<br>Ashore version: 1.76.2<br>aria2 version:' + aria2Version)
+        aboutText = QLabel('由 Python 编写的 aria2 可视化程序<br>作者: PPPPAN<br>项目地址: <a href="https://github.com/FatesEdge/Ashore">GitHub/Ashore</a><br>Python version: ' + platform.python_version() + '<br>Ashore version: ' + APP_VERSION + '<br>aria2 version: ' + aria2Version)
         aboutText.setOpenExternalLinks(True)
         aboutText.setFixedWidth(300)
         aboutText.setMargin(30)
@@ -405,7 +410,10 @@ class Ashore(QMainWindow):
             sys.exit(0)
 
     def slotRestartAria2(self):
-        self.aria2Operate.restartAria2(self.BASEPATH)
+        try:
+            self.aria2Operate.restartAria2(self.BASEPATH)
+        except RuntimeError as exc:
+            QMessageBox.warning(self, '无法重启 aria2', str(exc))
 
     def slotDoubleClick(self, data:tuple) -> None:
         gid = data[0]
@@ -464,7 +472,7 @@ class Ashore(QMainWindow):
             self.aria2Operate.QuitWithAria2 = False
         elif conf['quit_with_aria2'] == 'true':
             self.aria2Operate.QuitWithAria2 = True
-        self.aria2Operate.timer.setInterval(int(conf['update_interval']))
+        self.aria2Operate.timer.setInterval(max(500, int(conf['update_interval'])))
         self.myPrint(conf['isSaved'])
 
     def myPrint(self, data, end=None):
@@ -488,13 +496,46 @@ class Ashore(QMainWindow):
 class MyApplication(QApplication):
 
     fileOpenSignal = pyqtSignal(list)
+    instanceMessage = pyqtSignal(list)
 
     def __init__(self, arguments):
         super().__init__(arguments)
         self.setQuitOnLastWindowClosed(False)    #设置关闭窗口后最小化
-        self.setApplicationVersion('0.2.05')
+        self.setApplicationVersion(APP_VERSION)
         self.setOrganizationName('PanZK')
         self.setApplicationName("Ashore")
+
+    def forwardToExisting(self, urls):
+        name = 'Ashore-' + str(os.getuid() if hasattr(os, 'getuid') else os.environ.get('USERNAME', 'user'))
+        socket = QLocalSocket(self)
+        socket.connectToServer(name)
+        if socket.waitForConnected(300):
+            socket.write(json.dumps(urls).encode('utf-8'))
+            socket.waitForBytesWritten(1000)
+            socket.disconnectFromServer()
+            return True
+        if socket.error() == QLocalSocket.LocalSocketError.UnsupportedSocketOperationError:
+            return False
+        if socket.error() not in (QLocalSocket.LocalSocketError.ServerNotFoundError,
+                                  QLocalSocket.LocalSocketError.ConnectionRefusedError):
+            raise RuntimeError('无法连接正在运行的 Ashore 实例')
+        self.localServer = QLocalServer(self)
+        QLocalServer.removeServer(name)
+        if not self.localServer.listen(name):
+            raise RuntimeError('无法建立 Ashore 单实例通信通道')
+        self.localServer.newConnection.connect(self.receiveInstanceMessage)
+        return False
+
+    def receiveInstanceMessage(self):
+        socket = self.localServer.nextPendingConnection()
+        if not socket.bytesAvailable():
+            socket.waitForReadyRead(1000)
+        try:
+            urls = json.loads(bytes(socket.readAll()).decode('utf-8'))
+            self.instanceMessage.emit(urls)
+        except (ValueError, UnicodeDecodeError):
+            pass
+        socket.disconnectFromServer()
 
     def event(self, event):
         if event.type() == QEvent.Type.FileOpen:    # 对请求进行判断
@@ -502,10 +543,16 @@ class MyApplication(QApplication):
         return super().event(event)
 
 if __name__ == '__main__':
-    BASEPATH = ''
+    BASEPATH = str(RESOURCE_DIR) + '/'
     if getattr(sys, 'frozen', False):
         BASEPATH = sys._MEIPASS + '/'
     app = MyApplication(sys.argv)
+    try:
+        if app.forwardToExisting(sys.argv[1:]):
+            sys.exit(0)
+    except RuntimeError as exc:
+        QMessageBox.critical(None, 'Ashore 启动失败', str(exc))
+        sys.exit(1)
     splash = QSplashScreen(QPixmap(BASEPATH + 'static/img/cover.png'))
     splash.show()                               #展示启动图片
     app.processEvents()                         #防止进程卡死
@@ -514,12 +561,24 @@ if __name__ == '__main__':
         app.setWindowIcon(QIcon(BASEPATH + 'static/icon/icon.funtion/icon.icns'))
     elif platform.system() == 'Linux' or platform.system() == 'Windows':
         app.setWindowIcon(QIcon(BASEPATH + 'static/icon/icon.funtion/icon0.png'))
-    exe = Ashore()
+    try:
+        exe = Ashore()
+    except (RuntimeError, OSError, ValueError) as exc:
+        splash.close()
+        QMessageBox.critical(None, 'Ashore 启动失败', str(exc))
+        sys.exit(1)
     exe.show()
     splash.finish(exe)                  #关闭启动界面
     if len(sys.argv) != 1:
         exe.addNew(sys.argv[1:])
     app.fileOpenSignal.connect(exe.addNew)
+    def handleInstance(urls):
+        exe.show()
+        exe.raise_()
+        exe.activateWindow()
+        if urls:
+            exe.addNew(urls)
+    app.instanceMessage.connect(handleInstance)
     app.exec()
     del exe
     sys.exit()
