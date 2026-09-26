@@ -462,8 +462,7 @@ class Ashore(QMainWindow):
     def slotUpdateRunningAria2Config(self, conf:dict) -> None:
         # 将setting页面的设置信息更新到运行的aria2程序中
         result = self.aria2Operate.setGlobalConfig(conf)
-        if 'ResultError' in result:
-            self.myPrint(result['ResultError'])
+        self.aria2ConfigError = result.get('ResultError') if isinstance(result, dict) else str(result)
 
     def slotUpdateRunningAshoreConfig(self, conf:dict) -> None:
         # 将setting页面的设置信息更新到运行的ashore程序中
@@ -472,7 +471,10 @@ class Ashore(QMainWindow):
         elif conf['quit_with_aria2'] == 'true':
             self.aria2Operate.QuitWithAria2 = True
         self.aria2Operate.timer.setInterval(max(500, int(conf['update_interval'])))
-        self.myPrint(conf['isSaved'])
+        if getattr(self, 'aria2ConfigError', None):
+            self.myPrint('配置已保存，但运行中 aria2 未能应用设置：' + str(self.aria2ConfigError))
+        else:
+            self.myPrint(conf['isSaved'])
 
     def myPrint(self, data, end=None):
         if type(data) == int:

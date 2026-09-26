@@ -9,11 +9,11 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os, time, configparser, platform, urllib.request
+import sys, os, time, configparser, platform, urllib.request, urllib.parse
 from paths import CONFIG_DIR, RESOURCE_DIR, ensure_config
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea, QFormLayout, QLineEdit, QTextEdit,QGridLayout, QComboBox, QCompleter, QSpinBox, QSpacerItem
 from PyQt6.QtGui import QFileSystemModel
-from PyQt6.QtCore import Qt, pyqtSignal, QThread, QMutex
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0',
@@ -31,48 +31,37 @@ TRACKERURL = [
     ]
 class Thread(QThread):
 
-    sinOut = pyqtSignal(str)
-
-    def __init__(self):
-        super().__init__()
-        self.qmut = QMutex() # 创建线程锁
+    sinOut = pyqtSignal(list, str)
 
     def run(self):
-        self.qmut.lock()
-        self.text = ''
+        error = '所有 Tracker 来源均不可用'
         for url in TRACKERURL:
             request = urllib.request.Request(url=url, headers=HEADERS)
             try:
-                response = urllib.request.urlopen(request, timeout=30)
-                html = response.read()
-                html = html.decode('UTF-8')
-            except TimeoutError:
-                # print('不知道哪错了')
-                self.text = 'Error'
-            except urllib.error.URLError as e:
-                # print('URLError')
-                self.text = 'URLError:\t'
-                if hasattr(e, 'code'):
-                    # print(e.code)
-                    self.text += str(e.code)
-                if hasattr(e, 'reason'):
-                    # print(e.reason)
-                    self.text += str(e.reason)
-            except urllib.error.HTTPError as e:
-                self.text = 'HTTPError:\t'
-                if hasattr(e, 'code'):
-                    # print(e.code)
-                    self.text += str(e.code)
-                if hasattr(e, 'reason'):
-                    # print(e.reason)
-                    self.text += str(e.reason)
-            #如果成功,发送得到的html,并退出循环
-            #如果所有都失败html内容为Error:XXXXX
-            else:
-                self.text = html
-                break
-        self.sinOut.emit(self.text)
-        self.qmut.unlock()
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    trackers = parse_trackers(response.read().decode('utf-8'))
+                if trackers:
+                    self.sinOut.emit(trackers, '')
+                    return
+                error = f'{url} 未返回有效的 Tracker 地址'
+            except (OSError, UnicodeError) as exc:
+                error = str(exc)
+        self.sinOut.emit([], error)
+
+
+def parse_trackers(text: str) -> list[str]:
+    """Accept newline or comma separated announce URLs, without duplicates."""
+    trackers = []
+    for value in text.replace(',', '\n').splitlines():
+        url = value.strip()
+        try:
+            parsed = urllib.parse.urlsplit(url)
+        except ValueError:
+            continue
+        if (parsed.scheme in ('udp', 'http', 'https') and parsed.netloc
+                and not any(char.isspace() for char in url) and url not in trackers):
+            trackers.append(url)
+    return trackers
 
 
 class SettingPage(QWidget):
@@ -258,6 +247,7 @@ class SettingPage(QWidget):
         self.rpcPortChangeableComboBox.currentIndexChanged.connect(self.slotRpcPortChangeable)
     
     def updateSettingPage(self, aria2Config:dict):
+        self.AshoreConfig = self.getAshoreConfig()
         self.updateAria2Setting(aria2Config)
         self.updateAhoreSetting(self.AshoreConfig)
 
@@ -354,7 +344,7 @@ class SettingPage(QWidget):
         ashoreConfig = configparser.ConfigParser()
         ashoreConfig.read([str(RESOURCE_DIR / 'config/ashore.conf'), self.ashoreConfPath], encoding='UTF-8')
         tempDict = {}
-        for key in self.AshoreConfig.keys():
+        for key in type(self).AshoreConfig:
             value = ashoreConfig.get('global', key)
             if value == 'true':
                 value = True
@@ -372,27 +362,20 @@ class SettingPage(QWidget):
         self.saveBtn.setEnabled(False)
         self.trackerBtn.setEnabled(False)
         self.trackerBtn.setText('更新中...')
-        self.trackerInfo.setText('等待数据')
         #交给线程处理，以免主界面卡死
         self.trakersThreading = Thread()
         self.trakersThreading.sinOut.connect(self.slotShowTrakers)
         self.trakersThreading.start()
 
-    def slotShowTrakers(self, html:str):
-        beginner = html[:6]
-        #更新失败
-        if beginner != 'http:/' and beginner != 'udp://' and beginner != 'https:':
-            self.trackerInfo.setText('更新失败')
-        #更新成功
+    def slotShowTrakers(self, trackers:list, error:str):
+        if not trackers:
+            self.trackerBtn.setToolTip(error)
+            self.trackerBtn.setText('更新失败')
         else:
-            trakers = ''
-            for item in html.split('\n\n'):
-                if item != '':
-                    trakers += item + ','
-            datetime = time.strftime("%Y.%m.%d %H:%M",time.localtime())
-            self.trackerInfo.setText(datetime)
-            self.btTracker.setText(trakers)
-        self.trackerBtn.setText('更新Tracker')
+            self.trackerInfo.setText(time.strftime("%Y.%m.%d %H:%M", time.localtime()))
+            self.btTracker.setText(','.join(trackers))
+            self.trackerBtn.setToolTip('列表已更新；保存后用于新建任务，现有任务可能仍使用旧列表')
+            self.trackerBtn.setText('更新Tracker')
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
 
@@ -427,11 +410,6 @@ class SettingPage(QWidget):
             UserAshoreConf.update({'isSaved' : '保存失败'})                    #成功则增加一条信息‘保存失败’
             self.ashoreConfigSinOut.emit(UserAshoreConf)                        #发射信号
 
-        ######################!!!!!!!!!!!!!!######################
-        # configparser不允许没有section的配置文件,还好配置文件里手动加了[global]以后aria2只是警告没有报错
-        # 然后
-        # configparser读取了配置文件以后还会抹掉注释，不得不修改注释的开头为/，并且允许无值配置
-        ######################!!!!!!!!!!!!!!######################
     def saveAria2Conf(self, UserAria2Conf:dict) -> int:
         remaining = dict(UserAria2Conf)
         lines = []
@@ -459,6 +437,7 @@ class SettingPage(QWidget):
             configFile.set('global', key, value)                        #修改Ashore配置文件
         with open(self.ashoreConfPath, 'w', encoding='utf-8') as file:  #写入Ashore配置文件
             configFile.write(file)
+        self.AshoreConfig = self.getAshoreConfig()
         return 0
 
     def slotRpcPortChangeable(self, index:int=1) -> None:

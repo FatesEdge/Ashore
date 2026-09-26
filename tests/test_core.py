@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,9 +7,32 @@ from unittest.mock import patch
 
 from aria2Operate import Aria2Operate
 import paths
+from settingPage import parse_trackers
+from settingPage import SettingPage
+from PyQt6.QtWidgets import QApplication
 
 
 class Aria2Tests(unittest.TestCase):
+    def test_tracker_response_requires_announce_urls(self):
+        self.assertEqual(parse_trackers('<html>down</html>'), [])
+        self.assertEqual(parse_trackers('udp://host:80/announce\n\nhttps://example.org/announce,udp://host:80/announce'),
+                         ['udp://host:80/announce', 'https://example.org/announce'])
+
+    def test_settings_page_reloads_saved_tracker_date(self):
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+                 patch.object(SettingPage, 'ashoreConfDir', folder):
+                page = SettingPage()
+                page.saveAshoreConf({'trackers_list_time': '2026.09.26 16:55',
+                                     'quit_with_aria2': 'false', 'update_interval': '2000',
+                                     'rpc_port_changeable': 'false'})
+                page.AshoreConfig = {'trackers_list_time': '2023.04.01 11:03'}
+                with patch.object(page, 'updateAria2Setting'):
+                    page.updateSettingPage({})
+                self.assertEqual(page.trackerInfo.text(), '2026.09.26 16:55')
+
     def test_first_run_config_has_secret_and_is_persistent(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(paths, 'CONFIG_DIR', Path(folder)):
