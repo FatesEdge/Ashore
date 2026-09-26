@@ -9,12 +9,11 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-FILETYPE = ['iso', 'jpg', 'bmp', 'svg', 'gif', 'zip', 'rar', 'dmg', 'psd', 'exe', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'mp4', 'pdf', 'php', 'mkv', 'avi', 'mov', 'mpg', 'ppt', 'ai', 'swf', 'html', 'htm', 'js', 'css', 'bin', 'flac', 'aac', 'mp3', 'ini', 'db', 'tiff', 'java', 'cad', 'rss', 'sys', 'dwg', 'dwf', 'ps', 'aut', 'ace', 'eps', 'cdr', 'hlp', 'rtf']
-
 import sys, os
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QHBoxLayout, QProgressBar, QFrame, QGridLayout, QSpacerItem,QSizePolicy
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import pyqtSignal, QSize
+from fileIcons import iconForFile
 
 class Section(QFrame):
     count = 0
@@ -210,21 +209,9 @@ class Section(QFrame):
         self.setIcon(status)
     
     def setIcon(self, status:str):
-        fileType = self.fileName.split('.')[-1]
-        if status == 'active' or status == 'completed':
-            if fileType in FILETYPE:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.ing/' + fileType + '.png'))
-            elif self.isTorrent == True:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.ing/bt.png'))
-            else:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.ing/paper.png'))
-        else:
-            if fileType in FILETYPE:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.stop/' + fileType + '.png'))
-            elif self.isTorrent == True:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.stop/bt.png'))
-            else:
-                self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/icon.stop/paper.png'))
+        folder = 'icon.ing' if status in ('active', 'completed') else 'icon.stop'
+        icon = iconForFile(self.fileName, self.isTorrent)
+        self.iconLabel.setPixmap(QPixmap(self.BASEPATH + 'static/icon/' + folder + '/' + icon + '.png'))
 
     def mousePressEvent(self,event):
         # print('鼠标按下')

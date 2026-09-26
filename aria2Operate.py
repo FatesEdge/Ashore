@@ -12,6 +12,7 @@
 import urllib.request, urllib.error, urllib.parse, json, os, platform, subprocess, time, shutil, base64
 from pathlib import Path
 from paths import CONFIG_DIR, ensure_config
+from missionNames import MissionNames
 
 class Aria2Operate():
     totalNum = 1
@@ -71,6 +72,7 @@ class Aria2Operate():
     def __init__(self, BASEPATH:str=None, QuitWithAria2:bool=False) -> None:
         self.isRelease = bool(getattr(__import__('sys'), 'frozen', False))
         self.missions = {key: {} for key in ('active', 'waiting', 'paused', 'completed', 'error')}
+        self.missionNames = MissionNames()
         self.globalStatus = {}
         self.QuitWithAria2 = QuitWithAria2
         self.process = None
@@ -272,6 +274,7 @@ class Aria2Operate():
             self.removeSuperfluous(newGids = errorGids, status = 'error')     #删除多余任务
         # print(len(self.missions['active'])+len(self.missions['waiting'])+len(self.missions['paused'])+len(self.missions['completed'])+len(self.missions['error']))
         self._merge_followed_tasks()
+        self.missionNames.sync(gid for group in self.missions.values() for gid in group)
         return self.missions
 
     def _merge_followed_tasks(self):
@@ -328,7 +331,8 @@ class Aria2Operate():
         else:       #先回复一个好久不更新版本代替下
             return '1.36.0'
 
-    def seekFileName(self, item:dict, bittorrent:bool) -> str:
+    def seekFileName(self, item:dict, bittorrent:bool) -> tuple[str, bool]:
+        """Return the best current name and whether it is worth retaining."""
         files = item.get('files') or []
         first = files[0] if files else {}
         uris = first.get('uris') or []
@@ -336,13 +340,17 @@ class Aria2Operate():
         if bittorrent:
             name = item.get('bittorrent', {}).get('info', {}).get('name')
             if name:
-                return name
-            if first.get('path'):
-                return Path(first['path']).name.removeprefix('[METADATA]')
+                return name, True
+            if first.get('path') and not Path(first['path']).name.startswith('[METADATA]'):
+                return Path(first['path']).name, True
             magnet_name = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get('dn', [])
-            return magnet_name[0] if magnet_name else item.get('infoHash', '正在获取 BT 元数据')
+            if magnet_name:
+                return magnet_name[0], True
+            return item.get('infoHash', '正在获取 BT 元数据'), False
+        if first.get('path'):
+            return urllib.parse.unquote(Path(first['path']).name), True
         name = self.splitUrlToName(first.get('path') or url)
-        return urllib.parse.unquote(name) or '正在获取文件名'
+        return urllib.parse.unquote(name) or '正在获取文件名', False
 
     def splitUrlToName(self, url:str) -> str:
         #从url中提取文件名
@@ -357,7 +365,8 @@ class Aria2Operate():
         source_url = uris[0].get('uri', '') if uris else ''
         isTorrent = 'bittorrent' in item or bool(item.get('infoHash'))
         url = ('magnet:?xt=urn:btih:' + item['infoHash']) if item.get('infoHash') else source_url
-        filename = self.seekFileName(item, isTorrent)
+        filename, retain = self.seekFileName(item, isTorrent)
+        filename = self.missionNames.resolve(gid, filename, retain)
         # 设置进任务mission字典
         self.missions[status][gid] = {
             'totalLength'       : int(item.get('totalLength', 0)),
