@@ -49,9 +49,9 @@
    sudo ./install.sh
    ```
 
-   赋予权限后运行
+   如从源码打包，先按下文执行 `python3 make.py onefile`，然后在 `dist/Ashore.Linux.onefile/` 中运行上述安装脚本。
 
-4. Ashore 安装在 `/opt/Ashore`，桌面入口安装在 `/usr/local/share/applications/ashore.desktop`。
+4. Ashore 安装在 `/opt/Ashore`，桌面入口安装在 `/usr/local/share/applications/ashore.desktop`。覆盖旧版时，安装脚本会显示旧版备份目录；确认新版本可用后可手动删除备份。用户配置仍在 `~/.config/ashore/`。
 
 ### 	Windows
 
@@ -77,11 +77,11 @@
 2. 安装 `PyQt6` 和 `PyInstaller` 后，在项目根目录执行
 
    ```
-   python3 make.py onedir
-   # 或 python3 make.py onefile
+   python3 make.py onefile
+   # 如需目录形式：python3 make.py onedir
    ```
 
-   Linux 包位于 `dist/Ashore.Linux.onedir/` 或 `dist/Ashore.Linux.onefile/`，两种包均有独立的 `install.sh`。`onedir` 的 `_internal` 是 PyInstaller 运行时依赖目录，必须与可执行文件一起保留。macOS 使用 `python3 make.py app` 或 `python3 make.py dmg`，需在 macOS 上执行。
+   Linux 包位于 `dist/Ashore.Linux.onefile/` 或 `dist/Ashore.Linux.onedir/`，两种包均有独立的 `install.sh`。`onefile` 只需分发包内的可执行文件、图标、桌面入口及安装脚本；`onedir` 必须完整保留 Ashore 目录（包括 PyInstaller 运行时文件）。构建成功后才替换旧的同名包。macOS 使用 `python3 make.py app` 或 `python3 make.py dmg`，需在 macOS 上执行。
 
 首次运行时，配置写入 `~/.config/ashore/`（设置了 `XDG_CONFIG_HOME` 时使用对应目录）。默认允许外部 RPC 访问，并为新配置自动生成 `rpc-secret`；请勿公开 `aria2.conf` 中的密钥。修改 RPC 端口后重启由 Ashore 启动的 aria2 才能生效。启动失败可查看同目录的 `aria2-startup.log`。
 
