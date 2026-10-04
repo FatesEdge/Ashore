@@ -10,11 +10,11 @@
 '''
 
 import sys, os, time, configparser, json, platform, secrets, urllib.parse
-from paths import CONFIG_DIR, RESOURCE_DIR, ensure_config
+from paths import CONFIG_DIR, RESOURCE_DIR, ensure_config, systemDownloadDirectory
 from core.trackerSources import fetchTrackers, parseTrackers
 from interface.languageManager import LANGUAGES
 from interface.statusBadge import setConnectionBadge
-from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea, QFormLayout, QLineEdit, QTextEdit,QGridLayout, QComboBox, QCompleter, QSpinBox, QSpacerItem
+from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea, QFormLayout, QLineEdit, QTextEdit,QGridLayout, QComboBox, QCompleter, QSpinBox, QSpacerItem, QSizePolicy
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 
@@ -62,6 +62,7 @@ class SettingPage(QWidget):
         'update_interval'       : None,
         'rpc_port_changeable'   : None,
         'language'              : None,
+        'legacy_download_path_handled': None,
         'user_agent_presets'    : None,
     }
 
@@ -89,9 +90,9 @@ class SettingPage(QWidget):
         #设置目录补全
         completer = QCompleter()
         model = QFileSystemModel()
-        model.setRootPath(os.path.expanduser('~/Downloads'))
+        model.setRootPath(str(systemDownloadDirectory()))
         completer.setModel(model)
-        self.pathLineEdit = QLineEdit('~/Download')
+        self.pathLineEdit = QLineEdit(str(systemDownloadDirectory()))
         self.pathLineEdit.setCompleter(completer)
         self.pathLineEdit.setMinimumWidth(450)
         pathBtn = QPushButton('选择目录')
@@ -112,7 +113,10 @@ class SettingPage(QWidget):
         self.userAgentComboBox.setEditable(True)
         self.userAgentComboBox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.userAgentComboBox.addItems(self.AshoreConfig['user_agent_presets'])
-        self.userAgentComboBox.setMinimumWidth(560)
+        self.userAgentComboBox.setMinimumWidth(260)
+        self.userAgentComboBox.setMaximumWidth(560)
+        self.userAgentComboBox.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         formLayout.addRow('User Agent:', self.userAgentComboBox)
         uploadLimitLabel = QLabel('上传限速')
         self.uploadLimitSpin = QSpinBox()
@@ -424,7 +428,7 @@ class SettingPage(QWidget):
 
     def readLocalAria2Config(self) -> dict:
         options = {
-            'dir': os.path.expanduser('~/Downloads'),
+            'dir': str(systemDownloadDirectory()),
             'user-agent': '',
             'max-concurrent-downloads': '5',
             'max-connection-per-server': '1',

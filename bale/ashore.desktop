@@ -14,6 +14,7 @@ Icon=/opt/Ashore/icon.png
 Exec=/opt/Ashore/Ashore %u
 Terminal=false
 StartupNotify=false
+X-GNOME-UsesNotifications=true
 Categories=Network;FileTransfer;
 MimeType=x-scheme-handler/magnet;application/x-bittorrent;
 Keywords=download;aria2;下载;Ashore;

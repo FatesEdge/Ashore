@@ -9,20 +9,21 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit, unquote
 from PyQt6.QtWidgets import QApplication, QPushButton, QFileDialog, QDialog, QTextEdit, QLineEdit, QGridLayout
 from PyQt6.QtCore import Qt, pyqtSignal
+from paths import systemDownloadDirectory
 
 class AddNewDialog(QDialog):
 
     sinOut = pyqtSignal(tuple)
     #发射元组信号[0]为url地址，其为字典，分为普通地址'urlList'和磁链地址'torrentList'两项内容
 
-    def __init__(self, downloadPath:str=os.path.expanduser('~/Downloads'), urlList:list=None):
+    def __init__(self, downloadPath:str=None, urlList:list=None):
         super().__init__()
-        self.downloadPath = downloadPath
+        self.downloadPath = downloadPath or str(systemDownloadDirectory())
         self.text = QTextEdit()
         self.text.setPlaceholderText("请输入下载地址,多个地址请用Enter分割")
         if urlList != None:
@@ -82,6 +83,6 @@ class AddNewDialog(QDialog):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    exe = AddNewDialog(os.path.expanduser('~/Downloads'),['aaa'])
+    exe = AddNewDialog(urlList=['aaa'])
     exe.show()
     sys.exit(app.exec())

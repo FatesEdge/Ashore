@@ -10,7 +10,7 @@
 '''
 
 import sys, os, platform, json, copy, signal
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon, QMessageBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon, QMessageBox, QButtonGroup
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QDesktopServices, QFont
 from PyQt6.QtCore import QTimer, QSize, QEvent, QUrl, pyqtSignal, QObject, QThread, Qt
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
@@ -18,12 +18,11 @@ from interface.page import Page
 from core.aria2Operate import Aria2Operate
 from interface.addNewDialog import AddNewDialog
 from interface.settingPage import SettingPage
-from paths import RESOURCE_DIR
+from paths import RESOURCE_DIR, legacyDownloadDirectoryMigration
 from core.aria2Events import Aria2Events
 from interface.languageManager import translate
 from interface.statusBadge import setConnectionBadge
 
-DEFAULTPATH = os.path.expanduser('~/Downloads')
 APP_VERSION = '0.7.66'
 class Aria2Thread(Aria2Operate, QThread):
 
@@ -89,6 +88,7 @@ class Ashore(QMainWindow):
         self.aria2Version = ''
         self.updateConnectionDetails('等待检测')
         self.aria2Operate.poll()
+        QTimer.singleShot(0, self.offerLegacyDownloadDirectoryMigration)
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -207,7 +207,6 @@ class Ashore(QMainWindow):
         self.tabDownloading.setIconSize(QSize(23,23))
         self.tabDownloading.setToolTip('下载中')
         self.tabDownloading.setStatusTip('显示所有下载、等待、暂停中的任务')
-        self.tabDownloading.setEnabled(False)
         self.tabDownloaded = QPushButton(QIcon(self.BASEPATH + 'static/icon/icon.funtion/completed.png'),'')
         self.tabDownloaded.setFlat(True)
         self.tabDownloaded.setIconSize(QSize(23,23))
@@ -219,6 +218,13 @@ class Ashore(QMainWindow):
         self.tabSetting.setToolTip('设置')
         self.tabSetting.setStatusTip('Ashore及aria2相关设置')
         self.tabSetting.setShortcut("Ctrl+,")
+        self.navigationTabs = QButtonGroup(self)
+        self.navigationTabs.setExclusive(True)
+        for button in (self.tabDownloading, self.tabDownloaded, self.tabSetting):
+            button.setCheckable(True)
+            button.setProperty('navigationTab', True)
+            self.navigationTabs.addButton(button)
+        self.tabDownloading.setChecked(True)
         tabLayout = QVBoxLayout()
         tabLayout.addWidget(self.tabDownloading)
         tabLayout.addWidget(self.tabDownloaded)
@@ -272,6 +278,7 @@ class Ashore(QMainWindow):
             Ashore QPushButton{width:40;height:40;border-radius:8;}
             Ashore QPushButton:hover{background-color:#5f5f5f;border: 1 solid #bababa;}
             Ashore QPushButton:pressed{background-color:#363636;border: 1 solid #919191;}
+            Ashore QPushButton[navigationTab="true"]:checked{background-color:#456847;border:1px solid #88b98b;}
             Ashore Section QPushButton{width:23;height:23;border-radius:3;}
             SettingPage QPushButton{width:23;height:23;border-radius:3;background-color:#5d795f}
         ''')
@@ -381,15 +388,11 @@ class Ashore(QMainWindow):
         return s
 
     def slotSwitchDownloading(self) -> None:
-        self.tabDownloading.setEnabled(False)
-        self.tabDownloaded.setEnabled(True)
-        self.tabSetting.setEnabled(True)
+        self.tabDownloading.setChecked(True)
         self.pageStack.setCurrentIndex(0)
 
     def slotSwitchDownloaded(self) -> None:
-        self.tabDownloading.setEnabled(True)
-        self.tabDownloaded.setEnabled(False)
-        self.tabSetting.setEnabled(True)
+        self.tabDownloaded.setChecked(True)
         self.pageStack.setCurrentIndex(1)
 
     def slotSwitchSetting(self) -> None:
@@ -397,11 +400,35 @@ class Ashore(QMainWindow):
         if 'ResultError' in config:
             self.myPrint('aria2 未连接，设置页显示本地配置：' + str(config['ResultError']))
             config = self.pageSetting.readLocalAria2Config()
-        self.tabDownloading.setEnabled(True)
-        self.tabDownloaded.setEnabled(True)
-        self.tabSetting.setEnabled(False)
+        self.tabSetting.setChecked(True)
         self.pageSetting.updateSettingPage(config)
         self.pageStack.setCurrentIndex(2)
+
+    def offerLegacyDownloadDirectoryMigration(self) -> None:
+        if self.pageSetting.AshoreConfig.get('legacy_download_path_handled'):
+            return
+        migration = legacyDownloadDirectoryMigration(self.pageSetting.aria2ConfPath)
+        if migration is None:
+            return
+        oldPath, newPath = migration
+        answer = QMessageBox.question(
+            self,
+            '更新默认下载目录',
+            f'检测到旧版默认下载目录：\n{oldPath}\n\n'
+            f'系统当前提供的下载目录是：\n{newPath}\n\n是否切换？\n'
+            '只有旧版默认值会触发此提示，用户自定义目录不会被覆盖。',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes)
+        if answer == QMessageBox.StandardButton.Yes:
+            if self.pageSetting.saveAria2Conf({'dir': str(newPath)}) == 0:
+                self.pageSetting.pathLineEdit.setText(str(newPath))
+                result = self.aria2Operate.setGlobalConfig({'dir': str(newPath)})
+                if isinstance(result, dict) and 'ResultError' in result:
+                    self.myPrint('目录已保存，运行中的 aria2 未能立即应用：' + str(result['ResultError']))
+            else:
+                QMessageBox.warning(self, '更新失败', '无法写入 aria2 配置文件。')
+                return
+        self.pageSetting.saveAshoreConf({'legacy_download_path_handled': 'true'})
 
     def addNew(self, urlList:list=None) -> None:
         """通过命令行参数或系统接口参数运行程序、添加新任务
@@ -599,6 +626,7 @@ class MyApplication(QApplication):
         self.setApplicationVersion(APP_VERSION)
         self.setOrganizationName('PanZK')
         self.setApplicationName("Ashore")
+        self.setDesktopFileName('ashore')
 
     def forwardToExisting(self, urls):
         name = 'Ashore-' + str(os.getuid() if hasattr(os, 'getuid') else os.environ.get('USERNAME', 'user'))
