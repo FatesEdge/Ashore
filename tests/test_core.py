@@ -33,14 +33,36 @@ class Aria2Tests(unittest.TestCase):
                     page.updateSettingPage({})
                 self.assertEqual(page.trackerInfo.text(), '2026.09.26 16:55')
 
-    def test_first_run_config_has_secret_and_is_persistent(self):
+    def test_first_run_rpc_is_local_and_has_no_secret(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(paths, 'CONFIG_DIR', Path(folder)):
                 conf = paths.ensure_config('aria2.conf')
                 first = conf.read_text(encoding='utf-8')
-                self.assertIn('rpc-secret=', first)
+                self.assertIn('rpc-listen-all=false', first)
+                self.assertNotIn('\nrpc-secret=', first)
                 self.assertEqual(conf.stat().st_mode & 0o777, 0o600)
                 self.assertEqual(paths.ensure_config('aria2.conf').read_text(encoding='utf-8'), first)
+
+    def test_external_rpc_token_is_generated_readonly_and_removable(self):
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch.object(paths, 'CONFIG_DIR', root), \
+                 patch.object(SettingPage, 'ashoreConfDir', folder), \
+                 patch.object(SettingPage, 'aria2ConfPath', str(root / 'aria2.conf')):
+                conf = paths.ensure_config('aria2.conf')
+                page = SettingPage()
+                page.rpcListenAllComboBox.setCurrentIndex(0)
+                token = page.rpcSecretLineEdit.text()
+                self.assertGreater(len(token), 30)
+                self.assertTrue(page.rpcSecretLineEdit.isReadOnly())
+                self.assertEqual(page.saveAria2Conf(
+                    {'rpc-listen-all': 'true', 'rpc-secret': token}), 0)
+                self.assertIn(f'rpc-secret={token}', conf.read_text(encoding='utf-8'))
+                self.assertEqual(page.saveAria2Conf(
+                    {'rpc-listen-all': 'false'}, {'rpc-secret'}), 0)
+                self.assertNotIn(f'rpc-secret={token}', conf.read_text(encoding='utf-8'))
 
     def test_missing_aria2_exits_with_clear_error(self):
         with tempfile.TemporaryDirectory() as folder:

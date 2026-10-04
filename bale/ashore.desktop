@@ -2,6 +2,7 @@
 Type=Application
 Name=Ashore
 Name[zh_CN]=Ashore
+Name[zh_TW]=Ashore
 Version=0.7.66
 GenericName=Download manager
 GenericName[zh_CN]=下载管理器
@@ -12,6 +13,7 @@ Comment[zh_TW]=下载管理器
 Icon=/opt/Ashore/icon.png
 Exec=/opt/Ashore/Ashore %u
 Terminal=false
+StartupNotify=false
 Categories=Network;FileTransfer;
 MimeType=x-scheme-handler/magnet;application/x-bittorrent;
 Keywords=download;aria2;下载;Ashore;

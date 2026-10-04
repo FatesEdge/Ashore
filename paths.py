@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-import secrets
 import sys
 
 
@@ -21,11 +20,5 @@ def ensure_config(name):
             content = content.replace(b'${HOME}/.config/ashore', os.fsencode(CONFIG_DIR))
         target.write_bytes(content)
     if name == 'aria2.conf':
-        content = target.read_text(encoding='utf-8')
-        enabled = any(line.strip() == 'rpc-listen-all=true' for line in content.splitlines())
-        secret = any(line.strip().startswith('rpc-secret=') for line in content.splitlines())
-        if enabled and not secret:
-            with target.open('a', encoding='utf-8') as file:
-                file.write('\nrpc-secret=' + secrets.token_urlsafe(32) + '\n')
         target.chmod(0o600)
     return target

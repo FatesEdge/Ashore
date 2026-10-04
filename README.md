@@ -18,6 +18,7 @@
 - 下载内核部分直接使用[aria2](https://github.com/aria2/aria2)
 - 程序界面使用[PyQt6](https://pypi.org/project/PyQt6/)制作
 - RPC 默认端口为 `6801`，Ashore 会读取用户配置的端口与密钥
+- RPC 默认仅允许本机访问；设置页可选择开放外部访问，并显示只读的授权令牌
 - Ashore配置文件单独存放于ashore.conf文件中
 - 程序中可对aria2的配置简单进行更改，后续可以加入更多配置选项（[Mac下配置Aria2](https://gist.github.com/sumpeter/9f71b26b0e79cfd3bae39c3bdf6cfd8c)这里讲的非常细致）
 - 主界面显示 aria2 RPC 连接状态；WebSocket 通知促使任务立即刷新，定时查询用于同步进度及断线恢复
@@ -85,7 +86,9 @@ GitHub Actions 在 Linux 上运行测试、检查打包脚本，构建 `onefile`
 
    Linux 包位于 `dist/Ashore.Linux.onefile/` 或 `dist/Ashore.Linux.onedir/`，两种包均有独立的 `install.sh`。`onefile` 只需分发包内的可执行文件、图标、桌面入口及安装脚本；`onedir` 必须完整保留 Ashore 目录（包括 PyInstaller 运行时文件）。构建成功后才替换旧的同名包。macOS 使用 `python3 make.py app` 或 `python3 make.py dmg`，需在 macOS 上执行。
 
-首次运行时，配置写入 `~/.config/ashore/`（设置了 `XDG_CONFIG_HOME` 时使用对应目录）。默认允许外部 RPC 访问，并为新配置自动生成 `rpc-secret`；请勿公开 `aria2.conf` 中的密钥。修改 RPC 端口后重启由 Ashore 启动的 aria2 才能生效。启动失败可查看同目录的 `aria2-startup.log`。
+首次运行时，配置写入 `~/.config/ashore/`（设置了 `XDG_CONFIG_HOME` 时使用对应目录）。RPC 默认只监听本机，不生成令牌。只有在设置页打开“允许外部访问 RPC”时，Ashore 才会生成令牌；令牌只能显示和复制，不能在界面中修改，请勿公开。端口、监听范围或令牌发生变化后，由 Ashore 启动的 aria2 会自动重启；外部启动的 aria2 需要用户手动重启。启动失败可查看同目录的 `aria2-startup.log`。
+
+设置页同时显示 Ashore 实际使用的 HTTP 轮询地址、WebSocket 通知地址、两条通道的连接状态及 aria2 版本。HTTP 仍是任务状态的最终来源，WebSocket 用于及时触发刷新。
 
 首次配置不预置可能过期的 Tracker 地址。可在设置页获取列表并保存；界面显示来源、数量和更新时间，实际能否连通取决于任务和网络。
 
@@ -95,7 +98,7 @@ GitHub Actions 在 Linux 上运行测试、检查打包脚本，构建 `onefile`
 - `core/aria2Operate.py`：aria2 进程与 HTTP RPC、任务整理
 - `core/aria2Events.py`：WebSocket 事件及重连；不可用时仍按间隔查询
 - `core/missionNames.py`、`core/trackerSources.py`：名称保存与 Tracker 来源
-- `interface/`：保留 `page.py`、`section.py`、`settingPage.py`、`addNewDialog.py` 的文件名，集中管理界面
+- `interface/`：保留 `page.py`、`section.py`、`settingPage.py`、`addNewDialog.py` 的文件名，集中管理界面；`languageManager.py` 集中管理界面语言文本
 - `paths.py`：源代码及打包运行共用的资源、配置路径
 
 ## Development
@@ -104,7 +107,7 @@ GitHub Actions 在 Linux 上运行测试、检查打包脚本，构建 `onefile`
 2. 后续可继续补充常用文件类型图标；
 3. 界面也没好好写，后续考虑加入深浅色配置并优化界面；
 5. 目前手头没有Windows实体机及虚拟机，还未对win平台做测试；
-6. 添加多语言选项；
+6. 继续扩大简体中文、繁体中文、英语的翻译覆盖范围；
 7. 后续考虑对任务管理添加多选功能。
 
 

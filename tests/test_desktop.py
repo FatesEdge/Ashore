@@ -13,6 +13,12 @@ class DesktopTests(unittest.TestCase):
         self.assertIn('x-scheme-handler/magnet;', entry['MimeType'])
         self.assertIn('application/x-bittorrent;', entry['MimeType'])
 
+    def test_desktop_does_not_leave_startup_cursor_spinning(self):
+        desktop = Path(__file__).resolve().parents[1] / 'bale/ashore.desktop'
+        config = configparser.ConfigParser(interpolation=None)
+        config.read(desktop, encoding='utf-8')
+        self.assertEqual(config['Desktop Entry']['StartupNotify'], 'false')
+
 
 if __name__ == '__main__':
     unittest.main()

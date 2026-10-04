@@ -13,10 +13,13 @@ except ImportError:
 
 class Aria2Events(QObject):
     notification = pyqtSignal(str, str)
+    connectionStateChanged = pyqtSignal(str)
 
     def __init__(self, port, parent=None):
         super().__init__(parent)
         self.socket = None
+        self.state = 'unavailable'
+        self.stopped = False
         if QWebSocket is None:
             return
         self.address = QUrl(f'ws://127.0.0.1:{port}/jsonrpc')
@@ -26,19 +29,29 @@ class Aria2Events(QObject):
         self.retry.timeout.connect(self.openSocket)
         self.socket = QWebSocket()
         self.socket.textMessageReceived.connect(self.receive)
-        self.socket.connected.connect(self.retry.stop)
+        self.socket.connected.connect(self.connected)
         self.socket.disconnected.connect(self.reconnect)
         (self.socket.errorOccurred if hasattr(self.socket, 'errorOccurred')
          else self.socket.error).connect(self.reconnect)
-        self.stopped = False
         self.openSocket()
+
+    def setState(self, state):
+        if state != self.state:
+            self.state = state
+            self.connectionStateChanged.emit(state)
+
+    def connected(self):
+        self.retry.stop()
+        self.setState('connected')
 
     def openSocket(self):
         if (self.socket is not None and not self.stopped
                 and self.socket.state() == QAbstractSocket.SocketState.UnconnectedState):
+            self.setState('connecting')
             self.socket.open(self.address)
 
     def reconnect(self, *_):
+        self.setState('disconnected')
         if not self.stopped and not self.retry.isActive():
             self.retry.start()
 
@@ -57,10 +70,12 @@ class Aria2Events(QObject):
             self.stopped = True
             self.retry.stop()
             self.socket.close()
+            self.setState('stopped')
 
     def setPort(self, port):
         if self.socket is not None and self.address.port() != port:
             self.retry.stop()
             self.socket.close()
             self.address = QUrl(f'ws://127.0.0.1:{port}/jsonrpc')
+            self.stopped = False
             QTimer.singleShot(0, self.openSocket)

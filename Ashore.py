@@ -20,6 +20,7 @@ from interface.addNewDialog import AddNewDialog
 from interface.settingPage import SettingPage
 from paths import RESOURCE_DIR
 from core.aria2Events import Aria2Events
+from interface.languageManager import translate
 
 DEFAULTPATH = os.path.expanduser('~/Downloads')
 APP_VERSION = '0.7.66'
@@ -65,6 +66,7 @@ class Ashore(QMainWindow):
         self.pageSetting = SettingPage()
         #获取ashore配置信息
         ashoreConfig = self.pageSetting.getAshoreConfig()
+        self.language = ashoreConfig.get('language', 'zh_CN')
         self.aria2Operate = Aria2Thread(
             BASEPATH=self.BASEPATH,
             QuitWithAria2=ashoreConfig['quit_with_aria2'],
@@ -81,53 +83,62 @@ class Ashore(QMainWindow):
         self.quitting = False
         self.aria2Events = Aria2Events(self.aria2Operate.rpc_port, self)
         self.aria2Events.notification.connect(self.slotAria2Notification)
+        self.aria2Events.connectionStateChanged.connect(self.slotWebSocketStateChanged)
+        self.websocketState = self.aria2Events.state
+        self.aria2Version = ''
+        self.updateConnectionDetails('等待检测')
         self.aria2Operate.poll()
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
-        newAction = QAction('新建下载',self, triggered=self.slotClickBtnAddNew)
+        self.menuActions = {}
+        newAction = QAction(self.tr('new'),self, triggered=self.slotClickBtnAddNew)
         newAction.setStatusTip('新建下载任务')
         newAction.setShortcut('Ctrl+N')
-        saveAction = QAction('保存会话',self, triggered=self.slotSaveSession)
+        saveAction = QAction(self.tr('saveSession'),self, triggered=self.slotSaveSession)
         saveAction.setStatusTip('保存下载任务')
         saveAction.setShortcut('Ctrl+S')
-        restartAction = QAction('重启Aria2',self, triggered=self.slotRestartAria2)
+        restartAction = QAction(self.tr('restart'),self, triggered=self.slotRestartAria2)
         restartAction.setStatusTip('重新启动Aria2,可能导致程序短暂卡顿')
-        quitAction = QAction('退出程序',self, triggered=self.slotQuit)
+        quitAction = QAction(self.tr('quit'),self, triggered=self.slotQuit)
         quitAction.setStatusTip('彻底退出程序')
         quitAction.setShortcut('Ctrl+Q')
-        fileMenu = menuBar.addMenu("文件")
+        fileMenu = menuBar.addMenu(self.tr('file'))
         fileMenu.addAction(newAction)
         fileMenu.addAction(saveAction)
         fileMenu.addSeparator()
         fileMenu.addAction(restartAction)
         fileMenu.addAction(quitAction)
-        unpauseAllAction = QAction('开始全部',self, triggered=self.slotUnpauseAll)
+        unpauseAllAction = QAction(self.tr('startAll'),self, triggered=self.slotUnpauseAll)
         unpauseAllAction.setStatusTip('开始全部任务')
-        pauseAllAction = QAction('暂停全部',self, triggered=self.slotPauseAll)
+        pauseAllAction = QAction(self.tr('pauseAll'),self, triggered=self.slotPauseAll)
         pauseAllAction.setStatusTip('逐步暂停全部任务')
-        editMenu = menuBar.addMenu("编辑")
+        editMenu = menuBar.addMenu(self.tr('edit'))
         editMenu.addAction(unpauseAllAction)
         editMenu.addAction(pauseAllAction)
-        showAction = QAction('显示窗口',self, triggered=self.show)
+        showAction = QAction(self.tr('show'),self, triggered=self.show)
         showAction.setShortcut('Ctrl+R')
-        hideAction = QAction('关闭窗口',self, triggered=self.hide)
+        hideAction = QAction(self.tr('hide'),self, triggered=self.hide)
         hideAction.setStatusTip('退出当前应用')
         hideAction.setShortcut('Ctrl+W')
-        windowMenu = menuBar.addMenu("窗口")
+        windowMenu = menuBar.addMenu(self.tr('window'))
         windowMenu.addAction(showAction)
         windowMenu.addAction(hideAction)
-        aboutInfoAction = QAction("关于Ashore", self, triggered=self.slotAbout)
+        aboutInfoAction = QAction(self.tr('about'), self, triggered=self.slotAbout)
         aboutInfoAction.setStatusTip('关于Ashore')
-        helpMenu = menuBar.addMenu("帮助")
+        helpMenu = menuBar.addMenu(self.tr('help'))
         helpMenu.addAction(aboutInfoAction)
+        self.menuActions.update(new=newAction, saveSession=saveAction, restart=restartAction,
+                                quit=quitAction, startAll=unpauseAllAction, pauseAll=pauseAllAction,
+                                show=showAction, hide=hideAction, about=aboutInfoAction)
+        self.mainMenus = {'file': fileMenu, 'edit': editMenu, 'window': windowMenu, 'help': helpMenu}
         self.setMenuBar(menuBar)
 
     def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
-        showWindowAction = QAction("显示主窗口", self, triggered=self.slotShowWindow)
-        newAction = QAction('新建下载',self, triggered=self.slotClickBtnAddNew)
-        aboutInfoAction = QAction("关于Ashore", self, triggered=self.slotAbout)
-        quitAction = QAction("退出", self, triggered=self.slotQuit)
+        showWindowAction = QAction(self.tr('showMain'), self, triggered=self.slotShowWindow)
+        newAction = QAction(self.tr('new'),self, triggered=self.slotClickBtnAddNew)
+        aboutInfoAction = QAction(self.tr('about'), self, triggered=self.slotAbout)
+        quitAction = QAction(self.tr('trayQuit'), self, triggered=self.slotQuit)
         trayMenu = QMenu()
         trayMenu.addAction(showWindowAction)
         trayMenu.addAction(newAction)
@@ -139,6 +150,22 @@ class Ashore(QMainWindow):
         self.TrayIcon.setToolTip('Ashore')
         self.TrayIcon.setIcon(QIcon(self.BASEPATH + "static/icon/icon.funtion/trayIcon.png"))
         self.TrayIcon.show()
+        self.trayActions = {'showMain': showWindowAction, 'new': newAction,
+                            'about': aboutInfoAction, 'trayQuit': quitAction}
+
+    def tr(self, key):
+        return translate(self.language, key)
+
+    def applyLanguage(self):
+        for key, action in self.menuActions.items():
+            action.setText(self.tr(key))
+        for key, menu in self.mainMenus.items():
+            menu.setTitle(self.tr(key))
+        for key, action in self.trayActions.items():
+            action.setText(self.tr(key))
+        self.tabDownloading.setToolTip(self.tr('downloading'))
+        self.tabDownloaded.setToolTip(self.tr('downloaded'))
+        self.tabSetting.setToolTip(self.tr('settings'))
 
 
     def createStatusBar(self) -> None:   #设置状态栏
@@ -164,12 +191,12 @@ class Ashore(QMainWindow):
         self.upSpeedLabel.setStatusTip('全局BT、磁链上传速度')
         self.statusBar = QStatusBar()
         self.statusBar.setContentsMargins(0,1,10,2)
+        self.aria2StateLabel = QLabel('aria2：连接中')
+        self.statusBar.addPermanentWidget(self.aria2StateLabel)
         self.statusBar.addPermanentWidget(self.downSpeedIcon)
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
         self.statusBar.addPermanentWidget(self.upSpeedIcon)
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
-        self.aria2StateLabel = QLabel('aria2：连接中')
-        self.statusBar.addPermanentWidget(self.aria2StateLabel)
         self.setStatusBar(self.statusBar)
 
     def initUI(self) -> None:
@@ -270,13 +297,16 @@ class Ashore(QMainWindow):
             self.aria2StateLabel.setToolTip(str(globalStatus['ResultError']))
             self.downSpeedLabel.setText('—')
             self.upSpeedLabel.setText('—')
+            self.updateConnectionDetails('未连接')
             return
         if 'ResultError' in missions:
             self.aria2StateLabel.setText('aria2：查询失败')
             self.aria2StateLabel.setToolTip(str(missions['ResultError']))
             return
         self.aria2StateLabel.setText('aria2：已连接')
-        self.aria2StateLabel.setToolTip(f'127.0.0.1:{self.aria2Operate.rpc_port}')
+        if not self.aria2Version:
+            self.aria2Version = self.aria2Operate.getAria2Version()
+        self.updateConnectionDetails('已连接')
         self.pageDownloading.updateSections({status: missions[status] for status in ('active', 'waiting', 'paused')})
         self.pageDownloaded.updateSections({status: missions[status] for status in ('completed', 'error')})
         self.downSpeedLabel.setText(self.getSpeedStr(int(globalStatus['downloadSpeed'])))
@@ -308,6 +338,23 @@ class Ashore(QMainWindow):
         if method in ('aria2.onDownloadComplete', 'aria2.onBtDownloadComplete', 'aria2.onDownloadError'):
             self.pendingNotifications[gid] = method
         self.aria2Operate.poll()
+
+    def slotWebSocketStateChanged(self, state):
+        self.websocketState = state
+        self.updateConnectionDetails('已连接' if self.aria2Version else '等待检测')
+
+    def updateConnectionDetails(self, httpStatus):
+        websocketText = {
+            'unavailable': '不可用',
+            'connecting': '连接中',
+            'connected': '已连接',
+            'disconnected': '已断开，正在重试',
+            'stopped': '已停止',
+        }.get(getattr(self, 'websocketState', 'unavailable'), '未知')
+        endpoint = f'http://127.0.0.1:{self.aria2Operate.rpc_port}/jsonrpc'
+        self.aria2StateLabel.setToolTip(
+            f'HTTP：{httpStatus}\nWebSocket：{websocketText}\n{endpoint}')
+        self.pageSetting.setConnectionStatus(httpStatus, websocketText, self.aria2Version)
 
     def showDownloadNotification(self, name, status):
         if QSystemTrayIcon.isSystemTrayAvailable() and QSystemTrayIcon.supportsMessages():
@@ -346,14 +393,13 @@ class Ashore(QMainWindow):
     def slotSwitchSetting(self) -> None:
         config = self.aria2Operate.getGlobalConfig()
         if 'ResultError' in config:
-            self.myPrint(config['ResultError'])
-            return
-        else:
-            self.tabDownloading.setEnabled(True)
-            self.tabDownloaded.setEnabled(True)
-            self.tabSetting.setEnabled(False)
-            self.pageSetting.updateSettingPage(config)
-            self.pageStack.setCurrentIndex(2)
+            self.myPrint('aria2 未连接，设置页显示本地配置：' + str(config['ResultError']))
+            config = self.pageSetting.readLocalAria2Config()
+        self.tabDownloading.setEnabled(True)
+        self.tabDownloaded.setEnabled(True)
+        self.tabSetting.setEnabled(False)
+        self.pageSetting.updateSettingPage(config)
+        self.pageStack.setCurrentIndex(2)
 
     def addNew(self, urlList:list=None) -> None:
         """通过命令行参数或系统接口参数运行程序、添加新任务
@@ -494,7 +540,23 @@ class Ashore(QMainWindow):
 
     def slotUpdateRunningAria2Config(self, conf:dict) -> None:
         # 将setting页面的设置信息更新到运行的aria2程序中
-        result = conf if 'ResultError' in conf else self.aria2Operate.setGlobalConfig(conf)
+        if 'ResultError' in conf:
+            result = conf
+        else:
+            runtime = conf.get('runtime', conf)
+            result = self.aria2Operate.setGlobalConfig(runtime) if runtime else {}
+            if 'ResultError' not in result and conf.get('rpcChanged'):
+                try:
+                    self.aria2Operate.timer.stop()
+                    self.aria2Operate.wait()
+                    self.aria2Operate.restartAria2(self.BASEPATH)
+                    self.aria2Events.setPort(self.aria2Operate.rpc_port)
+                    self.aria2Version = ''
+                except RuntimeError as exc:
+                    result = {'ResultError': f'{exc} 配置已保存，请手动重启 aria2 后生效。'}
+                finally:
+                    self.aria2Operate.timer.start()
+                    self.aria2Operate.poll()
         self.aria2ConfigError = result.get('ResultError') if isinstance(result, dict) else str(result)
 
     def slotUpdateRunningAshoreConfig(self, conf:dict) -> None:
@@ -504,6 +566,9 @@ class Ashore(QMainWindow):
         elif conf['quit_with_aria2'] == 'true':
             self.aria2Operate.QuitWithAria2 = True
         self.aria2Operate.timer.setInterval(max(500, int(conf['update_interval'])))
+        if conf.get('language') and conf['language'] != self.language:
+            self.language = conf['language']
+            self.applyLanguage()
         if getattr(self, 'aria2ConfigError', None):
             self.myPrint('配置已保存，但运行中 aria2 未能应用设置：' + str(self.aria2ConfigError))
         else:
