@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - codex/python-stability-refactor
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aria2
+          python -m pip install PyQt6 PyInstaller
+      - name: Check source and run tests
+        run: |
+          python -m compileall -q Ashore.py paths.py make.py core interface
+          sh -n bale/install.sh
+          python -m unittest discover -s tests -v
+      - name: Build Linux onefile package
+        run: |
+          python make.py onefile
+          test -x dist/Ashore.Linux.onefile/Ashore
+          test -f dist/Ashore.Linux.onefile/icon.png
+          test -f dist/Ashore.Linux.onefile/ashore.desktop
+          test -x dist/Ashore.Linux.onefile/install.sh
+      - name: Smoke test packaged GUI
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/ashore-ci-config
+        run: |
+          set +e
+          timeout --signal=INT --kill-after=5s 12s dist/Ashore.Linux.onefile/Ashore
+          result=$?
+          set -e
+          if [ "$result" -ne 124 ]; then
+            echo "Ashore exited before the smoke test ended (status: $result)" >&2
+            exit 1
+          fi

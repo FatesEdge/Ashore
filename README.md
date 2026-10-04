@@ -72,6 +72,8 @@
 
 ## make
 
+GitHub Actions 在 Linux 上运行测试、检查打包脚本，构建 `onefile` 并进行无界面启动检查；它不会安装程序或自动发布 Release。本机安装后的桌面关联和实际下载仍需手动验证。
+
 1. 编程环境vscode、python3.10、pyqt6
 
 2. 安装 `PyQt6` 和 `PyInstaller` 后，在项目根目录执行
