@@ -11,7 +11,7 @@
 
 import sys, os, platform, json, copy, signal
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedLayout, QSplashScreen, QMenu, QLabel, QStatusBar, QSystemTrayIcon, QMessageBox, QButtonGroup
-from PyQt6.QtGui import QIcon, QPixmap, QAction, QDesktopServices, QFont
+from PyQt6.QtGui import QIcon, QPixmap, QAction, QDesktopServices, QFont, QPainter, QPalette
 from PyQt6.QtCore import QTimer, QSize, QEvent, QUrl, pyqtSignal, QObject, QThread, Qt
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from interface.page import Page
@@ -67,6 +67,7 @@ class Ashore(QMainWindow):
         #获取ashore配置信息
         ashoreConfig = self.pageSetting.getAshoreConfig()
         self.language = ashoreConfig.get('language', 'zh_CN')
+        self.trayIconStyle = ashoreConfig.get('tray_icon_style', 'colorful')
         self.aria2Operate = Aria2Thread(
             BASEPATH=self.BASEPATH,
             QuitWithAria2=ashoreConfig['quit_with_aria2'],
@@ -149,10 +150,27 @@ class Ashore(QMainWindow):
         self.TrayIcon = QSystemTrayIcon(self)
         self.TrayIcon.setContextMenu(trayMenu)
         self.TrayIcon.setToolTip('Ashore')
-        self.TrayIcon.setIcon(QIcon(self.BASEPATH + "static/icon/icon.funtion/trayIcon.png"))
+        self.applyTrayIconStyle(self.trayIconStyle)
         self.TrayIcon.show()
         self.trayActions = {'showMain': showWindowAction, 'new': newAction,
                             'about': aboutInfoAction, 'trayQuit': quitAction}
+
+    def applyTrayIconStyle(self, style):
+        source = QPixmap(self.BASEPATH + 'static/icon/icon.funtion/trayIcon.png')
+        if style == 'monochrome' and not source.isNull():
+            monochrome = QPixmap(source.size())
+            monochrome.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(monochrome)
+            painter.drawPixmap(0, 0, source)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+            painter.fillRect(
+                monochrome.rect(),
+                QApplication.palette().color(QPalette.ColorRole.WindowText))
+            painter.end()
+            self.TrayIcon.setIcon(QIcon(monochrome))
+        else:
+            self.TrayIcon.setIcon(QIcon(source))
+        self.trayIconStyle = style
 
     def tr(self, key):
         return translate(self.language, key)
@@ -598,6 +616,8 @@ class Ashore(QMainWindow):
         if conf.get('language') and conf['language'] != self.language:
             self.language = conf['language']
             self.applyLanguage()
+        if conf.get('tray_icon_style'):
+            self.applyTrayIconStyle(conf['tray_icon_style'])
         if getattr(self, 'aria2ConfigError', None):
             self.myPrint('配置已保存，但运行中 aria2 未能应用设置：' + str(self.aria2ConfigError))
         else:

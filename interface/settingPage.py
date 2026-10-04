@@ -63,6 +63,7 @@ class SettingPage(QWidget):
         'rpc_port_changeable'   : None,
         'language'              : None,
         'legacy_download_path_handled': None,
+        'tray_icon_style'       : None,
         'user_agent_presets'    : None,
     }
 
@@ -238,6 +239,13 @@ class SettingPage(QWidget):
         languageLayout.addWidget(self.languageComboBox)
         languageLayout.addStretch(10)
         formLayout.addRow('界面语言:', languageLayout)
+        self.trayIconStyleComboBox = QComboBox()
+        self.trayIconStyleComboBox.addItem('彩色', 'colorful')
+        self.trayIconStyleComboBox.addItem('单色', 'monochrome')
+        trayIconLayout = QHBoxLayout()
+        trayIconLayout.addWidget(self.trayIconStyleComboBox)
+        trayIconLayout.addStretch(10)
+        formLayout.addRow('托盘图标样式:', trayIconLayout)
 
         settingWidget = QWidget()
         settingWidget.setLayout(formLayout)
@@ -316,6 +324,9 @@ class SettingPage(QWidget):
         self.rpcPortLineEdit.setEnabled(ashoreConfig['rpc_port_changeable'])
         languageIndex = self.languageComboBox.findData(ashoreConfig.get('language', 'zh_CN'))
         self.languageComboBox.setCurrentIndex(max(0, languageIndex))
+        trayIconIndex = self.trayIconStyleComboBox.findData(
+            ashoreConfig.get('tray_icon_style', 'colorful'))
+        self.trayIconStyleComboBox.setCurrentIndex(max(0, trayIconIndex))
 
     def setMaxLimit(self, value, which:str):
         #将running中的aria2限速配置显示在settingpage上
@@ -510,6 +521,7 @@ class SettingPage(QWidget):
             'update_interval'       :   str(self.updateIntervalSpin.value()),
             'rpc_port_changeable'   :   self.getBoolOption(self.rpcPortChangeableComboBox),
             'language'              :   self.languageComboBox.currentData(),
+            'tray_icon_style'       :   self.trayIconStyleComboBox.currentData(),
         }
         oldRpc = self.readLocalRpcConfig()
         removeKeys = set() if rpcExternal else {'rpc-secret'}

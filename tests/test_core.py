@@ -47,6 +47,17 @@ class Aria2Tests(unittest.TestCase):
                 page.userAgentComboBox.setCurrentText('Custom Agent/1.0')
                 self.assertEqual(page.userAgentComboBox.currentText(), 'Custom Agent/1.0')
 
+    def test_tray_icon_style_has_colorful_and_monochrome_choices(self):
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+                 patch.object(SettingPage, 'ashoreConfDir', folder):
+                page = SettingPage()
+                choices = {page.trayIconStyleComboBox.itemData(index)
+                           for index in range(page.trayIconStyleComboBox.count())}
+                self.assertEqual(choices, {'colorful', 'monochrome'})
+
     def test_first_run_rpc_is_local_and_has_no_secret(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(paths, 'CONFIG_DIR', Path(folder)):
