@@ -48,6 +48,7 @@ class Aria2Operate():
         'getGlobalOption'       : 'aria2.getGlobalOption',
         'changeGlobalOption'    : 'aria2.changeGlobalOption',
         'saveSession'           : 'aria2.saveSession',
+        'shutdown'              : 'aria2.shutdown',
         }
 
     ERRORLIST = {
@@ -571,10 +572,19 @@ class Aria2Operate():
         raise RuntimeError(f'aria2 RPC 未能在端口 {self.rpc_port} 启动。请检查 {CONFIG_DIR / "aria2-startup.log"} 和 aria2.conf。')
 
     def restartAria2(self, BASEPATH:str):
-        if self.process is None or self.process.poll() is not None:
-            raise RuntimeError('当前 aria2 不是由 Ashore 启动，不能替你重启其他进程。')
         self.saveSession()
-        self.killAria2()
+        if self.process is not None and self.process.poll() is None:
+            self.killAria2()
+        else:
+            result = self.performan(data=self.produceJson(self.ARIA2METHOD['shutdown']))
+            if result != 'OK':
+                message = result.get('ResultError', result) if isinstance(result, dict) else result
+                raise RuntimeError(f'无法通过 RPC 正常关闭当前 aria2：{message}')
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and self.isAria2rpcRunning():
+                time.sleep(0.1)
+            if self.isAria2rpcRunning():
+                raise RuntimeError('当前 aria2 收到关闭请求后仍在运行。')
         self.startAria2(BASEPATH)
 
     def killAria2(self) -> bool:

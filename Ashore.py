@@ -21,6 +21,7 @@ from interface.settingPage import SettingPage
 from paths import RESOURCE_DIR
 from core.aria2Events import Aria2Events
 from interface.languageManager import translate
+from interface.statusBadge import setConnectionBadge
 
 DEFAULTPATH = os.path.expanduser('~/Downloads')
 APP_VERSION = '0.7.66'
@@ -192,6 +193,7 @@ class Ashore(QMainWindow):
         self.statusBar = QStatusBar()
         self.statusBar.setContentsMargins(0,1,10,2)
         self.aria2StateLabel = QLabel('aria2：连接中')
+        setConnectionBadge(self.aria2StateLabel, 'aria2：连接中', False)
         self.statusBar.addPermanentWidget(self.aria2StateLabel)
         self.statusBar.addPermanentWidget(self.downSpeedIcon)
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
@@ -293,17 +295,17 @@ class Ashore(QMainWindow):
         missions = snapshot['missions']
         globalStatus = snapshot['globalStatus']
         if 'ResultError' in globalStatus:
-            self.aria2StateLabel.setText('aria2：未连接')
+            setConnectionBadge(self.aria2StateLabel, 'aria2：未连接', False)
             self.aria2StateLabel.setToolTip(str(globalStatus['ResultError']))
             self.downSpeedLabel.setText('—')
             self.upSpeedLabel.setText('—')
             self.updateConnectionDetails('未连接')
             return
         if 'ResultError' in missions:
-            self.aria2StateLabel.setText('aria2：查询失败')
+            setConnectionBadge(self.aria2StateLabel, 'aria2：查询失败', False)
             self.aria2StateLabel.setToolTip(str(missions['ResultError']))
             return
-        self.aria2StateLabel.setText('aria2：已连接')
+        setConnectionBadge(self.aria2StateLabel, 'aria2：已连接', True)
         if not self.aria2Version:
             self.aria2Version = self.aria2Operate.getAria2Version()
         self.updateConnectionDetails('已连接')

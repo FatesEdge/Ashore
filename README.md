@@ -90,6 +90,8 @@ GitHub Actions 在 Linux 上运行测试、检查打包脚本，构建 `onefile`
 
 设置页同时显示 Ashore 实际使用的 HTTP 轮询地址、WebSocket 通知地址、两条通道的连接状态及 aria2 版本。HTTP 仍是任务状态的最终来源，WebSocket 用于及时触发刷新。
 
+User Agent 使用可编辑下拉框：预设是 `ashore.conf` 中的完整 UA 字符串，也可以直接输入自定义值；当前选择仍保存到 `aria2.conf`。
+
 首次配置不预置可能过期的 Tracker 地址。可在设置页获取列表并保存；界面显示来源、数量和更新时间，实际能否连通取决于任务和网络。
 
 ## 代码结构

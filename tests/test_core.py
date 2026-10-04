@@ -33,6 +33,20 @@ class Aria2Tests(unittest.TestCase):
                     page.updateSettingPage({})
                 self.assertEqual(page.trackerInfo.text(), '2026.09.26 16:55')
 
+    def test_user_agent_presets_are_full_and_custom_value_is_allowed(self):
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+                 patch.object(SettingPage, 'ashoreConfDir', folder):
+                page = SettingPage()
+                presets = page.AshoreConfig['user_agent_presets']
+                self.assertGreaterEqual(len(presets), 5)
+                self.assertTrue(all(item.startswith('Mozilla/5.0 (') for item in presets))
+                self.assertTrue(page.userAgentComboBox.isEditable())
+                page.userAgentComboBox.setCurrentText('Custom Agent/1.0')
+                self.assertEqual(page.userAgentComboBox.currentText(), 'Custom Agent/1.0')
+
     def test_first_run_rpc_is_local_and_has_no_secret(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(paths, 'CONFIG_DIR', Path(folder)):
@@ -95,6 +109,18 @@ class Aria2Tests(unittest.TestCase):
         request = call.call_args.args[0]
         self.assertEqual(request.full_url, 'http://127.0.0.1:6808/jsonrpc')
         self.assertEqual(json.loads(request.data)['params'], ['token:private-token'])
+
+    def test_restart_gracefully_takes_over_external_aria2(self):
+        client = Aria2Operate.__new__(Aria2Operate)
+        client.process = None
+        with patch.object(client, 'saveSession', return_value={}), \
+             patch.object(client, 'performan', return_value='OK') as rpc, \
+             patch.object(client, 'isAria2rpcRunning', return_value=False), \
+             patch.object(client, 'startAria2') as start:
+            client.restartAria2('/tmp/resources')
+        payload = json.loads(rpc.call_args.kwargs['data'])
+        self.assertEqual(payload['method'], 'aria2.shutdown')
+        start.assert_called_once_with('/tmp/resources')
 
     def test_parent_torrent_and_payload_display_as_one(self):
         client = Aria2Operate.__new__(Aria2Operate)

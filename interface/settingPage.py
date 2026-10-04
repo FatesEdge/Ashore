@@ -9,10 +9,11 @@
 @Contact :   for_freedom_x64@live.com
 '''
 
-import sys, os, time, configparser, platform, secrets, urllib.parse
+import sys, os, time, configparser, json, platform, secrets, urllib.parse
 from paths import CONFIG_DIR, RESOURCE_DIR, ensure_config
 from core.trackerSources import fetchTrackers, parseTrackers
 from interface.languageManager import LANGUAGES
+from interface.statusBadge import setConnectionBadge
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea, QFormLayout, QLineEdit, QTextEdit,QGridLayout, QComboBox, QCompleter, QSpinBox, QSpacerItem
 from PyQt6.QtGui import QFileSystemModel
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
@@ -61,6 +62,7 @@ class SettingPage(QWidget):
         'update_interval'       : None,
         'rpc_port_changeable'   : None,
         'language'              : None,
+        'user_agent_presets'    : None,
     }
 
     def __init__(self):
@@ -106,9 +108,12 @@ class SettingPage(QWidget):
         self.maConnectionSpin.setRange(1, 16)
         self.maConnectionSpin.setMaximumWidth(100)
         formLayout.addRow('同一服务器连接数:', self.maConnectionSpin)
-        self.userAgentLineEdit = QLineEdit('')
-        self.userAgentLineEdit.setMinimumWidth(500)
-        formLayout.addRow('User Agent:', self.userAgentLineEdit)
+        self.userAgentComboBox = QComboBox()
+        self.userAgentComboBox.setEditable(True)
+        self.userAgentComboBox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.userAgentComboBox.addItems(self.AshoreConfig['user_agent_presets'])
+        self.userAgentComboBox.setMinimumWidth(560)
+        formLayout.addRow('User Agent:', self.userAgentComboBox)
         uploadLimitLabel = QLabel('上传限速')
         self.uploadLimitSpin = QSpinBox()
         self.uploadLimitSpin.setRange(0, 1024)
@@ -137,11 +142,26 @@ class SettingPage(QWidget):
         self.rpcPortLineEdit.setToolTip('Ashore默认端口为6801')
         self.rpcPortLineEdit.setPlaceholderText('Ashore默认端口为6801')
         formLayout.addRow('rpc监听端口:', self.rpcPortLineEdit)
-        self.rpcProtocolLabel = QLabel()
-        self.rpcProtocolLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        formLayout.addRow('Ashore 连接地址:', self.rpcProtocolLabel)
-        self.rpcConnectionLabel = QLabel('HTTP：等待检测；WebSocket：等待检测')
-        formLayout.addRow('连接状态:', self.rpcConnectionLabel)
+        self.httpEndpointLabel = QLabel()
+        self.httpEndpointLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.httpStatusLabel = QLabel()
+        httpLayout = QHBoxLayout()
+        httpLayout.addWidget(self.httpEndpointLabel)
+        httpLayout.addWidget(self.httpStatusLabel)
+        httpLayout.addStretch(10)
+        formLayout.addRow('HTTP 轮询:', httpLayout)
+        self.websocketEndpointLabel = QLabel()
+        self.websocketEndpointLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.websocketStatusLabel = QLabel()
+        websocketLayout = QHBoxLayout()
+        websocketLayout.addWidget(self.websocketEndpointLabel)
+        websocketLayout.addWidget(self.websocketStatusLabel)
+        websocketLayout.addStretch(10)
+        formLayout.addRow('WebSocket 通知:', websocketLayout)
+        self.aria2VersionLabel = QLabel('—')
+        formLayout.addRow('aria2 版本:', self.aria2VersionLabel)
+        setConnectionBadge(self.httpStatusLabel, '等待检测', False)
+        setConnectionBadge(self.websocketStatusLabel, '等待检测', False)
         self.rpcListenAllComboBox = QComboBox()
         self.rpcListenAllComboBox.addItems(['是', '否'])
         self.rpcListenAllComboBox.setCurrentIndex(1)
@@ -153,13 +173,17 @@ class SettingPage(QWidget):
         self.rpcSecretLineEdit = QLineEdit()
         self.rpcSecretLineEdit.setReadOnly(True)
         self.rpcSecretLineEdit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.rpcSecretLineEdit.setMinimumWidth(360)
+        self.rpcSecretLineEdit.setMinimumWidth(220)
+        self.rpcSecretLineEdit.setMaximumWidth(320)
         self.rpcSecretRevealBtn = QPushButton('显示')
+        self.rpcSecretRevealBtn.setFixedWidth(72)
         self.rpcSecretCopyBtn = QPushButton('复制')
+        self.rpcSecretCopyBtn.setFixedWidth(72)
         tokenLayout = QHBoxLayout()
         tokenLayout.addWidget(self.rpcSecretLineEdit)
         tokenLayout.addWidget(self.rpcSecretRevealBtn)
         tokenLayout.addWidget(self.rpcSecretCopyBtn)
+        tokenLayout.addStretch(10)
         self.rpcSecretLabel = QLabel('RPC 授权令牌:')
         formLayout.addRow(self.rpcSecretLabel, tokenLayout)
         formLayout.addWidget(QLabel('BT设置'))
@@ -264,7 +288,10 @@ class SettingPage(QWidget):
         self.pathLineEdit.setText(aria2Config['dir'])
         self.maxDownloadsSpin.setValue(int(aria2Config['max-concurrent-downloads']))
         self.maConnectionSpin.setValue(int(aria2Config['max-connection-per-server']))
-        self.userAgentLineEdit.setText(aria2Config['user-agent'])
+        userAgent = aria2Config['user-agent']
+        if self.userAgentComboBox.findText(userAgent) < 0:
+            self.userAgentComboBox.addItem(userAgent)
+        self.userAgentComboBox.setCurrentText(userAgent)
         self.setMaxLimit(aria2Config['max-overall-upload-limit'], 'upload')
         self.setMaxLimit(aria2Config['max-overall-download-limit'], 'download')
         self.rpcPortLineEdit.setText(aria2Config['rpc-listen-port'])
@@ -367,6 +394,14 @@ class SettingPage(QWidget):
                 value = True
             elif value == 'false':
                 value = False
+            elif key == 'user_agent_presets':
+                try:
+                    value = json.loads(value)
+                except (TypeError, ValueError):
+                    value = []
+                if not isinstance(value, list):
+                    value = []
+                value = [item for item in value if isinstance(item, str) and item.strip()]
             tempDict[key] = value
         return tempDict
 
@@ -453,7 +488,7 @@ class SettingPage(QWidget):
             'bt-tracker'                :   ','.join(parseTrackers(self.btTracker.toPlainText())),
             'max-concurrent-downloads'  :   str(self.maxDownloadsSpin.value()),
             'max-connection-per-server' :   str(self.maConnectionSpin.value()),
-            'user-agent'                :   self.userAgentLineEdit.text(),
+            'user-agent'                :   self.userAgentComboBox.currentText().strip(),
             'max-overall-upload-limit'  :   self.getMaxLimit('upload'),
             'max-overall-download-limit':   self.getMaxLimit('download'),
             'rpc-listen-port'           :   self.rpcPortLineEdit.text(),
@@ -552,14 +587,14 @@ class SettingPage(QWidget):
 
     def updateRpcAddress(self) -> None:
         port = self.rpcPortLineEdit.text() or '6801'
-        self.rpcProtocolLabel.setText(
-            f'HTTP 轮询：http://127.0.0.1:{port}/jsonrpc\n'
-            f'WebSocket 通知：ws://127.0.0.1:{port}/jsonrpc')
+        self.httpEndpointLabel.setText(f'http://127.0.0.1:{port}/jsonrpc')
+        self.websocketEndpointLabel.setText(f'ws://127.0.0.1:{port}/jsonrpc')
 
     def setConnectionStatus(self, httpStatus:str, websocketStatus:str, aria2Version:str='') -> None:
-        version = f'；aria2 {aria2Version}' if aria2Version else ''
-        self.rpcConnectionLabel.setText(
-            f'HTTP：{httpStatus}；WebSocket：{websocketStatus}{version}')
+        setConnectionBadge(self.httpStatusLabel, httpStatus, httpStatus == '已连接')
+        setConnectionBadge(self.websocketStatusLabel, websocketStatus,
+                           websocketStatus == '已连接')
+        self.aria2VersionLabel.setText(aria2Version or '—')
 
     def saveAshoreConf(self, UserAshoreConf:dict) -> int:
         configFile = configparser.ConfigParser()
