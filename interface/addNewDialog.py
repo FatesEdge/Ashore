@@ -1,44 +1,38 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-'''
-@Time    :   2023/03/25 15:06:43
-@File    :   addNewDialog.py
-@Software:   VSCode
-@Author  :   PPPPAN 
-@Version :   0.7.66
-@Contact :   for_freedom_x64@live.com
-'''
+"""Dialog for adding URLs, magnets, and local torrent files."""
 
-import sys
 from pathlib import Path
-from urllib.parse import urlsplit, unquote
-from PyQt6.QtWidgets import QApplication, QPushButton, QFileDialog, QDialog, QTextEdit, QLineEdit, QGridLayout
+from urllib.parse import unquote, urlsplit
+
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+)
+
 from paths import systemDownloadDirectory
+
 
 class AddNewDialog(QDialog):
 
-    sinOut = pyqtSignal(tuple)
+    submitted = pyqtSignal(tuple)
     #发射元组信号[0]为url地址，其为字典，分为普通地址'urlList'和磁链地址'torrentList'两项内容
 
-    def __init__(self, downloadPath:str=None, urlList:list=None):
+    def __init__(self, downloadPath: str | None = None, urlList: list | None = None):
         super().__init__()
         self.downloadPath = downloadPath or str(systemDownloadDirectory())
         self.text = QTextEdit()
         self.text.setPlaceholderText("请输入下载地址,多个地址请用Enter分割")
-        if urlList != None:
-            urls = ''
-            for url in urlList:
-                urls += url + '\n'
-            self.text.setText(urls)
+        if urlList is not None:
+            self.text.setText('\n'.join(urlList))
         self.text.setAcceptRichText(False)
         self.dirEdit = QLineEdit(self.downloadPath)
         dirBtn = QPushButton('选择目录')
-        dirBtn.setFixedWidth(100)
         confirmBtn = QPushButton('确认')
-        confirmBtn.setFixedWidth(100)
         cancelBtn = QPushButton('取消')
-        cancelBtn.setFixedWidth(100)
         mainLayout = QGridLayout()
         mainLayout.addWidget(self.text, 0, 0, 1, 7)
         mainLayout.addWidget(self.dirEdit, 1, 0, 1, 6)
@@ -48,13 +42,11 @@ class AddNewDialog(QDialog):
         mainLayout.setColumnMinimumWidth(0,100)
         self.setLayout(mainLayout)
         self.setMinimumSize(500, 300)
-        self.setWindowModality(Qt.WindowModality.NonModal)  # 非模态，可与其他窗口交互
+        self.setWindowModality(Qt.WindowModality.NonModal)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
         dirBtn.clicked.connect(self.slotDir)
         confirmBtn.clicked.connect(self.slotConfirm)
         cancelBtn.clicked.connect(self.close)
-        
-
     def slotDir(self):
         path = QFileDialog.getExistingDirectory(self,'Open dir', self.downloadPath, QFileDialog.Option.ShowDirsOnly)
         if path != '':
@@ -64,25 +56,20 @@ class AddNewDialog(QDialog):
         text = self.text.toPlainText()
         if text != '':
             urls = {'urlList': [], 'torrentList': []}
-            #校验是否为url或magnet
             for raw in text.splitlines():
                 item = raw.strip()
                 parsed = urlsplit(item)
                 if parsed.scheme in ('http', 'https', 'ftp') and parsed.netloc:
                     target = 'torrentList' if unquote(parsed.path).lower().endswith('.torrent') else 'urlList'
                     urls[target].append(item)
-                elif parsed.scheme == 'magnet' and 'xt=urn:btih:' in parsed.query.lower():
+                elif (
+                        parsed.scheme == 'magnet'
+                        and 'xt=urn:btih:' in parsed.query.lower()
+                        or parsed.scheme == 'file'
+                        and unquote(parsed.path).lower().endswith('.torrent')
+                        or Path(item).is_file()
+                        and item.lower().endswith('.torrent')):
                     urls['torrentList'].append(item)
-                elif parsed.scheme == 'file' and unquote(parsed.path).lower().endswith('.torrent'):
-                    urls['torrentList'].append(item)
-                elif Path(item).is_file() and item.lower().endswith('.torrent'):
-                    urls['torrentList'].append(item)
-            dir = self.dirEdit.text()
-            self.sinOut.emit((urls,dir))
+            targetDir = self.dirEdit.text()
+            self.submitted.emit((urls, targetDir))
         self.close()
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    exe = AddNewDialog(urlList=['aaa'])
-    exe.show()
-    sys.exit(app.exec())

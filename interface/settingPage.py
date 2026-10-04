@@ -1,87 +1,77 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-'''
-@Time    :   2023/03/26 16:56:04
-@File    :   settingPage.py
-@Software:   VSCode
-@Author  :   PPPPAN 
-@Version :   0.7.66
-@Contact :   for_freedom_x64@live.com
-'''
+"""Ashore and aria2 settings interface."""
 
-import sys, os, time, configparser, json, platform, secrets, urllib.parse
-from paths import CONFIG_DIR, RESOURCE_DIR, ensure_config, systemDownloadDirectory
-from core.trackerSources import fetchTrackers, parseTrackers
+import json
+import secrets
+import urllib.parse
+
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor, QFileSystemModel
+from PyQt6.QtWidgets import (
+    QApplication,
+    QColorDialog,
+    QComboBox,
+    QCompleter,
+    QFileDialog,
+    QFormLayout,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSpinBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from core.configStore import readAshore, readOptions, writeAshore, writeOptions
+from core.trackerManager import TrackerManager, displayTime
+from core.trackerSources import parseTrackers
 from interface.languageManager import LANGUAGES
 from interface.statusBadge import setConnectionBadge
-from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QScrollArea, QFormLayout, QLineEdit, QTextEdit,QGridLayout, QComboBox, QCompleter, QSpinBox, QSpacerItem, QSizePolicy
-from PyQt6.QtGui import QFileSystemModel
-from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
-
-class Thread(QThread):
-
-    sinOut = pyqtSignal(list, str)
-
-    def run(self):
-        trackers, source = fetchTrackers()
-        self.sinOut.emit(trackers, source)
+from interface.themeManager import ACCENT_PRESETS, THEME_MODES, validColor
+from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig, systemDownloadDirectory
 
 
 class SettingPage(QWidget):
 
-    aria2ConfSinOut = pyqtSignal(dict)
-    ashoreConfigSinOut = pyqtSignal(dict)
-    #生成资源文件目录访问路径
-    #说明： pyinstaller工具打包的可执行文件，运行时sys。frozen会被设置成True
-    #      因此可以通过sys.frozen的值区分是开发环境还是打包后的生成环境
-    #
-    #      打包后的生产环境，资源文件都放在sys._MEIPASS目录下
-    #      修改main.spec中的datas，
-    #      如datas=[('res', 'res')]，意思是当前目录下的res目录加入目标exe中，在运行时放在零时文件的根目录下，名称为res
-    BASEPATH = ''
+    aria2ConfigChanged = pyqtSignal(dict)
+    ashoreConfigChanged = pyqtSignal(dict)
+    trackerRuntimeChanged = pyqtSignal(dict)
+    themePreview = pyqtSignal(str, str)
     aria2ConfPath = str(CONFIG_DIR / 'aria2.conf')
     ashoreConfDir = str(CONFIG_DIR)
 
-    Aria2Config = {
-        'dir'                           :   None,
-        'user-agent'                    :   None,
-        'max-concurrent-downloads'      :   None,
-        'max-connection-per-server'     :   None,
-        'max-overall-upload-limit'      :   None,
-        'max-overall-download-limit'    :   None,
-        'rpc-listen-port'               :   None,
-        'rpc-listen-all'                :   None,
-        'rpc-secret'                    :   None,
-        'bt-tracker'                    :   None,
-    }
-
-    AshoreConfig = {
-        'trackers_list_time'    : None,
-        'trackers_list_source'  : None,
-        'quit_with_aria2'       : None,
-        'update_interval'       : None,
-        'rpc_port_changeable'   : None,
-        'language'              : None,
-        'legacy_download_path_handled': None,
-        'tray_icon_style'       : None,
-        'user_agent_presets'    : None,
-    }
+    ashoreKeys = (
+        'trackers_list_time', 'trackers_list_source', 'trackers_auto_update',
+        'quit_with_aria2', 'update_interval', 'rpc_port_changeable', 'language',
+        'legacy_download_path_handled', 'tray_icon_style', 'user_agent_presets',
+        'theme_mode', 'accent_color',
+    )
 
     def __init__(self):
         super().__init__()
-        #定义aria2配置字典
-        self.globalAria2Conf = dict(self.Aria2Config)
-        #ashore.conf配置文件路径
         self.ashoreConfPath = self.ashoreConfDir + '/ashore.conf'
-        # 可能因第一次运行或目录损坏导致conf目录不存在，则新建目录
-        ensure_config('ashore.conf')
-        #在生成settinpage时就将AshoreConfig注入进来，关于aria2的配置已在aria2Operate加载，则在点开settpage时显示出即可
-        self.AshoreConfig = self.getAshoreConfig()
+        ensureConfig('ashore.conf')
+        ensureConfig('aria2.conf')
+        self.ashoreConfig = self.loadAshoreConfig()
+        self.trackerTime = self.ashoreConfig['trackers_list_time']
         self.initUI()
+        self.trackerManager = TrackerManager(
+            self.ashoreConfPath,
+            self.aria2ConfPath,
+            RESOURCE_DIR / 'config/ashore.conf',
+            self)
+        self.trackerManager.statusChanged.connect(self.showTrackerMessage)
+        self.trackerManager.updated.connect(self.applyTrackerUpdate)
+        self.trackerManager.failed.connect(self.applyTrackerFailure)
 
     def initUI(self):
         formLayout = QFormLayout()
         formLayout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        formLayout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         # Aira2设置控件 开始
         self.aria2SettingLabel = QLabel('<h3>Aira2 设置</h3>')
         self.aria2SettingLabel.setFixedHeight(50)
@@ -95,27 +85,26 @@ class SettingPage(QWidget):
         completer.setModel(model)
         self.pathLineEdit = QLineEdit(str(systemDownloadDirectory()))
         self.pathLineEdit.setCompleter(completer)
-        self.pathLineEdit.setMinimumWidth(450)
+        self.pathLineEdit.setMinimumWidth(260)
+        self.pathLineEdit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         pathBtn = QPushButton('选择目录')
-        pathBtn.setFixedWidth(100)
         pathLayout = QHBoxLayout()
-        pathLayout.addWidget(self.pathLineEdit)
+        pathLayout.addWidget(self.pathLineEdit, 1)
         pathLayout.addWidget(pathBtn)
         formLayout.addRow('默认下载目录:', pathLayout)
         self.maxDownloadsSpin = QSpinBox()
         self.maxDownloadsSpin.setRange(1, 100)
         self.maxDownloadsSpin.setMaximumWidth(100)
         formLayout.addRow('同时最大下载数:', self.maxDownloadsSpin)
-        self.maConnectionSpin = QSpinBox()
-        self.maConnectionSpin.setRange(1, 16)
-        self.maConnectionSpin.setMaximumWidth(100)
-        formLayout.addRow('同一服务器连接数:', self.maConnectionSpin)
+        self.maxConnectionSpin = QSpinBox()
+        self.maxConnectionSpin.setRange(1, 16)
+        self.maxConnectionSpin.setMaximumWidth(100)
+        formLayout.addRow('同一服务器连接数:', self.maxConnectionSpin)
         self.userAgentComboBox = QComboBox()
         self.userAgentComboBox.setEditable(True)
         self.userAgentComboBox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.userAgentComboBox.addItems(self.AshoreConfig['user_agent_presets'])
+        self.userAgentComboBox.addItems(self.ashoreConfig['user_agent_presets'])
         self.userAgentComboBox.setMinimumWidth(260)
-        self.userAgentComboBox.setMaximumWidth(560)
         self.userAgentComboBox.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         formLayout.addRow('User Agent:', self.userAgentComboBox)
@@ -126,7 +115,7 @@ class SettingPage(QWidget):
         self.uploadLimitSpin.setMinimumWidth(150)
         self.uploadLimitComboBox = QComboBox()
         self.uploadLimitComboBox.addItems(['B/s', 'KB/s', 'MB/s', 'GB/s'])
-        downloaLimitLabel = QLabel('下载限速') 
+        downloadLimitLabel = QLabel('下载限速')
         self.downloadLimitSpin = QSpinBox()
         self.downloadLimitSpin.setRange(0, 1024)
         self.downloadLimitSpin.setSpecialValueText('不限速') 
@@ -137,10 +126,10 @@ class SettingPage(QWidget):
         transLayout.addWidget(uploadLimitLabel,0,0,1,1)
         transLayout.addWidget(self.uploadLimitSpin,0,1,1,1)
         transLayout.addWidget(self.uploadLimitComboBox,0,2,1,1)
-        transLayout.addWidget(downloaLimitLabel,1,0,1,1)
+        transLayout.addWidget(downloadLimitLabel,1,0,1,1)
         transLayout.addWidget(self.downloadLimitSpin,1,1,1,1)
         transLayout.addWidget(self.downloadLimitComboBox,1,2,1,1)
-        transLayout.addItem(QSpacerItem(300,20),0,3,2,1)
+        transLayout.setColumnStretch(3, 1)
         formLayout.addRow('限速设置:', transLayout)
         self.rpcPortLineEdit = QLineEdit()
         self.rpcPortLineEdit.setMaximumWidth(200)
@@ -177,34 +166,43 @@ class SettingPage(QWidget):
         formLayout.addRow('允许外部访问 RPC:', listenAllLayout)
         self.rpcSecretLineEdit = QLineEdit()
         self.rpcSecretLineEdit.setReadOnly(True)
-        self.rpcSecretLineEdit.setEchoMode(QLineEdit.EchoMode.Password)
         self.rpcSecretLineEdit.setMinimumWidth(220)
-        self.rpcSecretLineEdit.setMaximumWidth(320)
+        self.rpcSecretLineEdit.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.rpcSecret = ''
+        self.rpcSecretVisible = False
         self.rpcSecretRevealBtn = QPushButton('显示')
-        self.rpcSecretRevealBtn.setFixedWidth(72)
         self.rpcSecretCopyBtn = QPushButton('复制')
-        self.rpcSecretCopyBtn.setFixedWidth(72)
         tokenLayout = QHBoxLayout()
-        tokenLayout.addWidget(self.rpcSecretLineEdit)
+        tokenLayout.addWidget(self.rpcSecretLineEdit, 1)
         tokenLayout.addWidget(self.rpcSecretRevealBtn)
         tokenLayout.addWidget(self.rpcSecretCopyBtn)
-        tokenLayout.addStretch(10)
         self.rpcSecretLabel = QLabel('RPC 授权令牌:')
         formLayout.addRow(self.rpcSecretLabel, tokenLayout)
         formLayout.addWidget(QLabel('BT设置'))
         self.btTracker = QTextEdit()
-        self.btTracker.setMinimumWidth(500)
+        self.btTracker.setMinimumWidth(260)
+        self.btTracker.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.trackerBtn = QPushButton('更新Tracker')
-        self.trackerBtn.setFixedWidth(100)
         self.trackerInfo = QLabel('1')
         self.trackerStatus = QLabel('')
-        self.trackerSource = self.AshoreConfig['trackers_list_source']
+        self.trackerSource = self.ashoreConfig['trackers_list_source']
         trackerLayout = QGridLayout()
         trackerLayout.addWidget(self.btTracker, 0, 0, 1, 2)
         trackerLayout.addWidget(self.trackerInfo, 1, 0, 1, 1)
         trackerLayout.addWidget(self.trackerBtn, 1, 1, 1, 1)
         trackerLayout.addWidget(self.trackerStatus, 2, 0, 1, 2)
+        trackerLayout.setColumnStretch(0, 1)
         formLayout.addRow('btTracker:', trackerLayout)
+
+        self.autoTrackerComboBox = QComboBox()
+        self.autoTrackerComboBox.addItems(['是', '否'])
+        autoTrackerLayout = QHBoxLayout()
+        autoTrackerLayout.addWidget(self.autoTrackerComboBox)
+        autoTrackerLayout.addWidget(QLabel('仅在上次成功更新超过 24 小时后执行'))
+        autoTrackerLayout.addStretch(1)
+        formLayout.addRow('启动时自动更新 Tracker:', autoTrackerLayout)
 
         # Ashore设置控件 开始
         self.ashoreSettingLabel = QLabel('<h3>Ashore 设置</h3>')
@@ -241,22 +239,38 @@ class SettingPage(QWidget):
         formLayout.addRow('界面语言:', languageLayout)
         self.trayIconStyleComboBox = QComboBox()
         self.trayIconStyleComboBox.addItem('彩色', 'colorful')
-        self.trayIconStyleComboBox.addItem('单色', 'monochrome')
+        self.trayIconStyleComboBox.addItem('灰色', 'gray')
         trayIconLayout = QHBoxLayout()
         trayIconLayout.addWidget(self.trayIconStyleComboBox)
         trayIconLayout.addStretch(10)
         formLayout.addRow('托盘图标样式:', trayIconLayout)
 
+        self.themeModeComboBox = QComboBox()
+        themeNames = {'system': '跟随系统', 'light': '浅色', 'dark': '深色'}
+        for mode in THEME_MODES:
+            self.themeModeComboBox.addItem(themeNames[mode], mode)
+        themeLayout = QHBoxLayout()
+        themeLayout.addWidget(self.themeModeComboBox)
+        themeLayout.addStretch(1)
+        formLayout.addRow('明暗主题:', themeLayout)
+
+        self.accentComboBox = QComboBox()
+        self.accentComboBox.setEditable(True)
+        for color in ACCENT_PRESETS:
+            self.accentComboBox.addItem(color, color)
+        accentButton = QPushButton('选择颜色')
+        accentLayout = QHBoxLayout()
+        accentLayout.addWidget(self.accentComboBox)
+        accentLayout.addWidget(accentButton)
+        accentLayout.addStretch(1)
+        formLayout.addRow('主题颜色:', accentLayout)
+
         settingWidget = QWidget()
         settingWidget.setLayout(formLayout)
         settingWidget.setContentsMargins(20,0,0,0)
-        # settingWidget.setMinimumWidth(400)
         scrollToAria2Btn = QPushButton('Aria2 设置')
-        scrollToAria2Btn.setFixedWidth(120)
         scrollToAshoreBtn = QPushButton('Ashore 设置')
-        scrollToAshoreBtn.setFixedWidth(120)
         self.saveBtn = QPushButton('保存设置')
-        self.saveBtn.setFixedWidth(120)
         scrollBtnLayout = QVBoxLayout()
         scrollBtnLayout.addWidget(scrollToAria2Btn)
         scrollBtnLayout.addWidget(scrollToAshoreBtn)
@@ -264,6 +278,7 @@ class SettingPage(QWidget):
         scrollBtnLayout.addWidget(self.saveBtn)
         scrollBtnLayout.setContentsMargins(10,0,10,0)
         self.scrollArea = QScrollArea()
+        self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setWidget(settingWidget)
 
         mainLayout = QHBoxLayout()
@@ -271,10 +286,7 @@ class SettingPage(QWidget):
         mainLayout.addWidget(self.scrollArea)
 
         self.setLayout(mainLayout)
-        self.setMinimumWidth(945)
-
-        # 生成时先更新已获取的Ashore配置部分
-        # self.updateAhoreSetting(self.AshoreConfig)
+        self.setMinimumWidth(760)
 
         pathBtn.clicked.connect(self.slotDir)
         scrollToAria2Btn.clicked.connect(self.slotScrollToAria2)
@@ -282,24 +294,26 @@ class SettingPage(QWidget):
         self.trackerBtn.clicked.connect(self.slotTracker)
         self.saveBtn.clicked.connect(self.slotSaveConf)
         self.rpcPortChangeableComboBox.currentIndexChanged.connect(self.slotRpcPortChangeable)
-        self.rpcPortLineEdit.textChanged.connect(self.updateRpcAddress)
-        self.rpcListenAllComboBox.currentIndexChanged.connect(self.slotRpcListenAllChanged)
-        self.rpcSecretRevealBtn.clicked.connect(self.slotToggleRpcSecret)
-        self.rpcSecretCopyBtn.clicked.connect(self.slotCopyRpcSecret)
-        self.updateRpcSecretVisibility()
+        self.rpcPortLineEdit.textChanged.connect(self.updateEndpoints)
+        self.rpcListenAllComboBox.currentIndexChanged.connect(self.toggleRpcAccess)
+        self.rpcSecretRevealBtn.clicked.connect(self.toggleToken)
+        self.rpcSecretCopyBtn.clicked.connect(self.copyToken)
+        self.themeModeComboBox.currentIndexChanged.connect(self.previewTheme)
+        self.accentComboBox.currentTextChanged.connect(self.previewTheme)
+        accentButton.clicked.connect(self.pickAccent)
+        self.updateTokenRow()
     
-    def updateSettingPage(self, aria2Config:dict):
-        self.AshoreConfig = self.getAshoreConfig()
-        self.updateAria2Setting(aria2Config)
-        self.updateAhoreSetting(self.AshoreConfig)
+    def loadSettings(self, aria2Config:dict):
+        self.ashoreConfig = self.loadAshoreConfig()
+        self.loadAria2(aria2Config)
+        self.loadAshore(self.ashoreConfig)
 
-    def updateAria2Setting(self, aria2Config:dict):
+    def loadAria2(self, aria2Config:dict):
         aria2Config = dict(aria2Config)
-        aria2Config.update(self.readLocalRpcConfig())
-        self.globalAria2Conf = aria2Config
+        aria2Config.update(self.readRpcConfig())
         self.pathLineEdit.setText(aria2Config['dir'])
         self.maxDownloadsSpin.setValue(int(aria2Config['max-concurrent-downloads']))
-        self.maConnectionSpin.setValue(int(aria2Config['max-connection-per-server']))
+        self.maxConnectionSpin.setValue(int(aria2Config['max-connection-per-server']))
         userAgent = aria2Config['user-agent']
         if self.userAgentComboBox.findText(userAgent) < 0:
             self.userAgentComboBox.addItem(userAgent)
@@ -308,14 +322,15 @@ class SettingPage(QWidget):
         self.setMaxLimit(aria2Config['max-overall-download-limit'], 'download')
         self.rpcPortLineEdit.setText(aria2Config['rpc-listen-port'])
         self.setBoolOption(self.rpcListenAllComboBox, aria2Config.get('rpc-listen-all', False))
-        self.rpcSecretLineEdit.setText(aria2Config.get('rpc-secret', ''))
-        self.updateRpcAddress()
-        self.updateRpcSecretVisibility()
+        self.setRpcSecret(aria2Config.get('rpc-secret', ''))
+        self.updateEndpoints()
+        self.updateTokenRow()
         self.btTracker.setText(aria2Config['bt-tracker'])
         self.showTrackerStatus()
 
-    def updateAhoreSetting(self, ashoreConfig:dict):
-        self.trackerInfo.setText(ashoreConfig['trackers_list_time'])
+    def loadAshore(self, ashoreConfig:dict):
+        self.trackerTime = ashoreConfig['trackers_list_time']
+        self.trackerInfo.setText(displayTime(self.trackerTime))
         self.trackerSource = ashoreConfig['trackers_list_source']
         self.showTrackerStatus()
         self.setBoolOption(self.withAria2QuitComboBox, ashoreConfig['quit_with_aria2'])
@@ -327,84 +342,57 @@ class SettingPage(QWidget):
         trayIconIndex = self.trayIconStyleComboBox.findData(
             ashoreConfig.get('tray_icon_style', 'colorful'))
         self.trayIconStyleComboBox.setCurrentIndex(max(0, trayIconIndex))
+        self.setBoolOption(
+            self.autoTrackerComboBox,
+            ashoreConfig.get('trackers_auto_update', True))
+        themeIndex = self.themeModeComboBox.findData(
+            ashoreConfig.get('theme_mode', 'system'))
+        self.themeModeComboBox.setCurrentIndex(max(0, themeIndex))
+        self.accentComboBox.setCurrentText(
+            validColor(ashoreConfig.get('accent_color', ACCENT_PRESETS[0])))
 
     def setMaxLimit(self, value, which:str):
-        #将running中的aria2限速配置显示在settingpage上
-        tempNum = 0
-        tempIndex = 0
-        #若限速以单位结尾
-        if value[-1] == 'G' or value[-1] == 'g':
-            tempNum = int(value[:-1])
-            tempIndex = 3
-        if value[-1] == 'M' or value[-1] == 'm':
-            tempNum = int(value[:-1])
-            tempIndex = 2
-        elif  value[-1] == 'K' or value[-1] == 'k':
-            tempNum = int(value[:-1])
-            tempIndex = 1
-        elif  value[-1] == 'B':
-            tempNum = int(value[:-1])
-            tempIndex = 0
+        text = str(value or '0').strip()
+        suffixes = {'K': 1, 'M': 2, 'G': 3}
+        suffix = text[-1].upper()
+        if suffix in suffixes:
+            amount = int(text[:-1] or 0)
+            unitIndex = suffixes[suffix]
         else:
-            #若限速无单位结尾为纯byte的数字
-            value = int(value)
-            if value < 1024:
-                tempNum = value
-                tempIndex = 0
-            elif value < 1048576:
-                tempNum = int(value/1024)
-                tempIndex = 1
-            elif value < 1073741824:
-                tempNum = int(value/1048576)
-                tempIndex = 2
-            else:
-                tempNum = int(value/1073741824)
-                tempIndex = 3
+            amount = int(text[:-1] if suffix == 'B' else text)
+            unitIndex = 0
+            while amount >= 1024 and unitIndex < 3:
+                amount //= 1024
+                unitIndex += 1
         if which == 'upload':
-            self.uploadLimitSpin.setValue(tempNum)
-            self.uploadLimitComboBox.setCurrentIndex(tempIndex)
+            self.uploadLimitSpin.setValue(amount)
+            self.uploadLimitComboBox.setCurrentIndex(unitIndex)
         elif which == 'download':
-            self.downloadLimitSpin.setValue(tempNum)
-            self.downloadLimitComboBox.setCurrentIndex(tempIndex)
+            self.downloadLimitSpin.setValue(amount)
+            self.downloadLimitComboBox.setCurrentIndex(unitIndex)
 
     def getMaxLimit(self, which:str) -> str:
         #将settingpage上带单位的限速设置写入aria2.conf
-        tempNum = 0
-        tempIndex = 0
         if which == 'upload':
-            tempNum = self.uploadLimitSpin.value()
-            tempIndex = self.uploadLimitComboBox.currentIndex()
-        elif which == 'download':
-            tempNum = self.downloadLimitSpin.value()
-            tempIndex = self.downloadLimitComboBox.currentIndex()
-        if tempIndex == 0:
-            return str(tempNum)
-        elif tempIndex == 1:
-            return str(tempNum) + 'K'
-        elif tempIndex == 2:
-            return str(tempNum) + 'M'
-        elif tempIndex == 3:
-            return str(tempNum) + 'G'
+            amount = self.uploadLimitSpin.value()
+            unitIndex = self.uploadLimitComboBox.currentIndex()
+        else:
+            amount = self.downloadLimitSpin.value()
+            unitIndex = self.downloadLimitComboBox.currentIndex()
+        return f'{amount}{("", "K", "M", "G")[unitIndex]}'
 
     def getBoolOption(self, boolObject:QComboBox) -> str:
-        index = boolObject.currentIndex()
-        if index == 0:
-            return 'true'
-        elif index == 1:
-            return 'false'
+        return 'true' if boolObject.currentIndex() == 0 else 'false'
 
     def setBoolOption(self, boolObject:QComboBox, flag:bool) -> None:
-        if flag == True:
-            boolObject.setCurrentIndex(0)
-        elif flag == False:
-            boolObject.setCurrentIndex(1)
+        boolObject.setCurrentIndex(0 if flag else 1)
 
-    def getAshoreConfig(self) -> dict:
-        ashoreConfig = configparser.ConfigParser()
-        ashoreConfig.read([str(RESOURCE_DIR / 'config/ashore.conf'), self.ashoreConfPath], encoding='UTF-8')
+    def loadAshoreConfig(self) -> dict:
+        ashoreConfig = readAshore(
+            self.ashoreConfPath, RESOURCE_DIR / 'config/ashore.conf')
         tempDict = {}
-        for key in type(self).AshoreConfig:
-            value = ashoreConfig.get('global', key)
+        for key in type(self).ashoreKeys:
+            value = ashoreConfig.get(key)
             if value == 'true':
                 value = True
             elif value == 'false':
@@ -420,24 +408,14 @@ class SettingPage(QWidget):
             tempDict[key] = value
         return tempDict
 
-    def readLocalRpcConfig(self) -> dict:
+    def readRpcConfig(self) -> dict:
         options = {'rpc-listen-port': '6801', 'rpc-listen-all': False, 'rpc-secret': ''}
-        try:
-            with open(self.aria2ConfPath, encoding='utf-8') as file:
-                for line in file:
-                    stripped = line.strip()
-                    if not stripped or stripped.startswith(('#', ';')) or '=' not in stripped:
-                        continue
-                    key, value = stripped.split('=', 1)
-                    key = key.strip()
-                    if key in options:
-                        options[key] = value.strip()
-        except OSError:
-            return options
+        options.update({key: value for key, value in readOptions(self.aria2ConfPath).items()
+                        if key in options})
         options['rpc-listen-all'] = str(options['rpc-listen-all']).lower() == 'true'
         return options
 
-    def readLocalAria2Config(self) -> dict:
+    def readAria2Config(self) -> dict:
         options = {
             'dir': str(systemDownloadDirectory()),
             'user-agent': '',
@@ -448,19 +426,9 @@ class SettingPage(QWidget):
             'rpc-listen-port': '6801',
             'bt-tracker': '',
         }
-        try:
-            with open(self.aria2ConfPath, encoding='utf-8') as file:
-                for line in file:
-                    stripped = line.strip()
-                    if not stripped or stripped.startswith(('#', ';')) or '=' not in stripped:
-                        continue
-                    key, value = stripped.split('=', 1)
-                    key = key.strip()
-                    if key in options:
-                        options[key] = os.path.expandvars(value.strip())
-        except OSError:
-            pass
-        options.update(self.readLocalRpcConfig())
+        options.update({key: value for key, value in readOptions(self.aria2ConfPath).items()
+                        if key in options})
+        options.update(self.readRpcConfig())
         return options
 
     def slotDir(self):
@@ -472,136 +440,132 @@ class SettingPage(QWidget):
         self.saveBtn.setEnabled(False)
         self.trackerBtn.setEnabled(False)
         self.trackerBtn.setText('更新中...')
-        #交给线程处理，以免主界面卡死
-        self.trakersThreading = Thread()
-        self.trakersThreading.sinOut.connect(self.slotShowTrakers)
-        self.trakersThreading.start()
+        self.trackerManager.start(force=True)
+
+    def startAutoTracker(self):
+        return self.trackerManager.start()
 
     def showTrackerStatus(self):
         count = len(parseTrackers(self.btTracker.toPlainText()))
         source = urllib.parse.urlsplit(self.trackerSource).netloc if self.trackerSource else '手动配置'
         self.trackerStatus.setText(f'当前列表 {count} 条；来源：{source}。列表数量不代表连接有效。')
 
-    def slotShowTrakers(self, trackers:list, sourceOrError:str):
-        if not trackers:
-            self.trackerStatus.setText(f'更新失败：{sourceOrError}；保留原列表。')
-            self.trackerBtn.setText('更新失败')
-        else:
-            self.trackerSource = sourceOrError
-            self.trackerInfo.setText(time.strftime("%Y.%m.%d %H:%M", time.localtime()))
-            self.btTracker.setText(','.join(trackers))
-            source = urllib.parse.urlsplit(sourceOrError).netloc
-            self.trackerStatus.setText(f'获取 {len(trackers)} 条；来源：{source}。尚未保存。')
-            self.trackerBtn.setText('更新Tracker')
+    def showTrackerMessage(self, message):
+        self.trackerStatus.setText(message)
+
+    def applyTrackerUpdate(self, trackers, source, timestamp):
+        self.trackerSource = source
+        self.trackerTime = timestamp
+        self.trackerInfo.setText(displayTime(timestamp))
+        self.btTracker.setText(','.join(trackers))
+        host = urllib.parse.urlsplit(source).netloc
+        self.trackerStatus.setText(f'获取 {len(trackers)} 条；来源：{host}。已保存。')
+        self.trackerBtn.setText('更新Tracker')
+        self.trackerBtn.setEnabled(True)
+        self.saveBtn.setEnabled(True)
+        self.trackerRuntimeChanged.emit({'bt-tracker': ','.join(trackers)})
+
+    def applyTrackerFailure(self, error):
+        self.trackerStatus.setText(f'更新失败：{error}；保留原列表。')
+        self.trackerBtn.setText('更新失败')
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
 
     def slotSaveConf(self) -> None:
         #用户配置界面有的选项
-        UserAria2Conf = {
+        aria2Values = {
             'dir'                       :   self.pathLineEdit.text(),
             'bt-tracker'                :   ','.join(parseTrackers(self.btTracker.toPlainText())),
             'max-concurrent-downloads'  :   str(self.maxDownloadsSpin.value()),
-            'max-connection-per-server' :   str(self.maConnectionSpin.value()),
+            'max-connection-per-server' :   str(self.maxConnectionSpin.value()),
             'user-agent'                :   self.userAgentComboBox.currentText().strip(),
             'max-overall-upload-limit'  :   self.getMaxLimit('upload'),
             'max-overall-download-limit':   self.getMaxLimit('download'),
             'rpc-listen-port'           :   self.rpcPortLineEdit.text(),
             'rpc-listen-all'            :   self.getBoolOption(self.rpcListenAllComboBox),
             }
-        rpcExternal = UserAria2Conf['rpc-listen-all'] == 'true'
+        rpcExternal = aria2Values['rpc-listen-all'] == 'true'
         if rpcExternal:
-            if not self.rpcSecretLineEdit.text():
-                self.rpcSecretLineEdit.setText(secrets.token_urlsafe(32))
-            UserAria2Conf['rpc-secret'] = self.rpcSecretLineEdit.text()
-        UserAshoreConf ={
-            'trackers_list_time'    :   self.trackerInfo.text(),
+            if not self.rpcSecret:
+                self.setRpcSecret(secrets.token_urlsafe(32))
+            aria2Values['rpc-secret'] = self.rpcSecret
+        ashoreValues = {
+            'trackers_list_time'    :   self.trackerTime,
             'trackers_list_source'  :   self.trackerSource,
             'quit_with_aria2'       :   self.getBoolOption(self.withAria2QuitComboBox),
             'update_interval'       :   str(self.updateIntervalSpin.value()),
             'rpc_port_changeable'   :   self.getBoolOption(self.rpcPortChangeableComboBox),
             'language'              :   self.languageComboBox.currentData(),
             'tray_icon_style'       :   self.trayIconStyleComboBox.currentData(),
+            'trackers_auto_update'  :   self.getBoolOption(self.autoTrackerComboBox),
+            'theme_mode'            :   self.themeModeComboBox.currentData(),
+            'accent_color'          :   validColor(self.accentComboBox.currentText()),
         }
-        oldRpc = self.readLocalRpcConfig()
+        oldRpc = self.readRpcConfig()
         removeKeys = set() if rpcExternal else {'rpc-secret'}
-        aria2Saved = self.saveAria2Conf(UserAria2Conf, removeKeys) == 0
+        aria2Saved = self.saveAria2Conf(aria2Values, removeKeys) == 0
         if aria2Saved:
-            running_options = {key: value for key, value in UserAria2Conf.items()
+            runningOptions = {key: value for key, value in aria2Values.items()
                                if key not in ('rpc-listen-port', 'rpc-listen-all', 'rpc-secret')}
             oldValues = {
                 'rpc-listen-port': str(oldRpc.get('rpc-listen-port', '')),
                 'rpc-listen-all': 'true' if oldRpc.get('rpc-listen-all') else 'false',
                 'rpc-secret': str(oldRpc.get('rpc-secret', '')),
             }
-            rpcChanged = any(oldValues[key] != str(UserAria2Conf.get(key, ''))
+            rpcChanged = any(oldValues[key] != str(aria2Values.get(key, ''))
                              for key in ('rpc-listen-port', 'rpc-listen-all', 'rpc-secret'))
             if not rpcExternal and oldRpc.get('rpc-secret'):
                 rpcChanged = True
-            self.aria2ConfSinOut.emit({'runtime': running_options, 'rpcChanged': rpcChanged})
+            self.aria2ConfigChanged.emit({'runtime': runningOptions, 'rpcChanged': rpcChanged})
         else:
             self.trackerStatus.setText('aria2 配置未能保存，请检查配置目录权限。')
-            self.aria2ConfSinOut.emit({'ResultError': 'aria2 配置写入失败'})
-        if self.saveAshoreConf(UserAshoreConf) == 0:
+            self.aria2ConfigChanged.emit({'ResultError': 'aria2 配置写入失败'})
+        if self.saveAshoreConf(ashoreValues) == 0:
             if aria2Saved:
                 self.showTrackerStatus()
-            UserAshoreConf.update({'isSaved' : '保存成功'})                    #成功则增加一条信息‘保存成功’
-            self.ashoreConfigSinOut.emit(UserAshoreConf)                        #发射信号
+            ashoreValues.update({'isSaved': '保存成功'})
+            self.ashoreConfigChanged.emit(ashoreValues)
         else:
-            UserAshoreConf.update({'isSaved' : '保存失败'})                    #成功则增加一条信息‘保存失败’
-            self.ashoreConfigSinOut.emit(UserAshoreConf)                        #发射信号
+            ashoreValues.update({'isSaved': '保存失败'})
+            self.ashoreConfigChanged.emit(ashoreValues)
 
-    def saveAria2Conf(self, UserAria2Conf:dict, removeKeys=None) -> int:
+    def saveAria2Conf(self, aria2Values:dict, removeKeys=None) -> int:
         removeKeys = set(removeKeys or ())
-        remaining = dict(UserAria2Conf)
-        lines = []
-        try:
-            with open(self.aria2ConfPath, encoding='utf-8') as file:
-                for line in file:
-                    stripped = line.strip()
-                    if stripped == '[global]':
-                        continue
-                    key = stripped.split('=', 1)[0].strip() if '=' in stripped else ''
-                    if key in removeKeys:
-                        continue
-                    if key in remaining:
-                        lines.append(f'{key}={remaining.pop(key)}\n')
-                    else:
-                        lines.append(line)
-            lines.extend(f'{key}={value}\n' for key, value in remaining.items())
-            with open(self.aria2ConfPath, 'w', encoding='utf-8') as file:
-                file.writelines(lines)
-        except OSError:
+        if not writeOptions(self.aria2ConfPath, aria2Values, removeKeys):
             return -1
-        self.globalAria2Conf.update(UserAria2Conf)
-        for key in removeKeys:
-            self.globalAria2Conf.pop(key, None)
         return 0
 
-    def slotRpcListenAllChanged(self, index:int) -> None:
-        if index == 0 and not self.rpcSecretLineEdit.text():
-            self.rpcSecretLineEdit.setText(secrets.token_urlsafe(32))
-        self.updateRpcSecretVisibility()
+    def toggleRpcAccess(self, index:int) -> None:
+        if index == 0 and not self.rpcSecret:
+            self.setRpcSecret(secrets.token_urlsafe(32))
+        self.updateTokenRow()
 
-    def updateRpcSecretVisibility(self) -> None:
+    def updateTokenRow(self) -> None:
         visible = self.rpcListenAllComboBox.currentIndex() == 0
         self.rpcSecretLabel.setVisible(visible)
         self.rpcSecretLineEdit.setVisible(visible)
         self.rpcSecretRevealBtn.setVisible(visible)
         self.rpcSecretCopyBtn.setVisible(visible)
 
-    def slotToggleRpcSecret(self) -> None:
-        showing = self.rpcSecretLineEdit.echoMode() == QLineEdit.EchoMode.Normal
-        self.rpcSecretLineEdit.setEchoMode(
-            QLineEdit.EchoMode.Password if showing else QLineEdit.EchoMode.Normal)
-        self.rpcSecretRevealBtn.setText('显示' if showing else '隐藏')
+    def toggleToken(self) -> None:
+        self.rpcSecretVisible = not self.rpcSecretVisible
+        self.refreshRpcSecret()
 
-    def slotCopyRpcSecret(self) -> None:
-        QApplication.clipboard().setText(self.rpcSecretLineEdit.text())
+    def setRpcSecret(self, token):
+        self.rpcSecret = token or ''
+        self.refreshRpcSecret()
+
+    def refreshRpcSecret(self):
+        mask = '●' * 12 if self.rpcSecret else ''
+        self.rpcSecretLineEdit.setText(self.rpcSecret if self.rpcSecretVisible else mask)
+        self.rpcSecretRevealBtn.setText('隐藏' if self.rpcSecretVisible else '显示')
+
+    def copyToken(self) -> None:
+        QApplication.clipboard().setText(self.rpcSecret)
         self.rpcSecretCopyBtn.setText('已复制')
         QTimer.singleShot(1500, lambda: self.rpcSecretCopyBtn.setText('复制'))
 
-    def updateRpcAddress(self) -> None:
+    def updateEndpoints(self) -> None:
         port = self.rpcPortLineEdit.text() or '6801'
         self.httpEndpointLabel.setText(f'http://127.0.0.1:{port}/jsonrpc')
         self.websocketEndpointLabel.setText(f'ws://127.0.0.1:{port}/jsonrpc')
@@ -612,19 +576,23 @@ class SettingPage(QWidget):
                            websocketStatus == '已连接')
         self.aria2VersionLabel.setText(aria2Version or '—')
 
-    def saveAshoreConf(self, UserAshoreConf:dict) -> int:
-        configFile = configparser.ConfigParser()
-        configFile.read(self.ashoreConfPath, encoding='UTF-8')
-        #更新程序内存中configFile与运行中Ashore的配置，准备发送
-        for key,value in UserAshoreConf.items():
-            configFile.set('global', key, value)                        #修改Ashore配置文件
-        try:
-            with open(self.ashoreConfPath, 'w', encoding='utf-8') as file:
-                configFile.write(file)
-        except OSError:
+    def saveAshoreConf(self, ashoreValues:dict) -> int:
+        cleanValues = {key: value for key, value in ashoreValues.items()
+                       if key != 'isSaved'}
+        if not writeAshore(self.ashoreConfPath, cleanValues):
             return -1
-        self.AshoreConfig = self.getAshoreConfig()
+        self.ashoreConfig = self.loadAshoreConfig()
         return 0
+
+    def previewTheme(self, *_):
+        mode = self.themeModeComboBox.currentData() or 'system'
+        self.themePreview.emit(mode, validColor(self.accentComboBox.currentText()))
+
+    def pickAccent(self):
+        color = QColorDialog.getColor(
+            QColor(validColor(self.accentComboBox.currentText())), self, '选择主题颜色')
+        if color.isValid():
+            self.accentComboBox.setCurrentText(color.name())
 
     def slotRpcPortChangeable(self, index:int=1) -> None:
         #将rpc port LineEdit设置为相应状态

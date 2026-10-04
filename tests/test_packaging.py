@@ -1,8 +1,8 @@
 """Check that rebuilding a release does not expose partial packages."""
 
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import make

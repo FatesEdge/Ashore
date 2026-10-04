@@ -4,7 +4,6 @@ from pathlib import Path
 
 from paths import RESOURCE_DIR
 
-
 ICON_TYPES = {path.stem for path in (RESOURCE_DIR / 'static/icon/icon.ing').glob('*.png')}
 ICON_ALIASES = {'jpeg': 'jpg', 'tif': 'tiff'}
 

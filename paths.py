@@ -1,9 +1,8 @@
 """Locations shared by the source checkout and frozen application."""
 
 import os
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "ashore"
@@ -45,7 +44,7 @@ def legacyDownloadDirectoryMigration(configPath):
     return oldPath, newPath
 
 
-def ensure_config(name):
+def ensureConfig(name):
     """Install a bundled default once, preserving the user's existing settings."""
     target = CONFIG_DIR / name
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)

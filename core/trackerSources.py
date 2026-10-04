@@ -1,8 +1,8 @@
 """Fetch and validate candidate BitTorrent tracker lists."""
 
+import time
 import urllib.parse
 import urllib.request
-
 
 TRACKER_SOURCES = (
     'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt',
@@ -31,12 +31,17 @@ def parseTrackers(text):
     return trackers
 
 
-def fetchTrackers():
+def fetchTrackers(sources=None, totalTimeout=10, requestTimeout=3):
+    """Return the first valid list within one bounded overall refresh window."""
     error = '所有 Tracker 来源均不可用'
-    for url in TRACKER_SOURCES:
+    deadline = time.monotonic() + max(0.1, totalTimeout)
+    for url in sources or TRACKER_SOURCES:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return [], 'Tracker 更新超时'
         try:
             request = urllib.request.Request(url, headers={'User-Agent': 'Ashore'})
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with urllib.request.urlopen(request, timeout=min(requestTimeout, remaining)) as response:
                 trackers = parseTrackers(response.read().decode('utf-8'))
             if trackers:
                 return trackers, url

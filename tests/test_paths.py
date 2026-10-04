@@ -13,7 +13,7 @@ class PathTests(unittest.TestCase):
             expected = Path(folder) / '系统下载目录'
             with patch.object(paths, 'CONFIG_DIR', configRoot), \
                  patch.object(paths, 'systemDownloadDirectory', return_value=expected):
-                configPath = paths.ensure_config('aria2.conf')
+                configPath = paths.ensureConfig('aria2.conf')
             content = configPath.read_text(encoding='utf-8')
             self.assertIn(f'dir={expected}', content)
             self.assertNotIn('${DOWNLOAD_DIR}', content)
