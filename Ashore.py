@@ -7,7 +7,6 @@ import signal
 import sys
 
 from PyQt6.QtCore import (
-    QAbstractEventDispatcher,
     QElapsedTimer,
     QEvent,
     QObject,
@@ -39,6 +38,7 @@ from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Shutdown, Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
+from core.desktopIntegration import DesktopIntegration
 from core.formatters import formatSpeed
 from interface.addNewDialog import AddNewDialog
 from interface.languageManager import translate
@@ -86,6 +86,7 @@ class Ashore(QMainWindow):
         self.aria2Poller = Aria2Poller(
             self.aria2Client, int(ashoreConfig['update_interval']), self)
         self.themeManager = themeManager
+        self.desktopIntegration = DesktopIntegration(self)
 
         self.initUI()
         self.connectSignals()
@@ -175,7 +176,7 @@ class Ashore(QMainWindow):
         self.connectTrayAction(showWindowAction, self.slotShowWindow)
         self.connectTrayAction(newAction, self.slotAdd)
         self.connectTrayAction(aboutInfoAction, self.slotAbout)
-        self.connectTrayAction(quitAction, self.slotQuit)
+        quitAction.triggered.connect(self.deferTrayQuit)
         self.trayIcon = QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayMenu)
         self.trayIcon.setToolTip('Ashore')
@@ -188,32 +189,14 @@ class Ashore(QMainWindow):
             lambda _checked=False, callback=callback: self.deferTrayAction(callback))
 
     def deferTrayAction(self, callback):
-        """Run a tray action only after its desktop-menu event is fully drained."""
-        self.pendingTrayAction = callback
+        """Run a non-destructive tray action after its popup closes."""
         self.trayMenu.close()
-        dispatcher = QAbstractEventDispatcher.instance()
-        if dispatcher is None:
-            QTimer.singleShot(0, self.runTrayAction)
-            return
-        self.trayDispatcher = dispatcher
-        try:
-            dispatcher.aboutToBlock.disconnect(self.dispatchTrayAction)
-        except TypeError:
-            pass
-        dispatcher.aboutToBlock.connect(self.dispatchTrayAction)
+        QTimer.singleShot(0, callback)
 
-    def dispatchTrayAction(self):
-        try:
-            self.trayDispatcher.aboutToBlock.disconnect(self.dispatchTrayAction)
-        except (AttributeError, TypeError):
-            pass
-        QTimer.singleShot(0, self.runTrayAction)
-
-    def runTrayAction(self):
-        callback = getattr(self, 'pendingTrayAction', None)
-        self.pendingTrayAction = None
-        if callback is not None:
-            callback()
+    def deferTrayQuit(self):
+        """Let the desktop acknowledge its tray action before process teardown."""
+        self.trayMenu.close()
+        self.desktopIntegration.afterTrayEvent(self.slotQuit)
 
     def applyTrayIconStyle(self, style):
         source = QPixmap(self.resourcePath + 'static/icon/functionIcons/trayIcon.png')
