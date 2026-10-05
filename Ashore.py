@@ -63,6 +63,13 @@ class StartupProbeWindow(QMainWindow):
         'settingsConstructed',
         'settingsAdded',
         'statusbar',
+        'controls',
+        'icons',
+        'trayCreated',
+        'signals',
+        'events',
+        'runtime',
+        'trayShown',
     }
 
     def __init__(self, mode, language='zh_CN'):
@@ -146,7 +153,7 @@ class StartupProbeWindow(QMainWindow):
 class Ashore(QMainWindow):
     firstPainted = pyqtSignal()
 
-    def __init__(self, aria2Service, themeManager):
+    def __init__(self, aria2Service, themeManager, startupProbe=''):
         super().__init__()
         self.hasPainted = False
         self.isRelease = False
@@ -169,20 +176,35 @@ class Ashore(QMainWindow):
         self.notificationTarget = None
         self.removalWorkers = {}
 
-        self.initUI()
-        self.connectSignals()
-        self.aria2Poller.updated.connect(self.updatePage)
+        self.startupProbe = startupProbe
+        createTray = startupProbe not in ('controls', 'icons')
+        refreshIcons = startupProbe != 'controls'
+        self.initUI(createTray=createTray, refreshIcons=refreshIcons)
+
         self.knownStatuses = None
         self.pendingNotifications = {}
         self.notifiedDownloads = set()
         self.aria2ConfigError = None
         self.quitting = False
-        self.aria2Events = Aria2Events(self.aria2Client.rpcPort, self)
-        self.aria2Events.notification.connect(self.slotAria2Notification)
-        self.aria2Events.connectionStateChanged.connect(self.slotWebSocketStateChanged)
-        self.websocketState = self.aria2Events.state
+        self.websocketState = 'unavailable'
         self.aria2Version = ''
         self.pendingConnectionStatus = '等待检测'
+
+        if startupProbe in ('controls', 'icons', 'trayCreated'):
+            return
+
+        self.connectSignals()
+        self.aria2Poller.updated.connect(self.updatePage)
+        if startupProbe == 'signals':
+            return
+
+        self.aria2Events = Aria2Events(self.aria2Client.rpcPort, self)
+        self.aria2Events.notification.connect(self.slotAria2Notification)
+        self.aria2Events.connectionStateChanged.connect(
+            self.slotWebSocketStateChanged)
+        self.websocketState = self.aria2Events.state
+        if startupProbe == 'events':
+            return
 
     def startRuntime(self):
         """Start asynchronous work after the startup controller is listening."""
@@ -446,7 +468,7 @@ class Ashore(QMainWindow):
         palette.setColor(
             QPalette.ColorRole.WindowText, colors[state])
         self.aria2StateDot.setPalette(palette)
-    def initUI(self) -> None:
+    def initUI(self, createTray=True, refreshIcons=True) -> None:
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
@@ -547,8 +569,10 @@ class Ashore(QMainWindow):
         self.setWindowIcon(
             QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
         self.createStatusBar()
-        self.createTrayIcon()
-        self.refreshActionIcons()
+        if createTray:
+            self.createTrayIcon()
+        if refreshIcons:
+            self.refreshActionIcons()
     def connectSignals(self) -> None:
         self.addBtn.clicked.connect(self.slotAdd)
         self.unpauseAllBtn.clicked.connect(self.slotUnpauseAll)
@@ -1041,7 +1065,15 @@ class StartupController(QObject):
 
     def createWindow(self, service):
         probeMode = os.environ.get('ASHORE_STARTUP_PROBE', '').strip()
-        if probeMode:
+        structuralProbes = {
+            'shell', 'downloads', 'settingsConstructed',
+            'settingsAdded', 'statusbar',
+        }
+        stagedAshoreProbes = {
+            'controls', 'icons', 'trayCreated', 'signals',
+            'events', 'runtime', 'trayShown',
+        }
+        if probeMode in structuralProbes:
             try:
                 self.window = StartupProbeWindow(
                     probeMode,
@@ -1050,6 +1082,19 @@ class StartupController(QObject):
                 self.fail(str(exc))
                 return
             self.splash.finish(self.window)
+            return
+        if probeMode in stagedAshoreProbes:
+            try:
+                self.window = Ashore(
+                    service, self.themeManager, startupProbe=probeMode)
+            except (RuntimeError, OSError, ValueError) as exc:
+                self.fail(str(exc))
+                return
+            self.splash.finish(self.window)
+            if probeMode in ('runtime', 'trayShown'):
+                self.window.startRuntime()
+            if probeMode == 'trayShown':
+                self.window.showTray()
             return
 
         try:
