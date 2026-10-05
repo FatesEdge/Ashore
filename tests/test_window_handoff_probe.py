@@ -13,7 +13,10 @@ class WindowHandoffProbeTests(unittest.TestCase):
         names = [stage.name for stage in WINDOW_STAGES]
         self.assertEqual(len(names), len(set(names)))
         self.assertLess(stageIndex('controls'), stageIndex('icons'))
-        self.assertLess(stageIndex('icons'), stageIndex('stack'))
+        self.assertLess(stageIndex('icons'), stageIndex('stackEmpty'))
+        self.assertLess(stageIndex('stackEmpty'), stageIndex('stackOne'))
+        self.assertLess(stageIndex('stackOne'), stageIndex('stackTwo'))
+        self.assertLess(stageIndex('stackTwo'), stageIndex('stack'))
         self.assertLess(stageIndex('stack'), stageIndex('scrollAreas'))
         self.assertLess(stageIndex('scrollAreas'), stageIndex('firstPage'))
         self.assertLess(stageIndex('firstPage'), stageIndex('pages'))

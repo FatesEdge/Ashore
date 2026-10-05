@@ -41,7 +41,10 @@ WINDOW_STAGES = (
     WindowStage('base', 'empty QMainWindow'),
     WindowStage('controls', 'navigation and toolbar without icons'),
     WindowStage('icons', 'add production navigation and toolbar icons'),
-    WindowStage('stack', 'add a stacked layout with blank pages'),
+    WindowStage('stackEmpty', 'add an empty stacked layout'),
+    WindowStage('stackOne', 'add one blank page to the stack'),
+    WindowStage('stackTwo', 'add two blank pages to the stack'),
+    WindowStage('stack', 'add three blank pages to the stack'),
     WindowStage('scrollAreas', 'replace two blank pages with scroll areas'),
     WindowStage('firstPage', 'replace the first scroll area with Page'),
     WindowStage('pages', 'add two production download pages'),
@@ -108,14 +111,17 @@ class ProbeWindow(QMainWindow):
 
         content = QVBoxLayout()
         content.addLayout(toolbar)
-        if includes(self.stage, 'stack'):
+        if includes(self.stage, 'stackEmpty'):
             pageStack = QStackedLayout()
-            pageStack.addWidget(self.downloadPage(True))
-            pageStack.addWidget(self.downloadPage(False))
-            if includes(self.stage, 'settings'):
-                pageStack.addWidget(SettingPage())
-            else:
-                pageStack.addWidget(QWidget())
+            if includes(self.stage, 'stackOne'):
+                pageStack.addWidget(self.downloadPage(True))
+            if includes(self.stage, 'stackTwo'):
+                pageStack.addWidget(self.downloadPage(False))
+            if includes(self.stage, 'stack'):
+                if includes(self.stage, 'settings'):
+                    pageStack.addWidget(SettingPage())
+                else:
+                    pageStack.addWidget(QWidget())
             content.addLayout(pageStack)
         else:
             content.addWidget(QLabel('Empty content area'))
