@@ -110,7 +110,7 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertFalse(section.copyUrlButton.isHidden())
         self.assertFalse(section.moreButton.isHidden())
         self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
-        self.assertEqual(section.height(), 102)
+        self.assertEqual(section.height(), 84)
         self.assertEqual(section.CONTENT_MIN_WIDTH, 660)
         self.assertEqual(section.CONTENT_MAX_WIDTH, 820)
         self.assertEqual(

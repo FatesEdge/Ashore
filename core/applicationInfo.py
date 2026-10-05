@@ -1,6 +1,6 @@
 """Ashore application identity."""
 
-APP_VERSION = '0.7.78'
+APP_VERSION = '0.7.79'
 
 
 def configureApplication():

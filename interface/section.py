@@ -66,12 +66,12 @@ class Section(QFrame):
         self.setObjectName('Section')
         self.setProperty('downloadCard', True)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-        self.setFixedHeight(102)
+        self.setFixedHeight(84)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.iconLabel = QLabel()
-        self.iconLabel.setFixedSize(44, 52)
+        self.iconLabel.setFixedSize(50, 60)
         self.iconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.nameLabel = QLabel(self.fileName)
@@ -139,9 +139,9 @@ class Section(QFrame):
 
         bodyLayout = QHBoxLayout()
         bodyLayout.setContentsMargins(0, 0, 0, 0)
-        bodyLayout.setSpacing(9)
+        bodyLayout.setSpacing(14)
         bodyLayout.addWidget(
-            self.iconLabel, 0, Qt.AlignmentFlag.AlignTop)
+            self.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter)
         bodyLayout.addWidget(infoPanel, 1, Qt.AlignmentFlag.AlignTop)
         bodyLayout.addStretch(1)
 
@@ -152,9 +152,9 @@ class Section(QFrame):
         self.progressBar.setFixedHeight(4)
 
         mainLayout = QVBoxLayout(self)
-        mainLayout.setContentsMargins(10, 7, 10, 6)
-        mainLayout.setSpacing(2)
-        mainLayout.addLayout(bodyLayout, 1)
+        mainLayout.setContentsMargins(14, 6, 10, 5)
+        mainLayout.setSpacing(1)
+        mainLayout.addLayout(bodyLayout)
         mainLayout.addWidget(self.progressBar)
 
         self.refresh()

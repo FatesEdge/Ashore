@@ -54,8 +54,8 @@ FORMAT_LABELS = {
 GLYPH_SCALE = {
     'disk': 0.86, 'font': 0.88, 'code': 0.92, 'torrent': 0.90,
 }
-TILE_WIDTH = 40
-TILE_HEIGHT = 50
+TILE_WIDTH = 44
+TILE_HEIGHT = 56
 PAUSED_COLOR = QColor('#858585')
 ERROR_COLOR = QColor('#767676')
 ERROR_BADGE_COLOR = QColor('#c42b1c')

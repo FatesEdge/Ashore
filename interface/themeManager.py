@@ -302,8 +302,6 @@ class ThemeManager(QObject):
                 color: {token['muted']};
                 border: none;
                 padding: 0;
-                font-size: 12px;
-                font-weight: 400;
             }}
             QWidget[recoveryPage="true"] {{
                 background: {token['background']};
