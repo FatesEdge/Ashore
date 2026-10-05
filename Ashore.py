@@ -401,9 +401,21 @@ class Ashore(QMainWindow):
         self.removalWorkers = {}
 
         self.startupProbe = startupProbe
-        createTray = startupProbe not in ('controls', 'icons')
-        refreshIcons = startupProbe != 'controls'
-        self.initUI(createTray=createTray, refreshIcons=refreshIcons)
+        exactUiProbes = {
+            'realActions', 'realCommand', 'realNavigation',
+            'realPages', 'realCentral', 'realWindowMeta',
+            'realStatus',
+        }
+        createTray = startupProbe not in (
+            'controls', 'icons', *exactUiProbes)
+        refreshIcons = startupProbe not in (
+            'controls', *exactUiProbes)
+        self.initUI(
+            createTray=createTray,
+            refreshIcons=refreshIcons,
+            probeStop=startupProbe if startupProbe in exactUiProbes else '')
+        if startupProbe in exactUiProbes:
+            return
 
         self.knownStatuses = None
         self.pendingNotifications = {}
@@ -692,8 +704,10 @@ class Ashore(QMainWindow):
         palette.setColor(
             QPalette.ColorRole.WindowText, colors[state])
         self.aria2StateDot.setPalette(palette)
-    def initUI(self, createTray=True, refreshIcons=True) -> None:
+    def initUI(self, createTray=True, refreshIcons=True, probeStop='') -> None:
         self.createCommandActions()
+        if probeStop == 'realActions':
+            return
 
         self.addBtn = QPushButton(self.tr('new'))
         self.addBtn.setToolTip(self.tr('new'))
@@ -732,6 +746,8 @@ class Ashore(QMainWindow):
         commandHostLayout = QHBoxLayout(commandHost)
         commandHostLayout.setContentsMargins(12, 0, 12, 0)
         commandHostLayout.addWidget(self.commandBar)
+        if probeStop == 'realCommand':
+            return
 
         self.tabDownloading = QPushButton()
         self.tabDownloaded = QPushButton()
@@ -762,6 +778,8 @@ class Ashore(QMainWindow):
         navigationLayout.addWidget(self.tabDownloaded)
         navigationLayout.addStretch(1)
         navigationLayout.addWidget(self.tabSetting)
+        if probeStop == 'realNavigation':
+            return
 
         self.pageDownloading = Page(self.language)
         self.pageDownloaded = Page(self.language)
@@ -770,6 +788,8 @@ class Ashore(QMainWindow):
         self.pageStack.addWidget(self.pageDownloading)
         self.pageStack.addWidget(self.pageDownloaded)
         self.pageStack.addWidget(self.pageSetting)
+        if probeStop == 'realPages':
+            return
 
         bodyWidget = QWidget()
         bodyWidget.setProperty('contentBody', True)
@@ -787,12 +807,18 @@ class Ashore(QMainWindow):
         mainLayout.addWidget(commandHost)
         mainLayout.addWidget(bodyWidget, 1)
         self.setCentralWidget(mainWidget)
+        if probeStop == 'realCentral':
+            return
 
         self.setMinimumSize(920, 520)
         self.setWindowTitle('Ashore')
         self.setWindowIcon(
             QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
+        if probeStop == 'realWindowMeta':
+            return
         self.createStatusBar()
+        if probeStop == 'realStatus':
+            return
         if createTray:
             self.createTrayIcon()
         if refreshIcons:
@@ -1296,6 +1322,9 @@ class StartupController(QObject):
         stagedAshoreProbes = {
             'controls', 'icons', 'trayCreated', 'signals',
             'events', 'runtime', 'trayShown',
+            'realActions', 'realCommand', 'realNavigation',
+            'realPages', 'realCentral', 'realWindowMeta',
+            'realStatus',
         }
         constructionProbes = {
             'settingsOnly', 'settingsConfig', 'poller',
