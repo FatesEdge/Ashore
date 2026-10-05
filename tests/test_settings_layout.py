@@ -98,6 +98,14 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertEqual(section.rateLabel.text(), '100%')
         self.assertEqual(section.progressBar.value(), 100)
         self.assertEqual(section.property('downloadCard'), True)
+        self.assertTrue(section.actionButton.isHidden())
+        self.assertTrue(section.openFolderButton.isHidden())
+        section.setQuickActionsVisible(True)
+        self.assertFalse(section.actionButton.isHidden())
+        self.assertFalse(section.openFolderButton.isHidden())
+        self.assertFalse(section.copyUrlButton.isHidden())
+        self.assertFalse(section.moreButton.isHidden())
+        self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
 
 
 if __name__ == '__main__':

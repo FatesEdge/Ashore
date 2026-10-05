@@ -1,4 +1,4 @@
-"""Ashore file icon classification and runtime SVG composition."""
+"""Ashore file icon classification and status-aware SVG composition."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -51,6 +51,9 @@ FORMAT_LABELS = {
     'tar.gz': 'TGZ', 'tar.bz2': 'TBZ', 'tar.xz': 'TXZ',
     'appimage': 'APP', 'sqlite3': 'SQL',
 }
+PAUSED_COLOR = QColor('#858585')
+ERROR_COLOR = QColor('#767676')
+ERROR_BADGE_COLOR = QColor('#c42b1c')
 
 
 def extensionForFile(fileName):
@@ -86,23 +89,54 @@ def fileIconSpec(fileName, isTorrent=False):
     return FileIconSpec(family, label, FAMILY_COLORS[family])
 
 
-def fileIconPixmap(fileName, isTorrent=False, size=52):
+def mixColor(first, second, amount):
+    amount = max(0.0, min(1.0, amount))
+    return QColor(
+        round(first.red() * (1 - amount) + second.red() * amount),
+        round(first.green() * (1 - amount) + second.green() * amount),
+        round(first.blue() * (1 - amount) + second.blue() * amount),
+    )
+
+
+def iconColorForStatus(baseColor, status):
+    base = QColor(baseColor)
+    if status == 'waiting':
+        return mixColor(base, QColor('#9aa1a9'), 0.42)
+    if status == 'paused':
+        return QColor(PAUSED_COLOR)
+    if status == 'error':
+        return QColor(ERROR_COLOR)
+    return base
+
+
+def statusHasErrorBadge(status):
+    return status == 'error'
+
+
+def fileIconPixmap(fileName, isTorrent=False, status='active', size=52):
     spec = fileIconSpec(fileName, isTorrent)
     size = max(32, int(size))
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
+
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor(spec.color))
+    painter.setBrush(iconColorForStatus(spec.color, status))
     radius = size * 0.18
-    painter.drawRoundedRect(QRectF(0.5, 0.5, size - 1.0, size - 1.0), radius, radius)
-    renderer = QSvgRenderer(str(RESOURCE_DIR / 'static/icon/fileTypes' / f'{spec.family}.svg'))
+    painter.drawRoundedRect(
+        QRectF(0.5, 0.5, size - 1.0, size - 1.0), radius, radius)
+
+    renderer = QSvgRenderer(
+        str(RESOURCE_DIR / 'static/icon/fileTypes' / f'{spec.family}.svg'))
     if renderer.isValid():
-        renderer.render(painter, QRectF(size * 0.22, size * 0.09, size * 0.56, size * 0.49))
+        renderer.render(
+            painter, QRectF(size * 0.22, size * 0.09, size * 0.56, size * 0.49))
+
     font = QFont()
     font.setBold(True)
-    font.setPixelSize(max(7, int(size * (0.155 if len(spec.label) <= 4 else 0.13))))
+    font.setPixelSize(
+        max(7, int(size * (0.155 if len(spec.label) <= 4 else 0.13))))
     painter.setFont(font)
     painter.setPen(QColor('#ffffff'))
     painter.drawText(
@@ -110,5 +144,28 @@ def fileIconPixmap(fileName, isTorrent=False, size=52):
         Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
         spec.label,
     )
+
+    if statusHasErrorBadge(status):
+        badgeSize = size * 0.27
+        badgeRect = QRectF(
+            size - badgeSize - size * 0.02,
+            size * 0.02,
+            badgeSize,
+            badgeSize,
+        )
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(ERROR_BADGE_COLOR)
+        painter.drawEllipse(badgeRect)
+        badgeFont = QFont()
+        badgeFont.setBold(True)
+        badgeFont.setPixelSize(max(8, int(badgeSize * 0.72)))
+        painter.setFont(badgeFont)
+        painter.setPen(QColor('#ffffff'))
+        painter.drawText(
+            badgeRect,
+            Qt.AlignmentFlag.AlignCenter,
+            '!',
+        )
+
     painter.end()
     return pixmap

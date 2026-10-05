@@ -16,7 +16,7 @@ from PyQt6.QtCore import (
     QUrl,
     pyqtSignal,
 )
-from PyQt6.QtGui import QAction, QDesktopServices, QFont, QIcon, QPainter, QPixmap
+from PyQt6.QtGui import QAction, QDesktopServices, QFont, QIcon, QPainter, QPalette, QPixmap
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import (
     QApplication,
@@ -40,6 +40,7 @@ from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Shutdown, Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
 from core.formatters import formatSpeed
+from interface.actionIcons import actionIcon
 from interface.addNewDialog import AddNewDialog
 from interface.languageManager import translate
 from interface.page import Page
@@ -107,6 +108,12 @@ class Ashore(QMainWindow):
             self.hasPainted = True
             QTimer.singleShot(0, self.firstPainted.emit)
 
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if (event.type() == QEvent.Type.PaletteChange
+                and hasattr(self, 'addBtn')):
+            self.refreshActionIcons()
+
 
     def createCommandActions(self) -> None:
         """Create low-frequency actions for the command-bar overflow menu."""
@@ -140,6 +147,46 @@ class Ashore(QMainWindow):
         self.moreMenu.addSeparator()
         self.moreMenu.addAction(aboutAction)
         self.moreMenu.addAction(quitAction)
+
+    def refreshActionIcons(self):
+        """Apply one icon language to command, menu, and tray actions."""
+        primaryColor = self.palette().color(QPalette.ColorRole.HighlightedText)
+        buttonIcons = (
+            ('addBtn', 'add', 18, primaryColor),
+            ('unpauseAllBtn', 'play', 17, None),
+            ('pauseAllBtn', 'pause', 17, None),
+            ('moreBtn', 'more', 18, None),
+        )
+        for attribute, iconName, size, color in buttonIcons:
+            button = getattr(self, attribute, None)
+            if button is not None:
+                button.setIcon(actionIcon(iconName, color=color, size=size))
+                button.setIconSize(QSize(size, size))
+
+        menuIcons = {
+            'saveSession': 'save',
+            'restart': 'restart',
+            'show': 'show',
+            'hide': 'hide',
+            'about': 'info',
+            'quit': 'quit',
+        }
+        for key, iconName in menuIcons.items():
+            action = getattr(self, 'menuActions', {}).get(key)
+            if action is not None:
+                action.setIcon(actionIcon(iconName, size=18))
+
+        trayIcons = {
+            'showMain': 'show',
+            'new': 'add',
+            'about': 'info',
+            'trayQuit': 'quit',
+        }
+        for key, iconName in trayIcons.items():
+            action = getattr(self, 'trayActions', {}).get(key)
+            if action is not None:
+                action.setIcon(actionIcon(iconName, size=18))
+
     def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
         showWindowAction = QAction(self.tr('showMain'), self)
         newAction = QAction(self.tr('new'), self)
@@ -242,32 +289,26 @@ class Ashore(QMainWindow):
     def initUI(self) -> None:
         self.createCommandActions()
 
-        self.addBtn = QPushButton(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/add.png'),
-            self.tr('new'))
+        self.addBtn = QPushButton(self.tr('new'))
         self.addBtn.setIconSize(QSize(18, 18))
         self.addBtn.setToolTip(self.tr('new'))
         self.addBtn.setStatusTip('新建下载任务')
         self.addBtn.setShortcut('Ctrl+N')
         self.addBtn.setProperty('commandPrimary', True)
 
-        self.unpauseAllBtn = QPushButton(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/play.png'),
-            self.tr('startAll'))
+        self.unpauseAllBtn = QPushButton(self.tr('startAll'))
         self.unpauseAllBtn.setIconSize(QSize(17, 17))
         self.unpauseAllBtn.setToolTip(self.tr('startAll'))
         self.unpauseAllBtn.setStatusTip('恢复所有暂停的任务')
         self.unpauseAllBtn.setProperty('commandSecondary', True)
 
-        self.pauseAllBtn = QPushButton(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/pause.png'),
-            self.tr('pauseAll'))
+        self.pauseAllBtn = QPushButton(self.tr('pauseAll'))
         self.pauseAllBtn.setIconSize(QSize(17, 17))
         self.pauseAllBtn.setToolTip(self.tr('pauseAll'))
         self.pauseAllBtn.setStatusTip('暂停所有下载中的任务')
         self.pauseAllBtn.setProperty('commandSecondary', True)
 
-        self.moreBtn = QPushButton('⋯')
+        self.moreBtn = QPushButton()
         self.moreBtn.setToolTip(self.tr('more'))
         self.moreBtn.setProperty('overflowButton', True)
         self.moreBtn.setMenu(self.moreMenu)
@@ -350,6 +391,8 @@ class Ashore(QMainWindow):
         self.setWindowIcon(QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
         self.createStatusBar()
         self.createTrayIcon()
+        self.refreshActionIcons()
+
     def connectSignals(self) -> None:
         self.addBtn.clicked.connect(self.slotAdd)
         self.unpauseAllBtn.clicked.connect(self.slotUnpauseAll)
