@@ -84,6 +84,24 @@ class StartupFlowTests(unittest.TestCase):
         window.aria2Poller.timer.stop()
         window.close()
 
+    def test_instance_messages_are_queued_until_main_window_is_ready(self):
+        app = Mock()
+        app.pendingInstanceMessages = []
+        app.instanceRoutingReady = False
+
+        AshoreApplication.routeInstanceMessage(
+            app, ['magnet:?xt=urn:btih:abc'])
+        self.assertEqual(
+            app.pendingInstanceMessages,
+            [['magnet:?xt=urn:btih:abc']])
+        app.instanceMessage.emit.assert_not_called()
+
+        AshoreApplication.enableInstanceRouting(app)
+        app.instanceMessage.emit.assert_called_once_with(
+            ['magnet:?xt=urn:btih:abc'])
+        self.assertEqual(app.pendingInstanceMessages, [])
+
+
     def test_tray_action_runs_after_popup_closes(self):
         window = Mock()
         callback = Mock()

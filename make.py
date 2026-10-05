@@ -11,6 +11,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from core.applicationInfo import APP_VERSION
+
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / 'dist'
 
@@ -52,6 +54,8 @@ def build(kind):
                 template = plistlib.load(file)
             for key in ('CFBundleURLTypes', 'CFBundleDocumentTypes'):
                 info[key] = template[key]
+            info['CFBundleShortVersionString'] = APP_VERSION
+            info['CFBundleVersion'] = APP_VERSION
             info['CFBundleIconFile'] = 'icon.icns'
             with plist.open('wb') as file:
                 plistlib.dump(info, file)

@@ -13,7 +13,7 @@ from paths import RESOURCE_DIR
 ACTION_NAMES = {
     'add', 'copy', 'delete', 'hide', 'info', 'more', 'open-file',
     'open-folder', 'pause', 'play', 'quit', 'remove', 'restart',
-    'retry', 'save', 'show',
+    'retry', 'save', 'show', 'download',
 }
 DANGER_COLOR = '#c42b1c'
 

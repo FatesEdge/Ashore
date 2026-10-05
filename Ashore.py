@@ -1,7 +1,5 @@
 """Ashore application entry point and main window."""
 
-import json
-import os
 import platform
 import signal
 import sys
@@ -17,7 +15,6 @@ from PyQt6.QtCore import (
     pyqtSignal,
 )
 from PyQt6.QtGui import QAction, QDesktopServices, QFont, QIcon, QPainter, QPalette, QPixmap
-from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -40,6 +37,7 @@ from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Shutdown, Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
 from core.formatters import formatSpeed
+from core.singleInstance import SingleInstanceCoordinator
 from interface.actionIcons import actionIcon
 from interface.addNewDialog import AddNewDialog
 from interface.languageManager import translate
@@ -526,26 +524,24 @@ class Ashore(QMainWindow):
                 return
         self.pageSetting.saveAshoreConf({'legacy_download_path_handled': 'true'})
 
+
     def addNew(self, urlList: list | None = None) -> None:
-        """通过命令行参数或系统接口参数运行程序、添加新任务
-        :param urlList: list类型的下载地址url
-        """
+        """Open the unified confirmation dialog for manual or external input."""
         config = self.aria2Client.getGlobalConfig()
         if 'ResultError' in config:
             self.showStatus(config['ResultError'])
             return
-        else:
-            form = AddNewDialog(config['dir'], urlList)
-            form.submitted.connect(self.addUrls)
-            form.show()
-            form.exec()
-            self.aria2Poller.poll()
 
-    def addUrls(self, data):
-        result = self.aria2Client.addUrls(data)
+        form = AddNewDialog(config['dir'], urlList, self)
+        form.submitted.connect(self.addUrls)
+        form.exec()
+        self.aria2Poller.poll()
+
+    def addUrls(self, request):
+        result = self.aria2Client.addUrls(request)
         if 'ResultError' in result:
-            QMessageBox.warning(self, '添加任务失败', str(result['ResultError']))
-
+            QMessageBox.warning(
+                self, '添加任务失败', str(result['ResultError']))
     def slotAdd(self) -> None:
         """用户通过按钮触发的添加新任务,无参数
         """
@@ -729,51 +725,39 @@ class Ashore(QMainWindow):
 
 class AshoreApplication(QApplication):
 
-    fileOpenSignal = pyqtSignal(list)
     instanceMessage = pyqtSignal(list)
 
     def __init__(self, arguments):
         configureApplication()
         super().__init__(arguments)
         self.setQuitOnLastWindowClosed(False)
+        self.pendingInstanceMessages = []
+        self.instanceRoutingReady = False
+        self.singleInstance = SingleInstanceCoordinator('Ashore', self)
+        self.singleInstance.messageReceived.connect(
+            self.routeInstanceMessage)
+        self.aboutToQuit.connect(self.singleInstance.close)
 
-    def forwardToExisting(self, urls):
-        name = 'Ashore-' + str(os.getuid() if hasattr(os, 'getuid') else os.environ.get('USERNAME', 'user'))
-        socket = QLocalSocket(self)
-        socket.connectToServer(name)
-        if socket.waitForConnected(300):
-            socket.write(json.dumps(urls).encode('utf-8'))
-            socket.waitForBytesWritten(1000)
-            socket.disconnectFromServer()
-            return True
-        if socket.error() == QLocalSocket.LocalSocketError.UnsupportedSocketOperationError:
-            return False
-        if socket.error() not in (QLocalSocket.LocalSocketError.ServerNotFoundError,
-                                  QLocalSocket.LocalSocketError.ConnectionRefusedError):
-            raise RuntimeError('无法连接正在运行的 Ashore 实例')
-        self.localServer = QLocalServer(self)
-        QLocalServer.removeServer(name)
-        if not self.localServer.listen(name):
-            raise RuntimeError('无法建立 Ashore 单实例通信通道')
-        self.localServer.newConnection.connect(self.receiveInstanceMessage)
-        return False
+    def claimSingleInstance(self, urls):
+        return self.singleInstance.claimOrForward(urls)
 
-    def receiveInstanceMessage(self):
-        socket = self.localServer.nextPendingConnection()
-        if not socket.bytesAvailable():
-            socket.waitForReadyRead(1000)
-        try:
-            urls = json.loads(bytes(socket.readAll()).decode('utf-8'))
+    def routeInstanceMessage(self, urls):
+        if self.instanceRoutingReady:
             self.instanceMessage.emit(urls)
-        except (ValueError, UnicodeDecodeError):
-            pass
-        socket.disconnectFromServer()
+        else:
+            self.pendingInstanceMessages.append(list(urls))
+
+    def enableInstanceRouting(self):
+        self.instanceRoutingReady = True
+        pending = self.pendingInstanceMessages
+        self.pendingInstanceMessages = []
+        for urls in pending:
+            self.instanceMessage.emit(urls)
 
     def event(self, event):
-        if event.type() == QEvent.Type.FileOpen:    # 对请求进行判断
-            self.fileOpenSignal.emit([event.url().toString()])
+        if event.type() == QEvent.Type.FileOpen:
+            self.routeInstanceMessage([event.url().toString()])
         return super().event(event)
-
 
 class StartupController(QObject):
     MIN_VISIBLE_MS = 900
@@ -798,10 +782,11 @@ class StartupController(QObject):
         self.clock.start()
         self.splash.show()
 
+
     def checkInstance(self):
         self.showStage('正在检查运行实例')
         try:
-            if self.app.forwardToExisting(self.arguments[1:]):
+            if not self.app.claimSingleInstance(self.arguments[1:]):
                 self.splash.close()
                 self.app.quit()
                 return
@@ -809,7 +794,6 @@ class StartupController(QObject):
             self.fail(str(exc))
             return
         QTimer.singleShot(0, self.loadConfig)
-
     def loadConfig(self):
         self.showStage('正在读取配置')
         try:
@@ -846,7 +830,6 @@ class StartupController(QObject):
         except (RuntimeError, OSError, ValueError) as exc:
             self.fail(str(exc))
             return
-        self.app.fileOpenSignal.connect(self.window.addNew)
         self.app.instanceMessage.connect(self.handleInstance)
         self.window.aria2Poller.updated.connect(self.firstSnapshot)
         self.window.firstPainted.connect(self.mainPainted)
@@ -881,6 +864,7 @@ class StartupController(QObject):
         else:
             self.finish()
 
+
     def finish(self):
         if self.finished or self.window is None:
             return
@@ -890,7 +874,7 @@ class StartupController(QObject):
         self.splash.finish(self.window)
         if len(self.arguments) > 1:
             self.window.addNew(self.arguments[1:])
-
+        self.app.enableInstanceRouting()
     def mainPainted(self):
         QTimer.singleShot(0, self.finishRuntime)
 

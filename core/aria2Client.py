@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from core.downloadRequest import DownloadItem, DownloadRequest, classifyInput, ITEM_LOCAL_TORRENT
 from core.missionNames import MissionNames
 from paths import ensureConfig
 
@@ -65,62 +66,54 @@ class Aria2Client:
         self.rpcPort = int(options.get('rpc-listen-port', '6801'))
         self.rpcSecret = options.get('rpc-secret', '')
 
+
     def addUrl(
-            self, url: str, targetDir: str, rename: str | None = None,
-            isTorrent: bool | None = None) -> dict:
-        """添加单个下载任务
-        :param url: str类型下载url
-        :param targetDir: str类型下载路径
-        :param rename: str类型重命名文件名
-        :param isTorrent: bool类型是否为种子或bt链接
-        :returns: 成功返回{}空字典,失败返回异常{'ResultError' : int}
-        """
-        localTorrent = urllib.parse.urlsplit(url).scheme == 'file' or (not urllib.parse.urlsplit(url).scheme and url.lower().endswith('.torrent'))
-        if localTorrent:
-            path = Path(urllib.request.url2pathname(urllib.parse.urlsplit(url).path)) if url.startswith('file:') else Path(url)
+            self, item: DownloadItem, targetDir: str,
+            options: dict | None = None) -> dict:
+        """Add one validated download item."""
+        requestOptions = dict(options or {})
+        requestOptions['dir'] = targetDir
+
+        if item.kind == ITEM_LOCAL_TORRENT:
             try:
-                content = base64.b64encode(path.read_bytes()).decode('ascii')
+                content = base64.b64encode(
+                    Path(item.source).read_bytes()).decode('ascii')
             except OSError as exc:
                 return {'ResultError': str(exc)}
-            return self.call(data=self.makeRequest(RPC_METHODS['addTorrent'],
-                                                         [content, [], {'dir': targetDir}]))
-        jsonData = None
-        if isTorrent is None:
-            if url.startswith('magnet:?xt=urn:btih:') or urllib.parse.urlsplit(url).path.lower().endswith('.torrent'):
-                isTorrent = True
-            else:
-                isTorrent = False
-        if isTorrent:
-            #种子或磁链
-            params = [[url], {'dir': targetDir, 'referer': '*'}]
-            jsonData = self.makeRequest(method = RPC_METHODS['add'], params = params)
+            requestOptions.pop('out', None)
+            result = self.call(data=self.makeRequest(
+                RPC_METHODS['addTorrent'],
+                [content, [], requestOptions]))
+            return (
+                result
+                if isinstance(result, dict) and 'ResultError' in result
+                else {})
+
+        if item.supportsHttpOptions:
+            requestOptions.setdefault('referer', '*')
+            if not item.supportsOutputName:
+                requestOptions.pop('out', None)
         else:
-            #非种子或磁链
-            options = {'dir': targetDir, 'referer': '*'}
-            if rename:
-                options['out'] = rename
-            params = [[url], options]
-            jsonData = self.makeRequest(method = RPC_METHODS['add'], params = params)
-        addResult = self.call(data=jsonData)   #执行添加操作得到返回结果
-        return addResult if 'ResultError' in addResult else {}
+            requestOptions = {'dir': targetDir}
 
-    def addUrls(self, data: tuple, rename: str | None = None) -> dict:
-        """添加多个下载任务
-        :param data传入元组类型,[0]为urls,格式为字典分为'urlList'和'torrentList'两个列表,[1]为下载目录
-        :param rename: 单个普通链接的目标文件名
-        """
-        urlList = data[0]['urlList']
-        torrentList = data[0]['torrentList']
-        targetDir = data[1]
-        #添加普通url列表
+        result = self.call(data=self.makeRequest(
+            RPC_METHODS['add'],
+            [[item.source], requestOptions]))
+        return (
+            result
+            if isinstance(result, dict) and 'ResultError' in result
+            else {})
+
+    def addUrls(self, request: DownloadRequest) -> dict:
+        """Add all items from one validated download request."""
         errors = []
-        for url in urlList + torrentList:
-            result = self.addUrl(url, targetDir, rename if len(urlList) == 1 and url == urlList[0] else None)
+        for item in request.items:
+            options = request.options if item.supportsHttpOptions else {}
+            result = self.addUrl(item, request.targetDir, options)
             if 'ResultError' in result:
-                errors.append(f'{url}: {result["ResultError"]}')
+                errors.append(
+                    f'{item.source}: {result["ResultError"]}')
         return {'ResultError': '\n'.join(errors)} if errors else {}
-
-
     def pause(self, gid:str) -> dict:
         jsonData = self.makeRequest(method = RPC_METHODS['pause'], params=[gid])
         result = self.call(data=jsonData)   #执行添加操作得到返回结果。成功返回gid
@@ -163,13 +156,15 @@ class Aria2Client:
             return missionResult    #任务不存在
         else:
             url = missionResult['url']
-            isTorrent = missionResult['isTorrent']
             targetDir = missionResult['dir']
             delResult = self.removeMission(gid, False)
             if 'ResultError' in delResult:
                 return delResult
             else:
-                return self.addUrl(url, targetDir, isTorrent=isTorrent)
+                item = classifyInput(url)
+                if item is None:
+                    return {'ResultError': '无法识别原下载地址'}
+                return self.addUrl(item, targetDir)
 
     def getGlobalStatus(self) -> dict:
         jsonData = self.makeRequest(method = RPC_METHODS['getGlobalStat'])

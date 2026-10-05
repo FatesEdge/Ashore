@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication
 
 import paths
 from core.aria2Client import Aria2Client
+from core.downloadRequest import DownloadItem, DownloadRequest, ITEM_LOCAL_TORRENT, ITEM_MAGNET, ITEM_NETWORK
 from core.aria2Service import Aria2Poller, Aria2Service, Aria2Shutdown
 from core.trackerSources import parseTrackers
 from interface.settingPage import SettingPage
@@ -186,10 +187,47 @@ class Aria2Tests(unittest.TestCase):
             torrent = Path(folder) / 'a.torrent'
             torrent.write_bytes(b'torrent bytes')
             with patch.object(client, 'call', return_value='gid') as call:
-                client.addUrl(str(torrent), folder)
+                client.addUrl(
+                    DownloadItem(str(torrent), ITEM_LOCAL_TORRENT), folder)
             payload = json.loads(call.call_args.kwargs['data'])
             self.assertEqual(payload['method'], 'aria2.addTorrent')
             self.assertEqual(payload['params'][2]['dir'], folder)
+
+    def test_per_download_http_options_are_sent_only_to_http_items(self):
+        client = Aria2Client.__new__(Aria2Client)
+        request = DownloadRequest(
+            items=(
+                DownloadItem('https://example.org/file.bin', ITEM_NETWORK),
+                DownloadItem(
+                    'magnet:?xt=urn:btih:0123456789abcdef',
+                    ITEM_MAGNET),
+            ),
+            targetDir='/tmp',
+            options={
+                'out': 'renamed.bin',
+                'referer': 'https://example.org/',
+                'user-agent': 'Ashore Test',
+                'header': ['X-Test: one', 'Cookie: session=abc'],
+                'checksum': 'sha-256=abcd',
+            },
+        )
+        payloads = []
+
+        def capture(data):
+            payloads.append(json.loads(data))
+            return 'gid'
+
+        with patch.object(client, 'call', side_effect=capture):
+            result = client.addUrls(request)
+
+        self.assertEqual(result, {})
+        httpOptions = payloads[0]['params'][1]
+        self.assertEqual(httpOptions['dir'], '/tmp')
+        self.assertEqual(httpOptions['out'], 'renamed.bin')
+        self.assertEqual(httpOptions['header'][1], 'Cookie: session=abc')
+        magnetOptions = payloads[1]['params'][1]
+        self.assertEqual(magnetOptions, {'dir': '/tmp'})
+
 
     def test_deletion_only_removes_listed_download_files(self):
         client = Aria2Client.__new__(Aria2Client)

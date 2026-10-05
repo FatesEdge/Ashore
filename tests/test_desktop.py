@@ -9,8 +9,11 @@ class DesktopTests(unittest.TestCase):
         config = configparser.ConfigParser(interpolation=None)
         config.read(desktop, encoding='utf-8')
         entry = config['Desktop Entry']
-        self.assertIn('%u', entry['Exec'])
+        self.assertIn('%U', entry['Exec'])
         self.assertIn('x-scheme-handler/magnet;', entry['MimeType'])
+        self.assertIn('x-scheme-handler/ashore;', entry['MimeType'])
+        self.assertNotIn('x-scheme-handler/http;', entry['MimeType'])
+        self.assertNotIn('x-scheme-handler/https;', entry['MimeType'])
         self.assertIn('application/x-bittorrent;', entry['MimeType'])
 
     def test_desktop_does_not_leave_startup_cursor_spinning(self):
