@@ -43,8 +43,7 @@ from interface.addNewDialog import AddNewDialog
 from interface.languageManager import translate
 from interface.page import Page
 from interface.settingPage import SettingPage
-from interface.startupWindow import ExitWindow, StartupWindow
-from interface.statusBadge import setConnectionBadge
+from interface.startupWindow import ExitWindow, RecoveryWindow, StartupWindow
 from interface.themeManager import TRAY_GRAY, ThemeManager
 from paths import (
     CONFIG_DIR,
@@ -69,7 +68,7 @@ class Ashore(QMainWindow):
         ashoreConfig = self.pageSetting.loadAshoreConfig()
         self.language = ashoreConfig.get('language', 'zh_CN')
         self.trayIconStyle = ashoreConfig.get('tray_icon_style', 'colorful')
-        self.showAria2Status = bool(ashoreConfig.get('show_aria2_status', True))
+        self.showAria2Status = boolValue(ashoreConfig.get('show_aria2_status', True))
         self.aria2Service = aria2Service
         self.aria2Service.quitWithAshore = ashoreConfig['quit_with_aria2']
         self.aria2Client = aria2Service.client
@@ -278,6 +277,7 @@ class Ashore(QMainWindow):
         self.pageDownloaded.setLanguage(self.language)
         self.refreshActionIcons()
 
+
     def createStatusBar(self) -> None:
         self.downSpeedIcon = QLabel('downSpeedIcon')
         self.downSpeedIcon.setFixedSize(20, 20)
@@ -307,20 +307,44 @@ class Ashore(QMainWindow):
 
         self.statusBar = QStatusBar()
         self.statusBar.setContentsMargins(0, 1, 10, 2)
-        self.aria2StateLabel = QLabel()
-        setConnectionBadge(
-            self.aria2StateLabel,
-            f'aria2 {self.tr("connecting")}',
-            'connecting')
-        self.aria2StateLabel.setVisible(self.showAria2Status)
 
-        self.statusBar.addPermanentWidget(self.aria2StateLabel)
+        self.aria2State = 'connecting'
+        self.aria2StateDot = QLabel('●')
+        self.aria2StateDot.setProperty('mainConnectionDot', True)
+        self.aria2StateText = QLabel()
+        self.aria2StateText.setProperty('mainConnectionText', True)
+
+        self.aria2StateWidget = QWidget()
+        aria2Layout = QHBoxLayout(self.aria2StateWidget)
+        aria2Layout.setContentsMargins(0, 0, 2, 0)
+        aria2Layout.setSpacing(4)
+        aria2Layout.addWidget(self.aria2StateDot)
+        aria2Layout.addWidget(self.aria2StateText)
+        self.setMainAria2State('connecting')
+        self.aria2StateWidget.setVisible(self.showAria2Status)
+
+        self.statusBar.addPermanentWidget(self.aria2StateWidget)
         self.statusBar.addPermanentWidget(self.downSpeedIcon)
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
         self.statusBar.addPermanentWidget(self.upSpeedIcon)
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
         self.setStatusBar(self.statusBar)
 
+    def setMainAria2State(self, state):
+        if state not in ('connected', 'disconnected', 'connecting'):
+            state = 'connecting'
+        self.aria2State = state
+        self.aria2StateDot.setProperty('connectionState', state)
+        textKey = {
+            'connected': 'connected',
+            'disconnected': 'disconnected',
+            'connecting': 'connecting',
+        }[state]
+        self.aria2StateText.setText(f'aria2 {self.tr(textKey)}')
+        style = self.aria2StateDot.style()
+        style.unpolish(self.aria2StateDot)
+        style.polish(self.aria2StateDot)
+        self.aria2StateDot.update()
     def initUI(self) -> None:
         self.createCommandActions()
 
@@ -373,7 +397,7 @@ class Ashore(QMainWindow):
                 self.tabDownloading, self.tabDownloaded, self.tabSetting):
             button.setCheckable(True)
             button.setProperty('navigationTab', True)
-            button.setFixedHeight(108)
+            button.setFixedHeight(84)
             self.navigationTabs.addButton(button)
 
         self.tabDownloading.setChecked(True)
@@ -385,7 +409,7 @@ class Ashore(QMainWindow):
         self.navigationRail.setProperty('navigationRail', True)
         self.navigationRail.setFixedWidth(46)
         navigationLayout = QVBoxLayout(self.navigationRail)
-        navigationLayout.setContentsMargins(0, 8, 0, 8)
+        navigationLayout.setContentsMargins(0, 0, 0, 0)
         navigationLayout.setSpacing(4)
         navigationLayout.addWidget(self.tabDownloading)
         navigationLayout.addWidget(self.tabDownloaded)
@@ -442,23 +466,19 @@ class Ashore(QMainWindow):
         missions = snapshot['missions']
         globalStatus = snapshot['globalStatus']
         if 'ResultError' in globalStatus:
-            setConnectionBadge(
-                self.aria2StateLabel,
-                f'aria2 {self.tr("disconnected")}', 'disconnected')
-            self.aria2StateLabel.setToolTip(str(globalStatus['ResultError']))
+            self.setMainAria2State('disconnected')
+            self.aria2StateWidget.setToolTip(
+                str(globalStatus['ResultError']))
             self.downSpeedLabel.setText('—')
             self.upSpeedLabel.setText('—')
             self.updateConnection('未连接')
             return
         if 'ResultError' in missions:
-            setConnectionBadge(
-                self.aria2StateLabel,
-                f'aria2 {self.tr("disconnected")}', 'disconnected')
-            self.aria2StateLabel.setToolTip(str(missions['ResultError']))
+            self.setMainAria2State('disconnected')
+            self.aria2StateWidget.setToolTip(
+                str(missions['ResultError']))
             return
-        setConnectionBadge(
-            self.aria2StateLabel,
-            f'aria2 {self.tr("connected")}', 'connected')
+        self.setMainAria2State('connected')
         self.aria2Version = snapshot.get('aria2Version') or self.aria2Version
         self.updateConnection('已连接')
         self.pageDownloading.updateSections({status: missions[status] for status in ('active', 'waiting', 'paused')})
@@ -511,7 +531,7 @@ class Ashore(QMainWindow):
             'stopped': '已停止',
         }.get(getattr(self, 'websocketState', 'unavailable'), '未知')
         endpoint = f'http://127.0.0.1:{self.aria2Client.rpcPort}/jsonrpc'
-        self.aria2StateLabel.setToolTip(
+        self.aria2StateWidget.setToolTip(
             f'HTTP：{httpStatus}\nWebSocket：{websocketText}\n{endpoint}')
         self.pageSetting.setConnectionStatus(httpStatus, websocketText, self.aria2Version)
 
@@ -776,10 +796,8 @@ class Ashore(QMainWindow):
 
         if 'show_aria2_status' in conf:
             value = conf['show_aria2_status']
-            self.showAria2Status = (
-                value if isinstance(value, bool)
-                else str(value).lower() == 'true')
-            self.aria2StateLabel.setVisible(self.showAria2Status)
+            self.showAria2Status = boolValue(value)
+            self.aria2StateWidget.setVisible(self.showAria2Status)
 
         if conf.get('theme_mode'):
             self.themeManager.apply(
@@ -846,6 +864,7 @@ class StartupController(QObject):
         self.app = app
         self.arguments = arguments
         self.window = None
+        self.recovery = None
         self.finished = False
         self.finishScheduled = False
         self.firstSnapshotReady = False
@@ -855,11 +874,11 @@ class StartupController(QObject):
         self.splash = StartupWindow(RESOURCE_DIR / 'static/img/cover.png')
         self.splash.firstPainted.connect(self.checkInstance)
         self.startup = None
+        self.settings = {}
 
     def start(self):
         self.clock.start()
         self.splash.show()
-
 
     def checkInstance(self):
         self.showStage('正在检查运行实例')
@@ -872,33 +891,42 @@ class StartupController(QObject):
             self.fail(str(exc))
             return
         QTimer.singleShot(0, self.loadConfig)
+
     def loadConfig(self):
         self.showStage('正在读取配置')
         try:
             ensureConfig('ashore.conf')
             ensureConfig('aria2.conf')
-            settings = readAshore(
-                CONFIG_DIR / 'ashore.conf', RESOURCE_DIR / 'config/ashore.conf')
-            if settings.get('tray_icon_style') == 'monochrome':
-                settings['tray_icon_style'] = 'gray'
-                writeAshore(CONFIG_DIR / 'ashore.conf', {'tray_icon_style': 'gray'})
+            self.settings = readAshore(
+                CONFIG_DIR / 'ashore.conf',
+                RESOURCE_DIR / 'config/ashore.conf')
+            if self.settings.get('tray_icon_style') == 'monochrome':
+                self.settings['tray_icon_style'] = 'gray'
+                writeAshore(
+                    CONFIG_DIR / 'ashore.conf',
+                    {'tray_icon_style': 'gray'})
             self.themeManager.apply(
-                settings.get('theme_mode', 'system'),
-                settings.get('accent_color', '#5d795f'))
+                self.settings.get('theme_mode', 'system'),
+                self.settings.get('accent_color', '#5d795f'))
         except (OSError, ValueError) as exc:
             self.fail(str(exc))
             return
-        QTimer.singleShot(0, lambda: self.startAria2(settings))
+        QTimer.singleShot(0, self.startAria2)
 
-    def startAria2(self, settings):
+    def startAria2(self):
+        self.showStage('正在检查 aria2')
         self.startup = Aria2Startup(
-            boolValue(settings.get('quit_with_aria2')), self)
+            boolValue(self.settings.get('quit_with_aria2')), self)
         self.startup.statusChanged.connect(self.showStage)
         self.startup.ready.connect(self.buildWindow)
-        self.startup.failed.connect(self.fail)
+        self.startup.unhealthy.connect(self.showRecovery)
         self.startup.start()
 
     def buildWindow(self, service):
+        if self.recovery is not None:
+            self.recovery.close()
+            self.recovery.deleteLater()
+            self.recovery = None
         self.showStage('正在准备主界面')
         QTimer.singleShot(0, lambda: self.createWindow(service))
 
@@ -942,7 +970,6 @@ class StartupController(QObject):
         else:
             self.finish()
 
-
     def finish(self):
         if self.finished or self.window is None:
             return
@@ -953,6 +980,7 @@ class StartupController(QObject):
         if len(self.arguments) > 1:
             self.window.addNew(self.arguments[1:])
         self.app.enableInstanceRouting()
+
     def mainPainted(self):
         QTimer.singleShot(0, self.finishRuntime)
 
@@ -964,25 +992,59 @@ class StartupController(QObject):
         self.window.offerDownloadMigration()
 
     def handleInstance(self, urls):
+        if self.window is None:
+            if self.recovery is not None:
+                self.recovery.show()
+                self.recovery.raise_()
+                self.recovery.activateWindow()
+            return
         self.window.show()
         self.window.raise_()
         self.window.activateWindow()
         if urls:
             self.window.addNew(urls)
 
+    def showRecovery(self, issue):
+        self.splash.close()
+        language = self.settings.get('language', 'zh_CN')
+        if self.recovery is None:
+            self.recovery = RecoveryWindow(issue, language)
+            self.recovery.recheckRequested.connect(self.retryEnvironment)
+            self.recovery.quitRequested.connect(self.quit)
+        else:
+            self.recovery.setIssue(issue)
+        self.recovery.show()
+        self.recovery.raise_()
+        self.recovery.activateWindow()
+
+    def retryEnvironment(self):
+        if self.startup is not None and self.startup.isRunning():
+            return
+        if self.recovery is not None:
+            self.recovery.hide()
+        self.splash.showStatus('正在重新检查 aria2')
+        self.splash.show()
+        self.splash.raise_()
+        self.splash.activateWindow()
+        QTimer.singleShot(0, self.startAria2)
+
     def showStage(self, message):
         self.splash.showStatus(message)
 
     def fail(self, message):
         self.splash.close()
+        if self.recovery is not None:
+            self.recovery.close()
         QMessageBox.critical(None, 'Ashore 启动失败', message)
         self.app.quit()
 
     def quit(self):
         if self.window:
             self.window.slotQuit()
-        else:
-            self.app.quit()
+            return
+        if self.recovery is not None:
+            self.recovery.close()
+        self.app.quit()
 
 if __name__ == '__main__':
     resourcePath = str(RESOURCE_DIR) + '/'

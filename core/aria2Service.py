@@ -8,6 +8,7 @@ import time
 from PyQt6.QtCore import QThread, QTimer, pyqtSignal
 
 from core.aria2Client import RPC_METHODS, Aria2Client
+from core.environmentCheck import makeEnvironmentIssue
 from paths import CONFIG_DIR
 
 
@@ -20,13 +21,14 @@ class Aria2Service:
         self.process = None
 
     def ensureReady(self):
-        if not self.client.isRpcReady():
-            self.start()
+        if self.client.isRpcReady():
+            return None
+        return self.start()
 
     def start(self):
         executable = shutil.which('aria2c')
         if not executable:
-            raise RuntimeError('未检测到 aria2c。请先安装 aria2，再启动 Ashore。')
+            return makeEnvironmentIssue('aria2_missing')
         self.client.readRpcOptions()
         logPath = CONFIG_DIR / 'aria2-startup.log'
         with logPath.open('ab') as log:
@@ -36,15 +38,15 @@ class Aria2Service:
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
             if self.client.isRpcReady():
-                return
+                return None
             if self.process.poll() is not None:
                 break
             time.sleep(0.25)
         if self.process.poll() is None:
             self.stopOwned()
-        raise RuntimeError(
-            f'aria2 RPC 未能在端口 {self.client.rpcPort} 启动。'
-            f'请检查 {logPath} 和 aria2.conf。')
+        return makeEnvironmentIssue(
+            'aria2_rpc_unavailable',
+            f'RPC port {self.client.rpcPort}. Check {logPath} and aria2.conf.')
 
     def restart(self):
         self.client.saveSession()
@@ -61,7 +63,10 @@ class Aria2Service:
                 time.sleep(0.1)
             if self.client.isRpcReady():
                 raise RuntimeError('当前 aria2 收到关闭请求后仍在运行。')
-        self.start()
+        issue = self.start()
+        if issue is not None:
+            message = issue.detail or issue.code
+            raise RuntimeError(message)
 
     def stopOwned(self):
         if self.process is not None and self.process.poll() is None:
@@ -82,7 +87,7 @@ class Aria2Service:
 class Aria2Startup(QThread):
     statusChanged = pyqtSignal(str)
     ready = pyqtSignal(object)
-    failed = pyqtSignal(str)
+    unhealthy = pyqtSignal(object)
 
     def __init__(self, quitWithAshore=False, parent=None):
         super().__init__(parent)
@@ -92,12 +97,16 @@ class Aria2Startup(QThread):
         try:
             self.statusChanged.emit('正在检查 aria2')
             service = Aria2Service(self.quitWithAshore)
-            service.ensureReady()
+            issue = service.ensureReady()
+            if issue is not None:
+                self.unhealthy.emit(issue)
+                return
             self.statusChanged.emit('aria2 已连接')
             self.ready.emit(service)
         except (RuntimeError, OSError, ValueError) as exc:
-            self.failed.emit(str(exc))
-
+            issue = makeEnvironmentIssue(
+                'aria2_startup_error', str(exc))
+            self.unhealthy.emit(issue)
 
 class Aria2Removal(QThread):
     """Run stateful task removal without blocking the GUI thread."""

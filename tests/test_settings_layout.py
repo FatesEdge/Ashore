@@ -112,7 +112,12 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertEqual(section.CONTENT_MIN_WIDTH, 660)
         self.assertEqual(section.CONTENT_MAX_WIDTH, 820)
         self.assertEqual(
-            section.actionSlot.layout().contentsMargins().left(), 52)
+            section.actionSlot.layout().contentsMargins().left(), 30)
+        layout = section.rateLabel.parentWidget().layout()
+        namePosition = layout.getItemPosition(layout.indexOf(section.nameLabel))
+        ratePosition = layout.getItemPosition(layout.indexOf(section.rateLabel))
+        self.assertEqual(namePosition[:2], (0, 0))
+        self.assertEqual(ratePosition[:2], (1, 1))
 
     def test_completed_multifile_task_opens_folder_as_primary_action(self):
         multi = Section(
@@ -134,6 +139,7 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(page.saveBtn.text(), 'Save Settings')
             self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
             self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
+            self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
             self.assertLessEqual(
                 page.defaultDownloadDirLabel.maximumWidth(), 150)
             self.assertEqual(
@@ -186,14 +192,15 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(
                 page.getBoolOption(page.showAria2StatusComboBox), 'false')
 
-    def test_theme_restores_combo_spin_arrows_and_lightweight_states(self):
+    def test_theme_leaves_native_combo_spin_arrows_and_styles_states(self):
         manager = ThemeManager(self.app)
         manager.apply('dark', '#a51d2d')
         style = self.app.styleSheet()
-        self.assertIn('QComboBox::down-arrow', style)
-        self.assertIn('QSpinBox::up-arrow', style)
-        self.assertIn('QSpinBox::down-arrow', style)
+        self.assertNotIn('QComboBox::down-arrow', style)
+        self.assertNotIn('QSpinBox::up-arrow', style)
+        self.assertNotIn('QSpinBox::down-arrow', style)
         self.assertIn('QLabel[connectionState="connected"]', style)
+        self.assertIn('QLabel[mainConnectionDot="true"]', style)
         self.assertNotIn('background-color: #2e7d32', style)
 
     def test_new_download_advanced_control_uses_ashore_chevron(self):
@@ -206,6 +213,16 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertFalse(dialog.advancedToggle.icon().isNull())
         self.assertGreaterEqual(dialog.headersEdit.minimumHeight(), 64)
         dialog.close()
+
+
+    def test_chinese_settings_labels_remain_single_line(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.setLanguage('zh_CN')
+            self.assertFalse(page.defaultDownloadDirLabel.wordWrap())
+            self.assertGreater(
+                page.defaultDownloadDirLabel.maximumWidth(), 10000)
+            self.assertFalse(page.showAria2StatusLabel.wordWrap())
 
 
 

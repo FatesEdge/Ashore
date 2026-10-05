@@ -3,8 +3,6 @@
 from PyQt6.QtCore import QObject, Qt
 from PyQt6.QtGui import QColor, QPalette
 
-from paths import RESOURCE_DIR
-
 THEME_MODES = ('system', 'light', 'dark')
 ACCENT_PRESETS = (
     '#5d795f', '#3f7cac', '#7b5ea7', '#b56576', '#b7791f', '#287271',
@@ -106,8 +104,6 @@ class ThemeManager(QObject):
         accentPressed = QColor(self.accent).darker(118).name()
         accentText = contrastText(self.accent)
         accentSoft = translucent(self.accent, 52 if dark else 34)
-        downArrow = (RESOURCE_DIR / 'static/icon/actions/chevron-down.svg').as_posix()
-        upArrow = (RESOURCE_DIR / 'static/icon/actions/chevron-up.svg').as_posix()
         return f"""
             QMainWindow, QWidget#mainRoot {{
                 background: {token['background']};
@@ -187,6 +183,8 @@ class ThemeManager(QObject):
                 padding: 0;
                 min-width: 46px;
                 max-width: 46px;
+                min-height: 84px;
+                max-height: 84px;
             }}
             QPushButton[navigationTab="true"]:hover {{
                 background: {token['hover']};
@@ -271,55 +269,8 @@ class ThemeManager(QObject):
                 selection-background-color: {self.accent};
                 selection-color: {accentText};
             }}
-            QComboBox, QSpinBox {{
-                padding-right: 28px;
-            }}
             QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus {{
                 border-color: {self.accent};
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: border;
-                subcontrol-position: top right;
-                width: 27px;
-                border: none;
-                background: transparent;
-            }}
-            QComboBox::drop-down:hover {{
-                background: {token['hover']};
-                border-top-right-radius: 7px;
-                border-bottom-right-radius: 7px;
-            }}
-            QComboBox::down-arrow {{
-                image: url("{downArrow}");
-                width: 11px;
-                height: 11px;
-            }}
-            QSpinBox::up-button, QSpinBox::down-button {{
-                subcontrol-origin: border;
-                width: 24px;
-                border: none;
-                background: transparent;
-            }}
-            QSpinBox::up-button {{
-                subcontrol-position: top right;
-                border-top-right-radius: 7px;
-            }}
-            QSpinBox::down-button {{
-                subcontrol-position: bottom right;
-                border-bottom-right-radius: 7px;
-            }}
-            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
-                background: {token['hover']};
-            }}
-            QSpinBox::up-arrow {{
-                image: url("{upArrow}");
-                width: 9px;
-                height: 9px;
-            }}
-            QSpinBox::down-arrow {{
-                image: url("{downArrow}");
-                width: 9px;
-                height: 9px;
             }}
             QToolButton[advancedToggle="true"] {{
                 color: {token['text']};
@@ -333,16 +284,46 @@ class ThemeManager(QObject):
                 background: {token['hover']};
                 border-color: {token['border']};
             }}
-            QDialog[newDownloadDialog="true"] QLineEdit,
-            QDialog[newDownloadDialog="true"] QComboBox,
-            QDialog[newDownloadDialog="true"] QSpinBox {{
-                min-height: 28px;
-            }}
             QLabel[connectionBadge="true"] {{
                 background: transparent;
                 border: none;
                 padding: 1px 2px;
                 font-weight: 500;
+            }}
+            QLabel[mainConnectionDot="true"] {{
+                background: transparent;
+                border: none;
+                padding: 0;
+                font-weight: 700;
+            }}
+            QLabel[mainConnectionText="true"] {{
+                background: transparent;
+                color: {token['muted']};
+                border: none;
+                padding: 0;
+                font-weight: 500;
+            }}
+            QWidget[recoveryPage="true"] {{
+                background: {token['background']};
+            }}
+            QLabel[recoveryTitle="true"] {{
+                color: {token['text']};
+                font-size: 24px;
+                font-weight: 700;
+            }}
+            QLabel[recoveryIntro="true"], QLabel[recoveryMeta="true"] {{
+                color: {token['muted']};
+            }}
+            QLabel[recoveryReason="true"] {{
+                color: {token['text']};
+                font-weight: 600;
+            }}
+            QPlainTextEdit[terminalBlock="true"] {{
+                background: #111317;
+                color: #e6edf3;
+                border: 1px solid {token['border']};
+                border-radius: 8px;
+                padding: 10px;
             }}
             QLabel[connectionState="connected"] {{
                 color: {token['success']};

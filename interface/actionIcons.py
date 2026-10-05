@@ -14,7 +14,7 @@ ACTION_NAMES = {
     'add', 'copy', 'delete', 'hide', 'info', 'more', 'open-file',
     'open-folder', 'pause', 'play', 'quit', 'remove', 'restart',
     'retry', 'save', 'show', 'download', 'completed', 'settings',
-    'chevron-down', 'chevron-up', 'chevron-right',
+    'chevron-down', 'chevron-right',
 }
 DANGER_COLOR = '#c42b1c'
 

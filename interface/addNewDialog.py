@@ -83,8 +83,15 @@ class AddNewDialog(QDialog):
         self.advancedPanel = QFrame()
         self.advancedPanel.setProperty('advancedPanel', True)
         advancedForm = QFormLayout(self.advancedPanel)
-        advancedForm.setContentsMargins(12, 10, 12, 10)
-        advancedForm.setVerticalSpacing(8)
+        advancedForm.setContentsMargins(12, 12, 12, 12)
+        advancedForm.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        advancedForm.setRowWrapPolicy(
+            QFormLayout.RowWrapPolicy.DontWrapRows)
+        advancedForm.setLabelAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        advancedForm.setHorizontalSpacing(12)
+        advancedForm.setVerticalSpacing(10)
 
         self.fileNameEdit = QLineEdit()
         self.fileNameEdit.setPlaceholderText(self.tr('fileNameHint'))

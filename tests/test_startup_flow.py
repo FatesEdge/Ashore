@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import QApplication, QStackedWidget
 
 import paths
 from Ashore import Ashore, AshoreApplication, StartupController, configureApplication
+from core.environmentCheck import makeEnvironmentIssue
+from interface.startupWindow import RecoveryWindow
 from interface.settingPage import SettingPage
 from interface.startupWindow import ExitWindow, StartupWindow
 from paths import RESOURCE_DIR
@@ -84,7 +86,7 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloaded.text(), '')
         self.assertEqual(window.tabSetting.text(), '')
         self.assertEqual(window.navigationRail.width(), 46)
-        self.assertEqual(window.tabDownloading.height(), 108)
+        self.assertEqual(window.tabDownloading.height(), 84)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.commandBar.height(), 48)
         window.aria2Poller.timer.stop()
@@ -186,7 +188,50 @@ class StartupFlowTests(unittest.TestCase):
             'show_aria2_status': 'false',
             'isSaved': 'saved',
         })
-        self.assertFalse(window.aria2StateLabel.isVisible())
+        self.assertFalse(window.aria2StateWidget.isVisible())
+        window.aria2Poller.timer.stop()
+        window.close()
+
+
+    def test_recovery_window_shows_system_command_without_main_window(self):
+        issue = makeEnvironmentIssue('aria2_missing')
+        controller = StartupController(self.app, ['Ashore.py'])
+        controller.settings = {'language': 'en'}
+        controller.splash.close()
+
+        controller.showRecovery(issue)
+        self.app.processEvents()
+
+        self.assertIsNone(controller.window)
+        self.assertIsInstance(controller.recovery, RecoveryWindow)
+        self.assertIn(issue.systemName, controller.recovery.systemLabel.text())
+        self.assertIn(
+            issue.installCommand,
+            controller.recovery.commandBox.toPlainText())
+        controller.recovery.close()
+
+    def test_main_status_uses_colored_dot_and_normal_text_separately(self):
+        service = Mock()
+        service.client.rpcPort = 6800
+        service.quitWithAshore = False
+        events = Mock()
+        events.state = 'unavailable'
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+             patch.object(SettingPage, 'ashoreConfDir', folder), \
+             patch.object(
+                 SettingPage, 'aria2ConfPath',
+                 str(Path(folder) / 'aria2.conf')), \
+             patch('Ashore.Aria2Events', return_value=events):
+            window = Ashore(service, Mock())
+
+        window.setMainAria2State('connected')
+        self.assertEqual(
+            window.aria2StateDot.property('connectionState'),
+            'connected')
+        self.assertIsNone(
+            window.aria2StateText.property('connectionState'))
+        self.assertIn('aria2', window.aria2StateText.text())
         window.aria2Poller.timer.stop()
         window.close()
 

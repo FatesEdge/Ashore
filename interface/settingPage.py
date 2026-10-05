@@ -383,9 +383,6 @@ class SettingPage(QWidget):
             self.trayIconStyleLabel, self.themeModeLabel,
             self.accentColorLabel,
         )
-        for label in self.formLabelWidgets:
-            label.setWordWrap(True)
-
         self.configureFormLabels()
         self.retranslateUi()
         self.updateTokenRow()
@@ -395,13 +392,14 @@ class SettingPage(QWidget):
         self.configureFormLabels()
         self.retranslateUi()
 
+
     def configureFormLabels(self):
         if not hasattr(self, 'formLabelWidgets'):
             return
-        maxWidth = 150 if self.language == 'en' else 165
+        english = self.language == 'en'
         for label in self.formLabelWidgets:
-            label.setMaximumWidth(maxWidth)
-
+            label.setWordWrap(english)
+            label.setMaximumWidth(150 if english else 16777215)
     def retranslateUi(self):
         self.aria2SettingLabel.setText(
             f'<h3>{self.tr("aria2Settings")}</h3>')
