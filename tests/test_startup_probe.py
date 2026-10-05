@@ -14,6 +14,8 @@ class StartupProbeTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(stageIndex('base'), 0)
         self.assertLess(stageIndex('ariaStartup'), stageIndex('windowBase'))
+        self.assertLess(stageIndex('windowBase'), stageIndex('windowControls'))
+        self.assertLess(stageIndex('windowControls'), stageIndex('windowContent'))
         self.assertLess(stageIndex('windowContent'), stageIndex('windowMenus'))
         self.assertLess(stageIndex('windowSignals'), stageIndex('mainWindow'))
         self.assertTrue(includes('tray', 'ariaStartup'))

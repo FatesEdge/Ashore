@@ -32,6 +32,7 @@ STARTUP_STAGES = (
     StartupStage('config', 'configuration loading and ThemeManager'),
     StartupStage('ariaStartup', 'Aria2Startup.ensureReady in its worker thread'),
     StartupStage('windowBase', 'Ashore base state and an empty central widget'),
+    StartupStage('windowControls', 'navigation and toolbar with placeholder pages'),
     StartupStage('windowContent', 'navigation, toolbar and all three pages'),
     StartupStage('windowMenus', 'production application menus'),
     StartupStage('windowStatus', 'production status bar and connection labels'),
@@ -85,6 +86,15 @@ class IdleEvents(QObject):
         pass
 
 
+class IdlePage(QWidget):
+    """Stand in for download pages while retaining the production layout."""
+
+    sectionAdded = pyqtSignal(object)
+
+    def updateSections(self, _missions):
+        pass
+
+
 class StagedAshore(Ashore):
     """Expose cumulative boundaries inside Ashore.__init__ for diagnosis."""
 
@@ -93,10 +103,14 @@ class StagedAshore(Ashore):
         super().__init__(aria2Service, themeManager)
 
     def initUI(self):
-        if not includes(self.probeStage, 'windowContent'):
+        if not includes(self.probeStage, 'windowControls'):
             self.setCentralWidget(QLabel(f'Ashore window base: {self.probeStage}'))
             self.setWindowTitle('Ashore Startup Probe')
             self.resize(640, 360)
+            return
+        if not includes(self.probeStage, 'windowContent'):
+            with patch('Ashore.Page', IdlePage):
+                super().initUI()
             return
         super().initUI()
 
