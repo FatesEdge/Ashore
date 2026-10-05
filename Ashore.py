@@ -99,11 +99,16 @@ class Ashore(QMainWindow):
             createTray=createTray,
             refreshIcons=refreshIcons,
             probeStop=startupProbe
-            if startupProbe in ('beforeStrip', 'stripBuilt', 'stripAdded')
+            if startupProbe in (
+                'beforeStrip', 'stripBuilt', 'stripAdded',
+                'stripShell', 'stripAria', 'stripDown',
+                'stripUp', 'stripLayout', 'stripTimer')
             else '')
 
         if startupProbe in (
                 'beforeStrip', 'stripBuilt', 'stripAdded',
+                'stripShell', 'stripAria', 'stripDown',
+                'stripUp', 'stripLayout', 'stripTimer',
                 'baseUi', 'trayCreated', 'iconsRefreshed'):
             return
 
@@ -315,13 +320,15 @@ class Ashore(QMainWindow):
 
 
 
-    def createStatusStrip(self) -> None:
+    def createStatusStrip(self, probeStop='') -> None:
         self.statusStrip = QWidget()
         self.statusStrip.setProperty('statusStrip', True)
         self.statusStrip.setFixedHeight(30)
 
         self.statusMessageLabel = QLabel()
         self.statusMessageLabel.setProperty('statusMessage', True)
+        if probeStop == 'stripShell':
+            return
 
         self.aria2State = 'connecting'
         self.aria2StateDot = QLabel('●')
@@ -337,6 +344,8 @@ class Ashore(QMainWindow):
         aria2Layout.addWidget(self.aria2StateText)
         self.setMainAria2State('connecting')
         self.aria2StateWidget.setVisible(self.showAria2Status)
+        if probeStop == 'stripAria':
+            return
 
         self.downSpeedIcon = QLabel()
         self.downSpeedIcon.setFixedSize(20, 20)
@@ -349,6 +358,8 @@ class Ashore(QMainWindow):
         self.downSpeedLabel = QLabel('0B/s')
         self.downSpeedLabel.setMinimumWidth(80)
         self.downSpeedLabel.setToolTip('全局实时下载速度')
+        if probeStop == 'stripDown':
+            return
 
         self.upSpeedIcon = QLabel()
         self.upSpeedIcon.setFixedSize(20, 20)
@@ -361,6 +372,8 @@ class Ashore(QMainWindow):
         self.upSpeedLabel = QLabel('0B/s')
         self.upSpeedLabel.setMinimumWidth(80)
         self.upSpeedLabel.setToolTip('全局 BT / Magnet 上传速度')
+        if probeStop == 'stripUp':
+            return
 
         layout = QHBoxLayout(self.statusStrip)
         layout.setContentsMargins(10, 2, 10, 2)
@@ -371,11 +384,15 @@ class Ashore(QMainWindow):
         layout.addWidget(self.downSpeedLabel)
         layout.addWidget(self.upSpeedIcon)
         layout.addWidget(self.upSpeedLabel)
+        if probeStop == 'stripLayout':
+            return
 
         self.statusMessageTimer = QTimer(self.statusStrip)
         self.statusMessageTimer.setSingleShot(True)
         self.statusMessageTimer.timeout.connect(
             self.statusMessageLabel.clear)
+        if probeStop == 'stripTimer':
+            return
     def setMainAria2State(self, state):
         if state not in ('connected', 'disconnected', 'connecting'):
             state = 'connecting'
@@ -496,7 +513,20 @@ class Ashore(QMainWindow):
             self.setCentralWidget(placeholder)
             return
 
-        self.createStatusStrip()
+        self.createStatusStrip(
+            probeStop if probeStop.startswith('strip') else '')
+        if probeStop in (
+                'stripShell', 'stripAria', 'stripDown',
+                'stripUp', 'stripLayout', 'stripTimer'):
+            placeholder = QWidget()
+            placeholder.setObjectName('mainRoot')
+            placeholderLayout = QVBoxLayout(placeholder)
+            placeholderLayout.setContentsMargins(0, 10, 0, 0)
+            placeholderLayout.setSpacing(0)
+            placeholderLayout.addWidget(commandHost)
+            placeholderLayout.addWidget(bodyWidget, 1)
+            self.setCentralWidget(placeholder)
+            return
         if probeStop == 'stripBuilt':
             placeholder = QWidget()
             placeholder.setObjectName('mainRoot')
@@ -1027,6 +1057,8 @@ class StartupController(QObject):
         probeMode = os.environ.get('ASHORE_STARTUP_PROBE', '').strip()
         validProbes = {
             'beforeStrip', 'stripBuilt', 'stripAdded',
+            'stripShell', 'stripAria', 'stripDown',
+            'stripUp', 'stripLayout', 'stripTimer',
             'baseUi', 'trayCreated', 'iconsRefreshed',
             'signals', 'events', 'runtime', 'trayShown',
         }
