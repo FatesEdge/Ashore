@@ -361,10 +361,16 @@ class ThemeManager(QObject):
             QScrollBar::handle:horizontal:hover {{ background: {token['scrollHover']}; }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
             QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: transparent; }}
-            QStatusBar {{
+            QWidget[statusStrip="true"] {{
                 background: {token['background']};
                 color: {token['muted']};
                 border-top: 1px solid {token['border']};
+            }}
+            QLabel[statusMessage="true"] {{
+                color: {token['muted']};
+                background: transparent;
+                border: none;
+                padding: 0;
             }}
             QToolTip {{
                 background: {token['surface']};

@@ -1,6 +1,5 @@
 """Ashore application entry point and main window."""
 
-import os
 import platform
 import signal
 import sys
@@ -26,7 +25,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QStackedWidget,
-    QStatusBar,
     QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
@@ -54,374 +52,36 @@ from paths import (
 )
 
 
-class StartupProbeWindow(QMainWindow):
-    """Temporary startup structure probe. Remove after cursor diagnosis."""
-
-    VALID_MODES = {
-        'shell',
-        'downloads',
-        'settingsConstructed',
-        'settingsAdded',
-        'statusbar',
-        'controls',
-        'icons',
-        'trayCreated',
-        'signals',
-        'events',
-        'runtime',
-        'trayShown',
-    }
-
-    def __init__(self, mode, language='zh_CN'):
-        super().__init__()
-        if mode not in self.VALID_MODES:
-            raise ValueError(f'Unknown startup probe mode: {mode}')
-        self.mode = mode
-        self.language = language
-        self.setWindowTitle(f'Ashore startup probe · {mode}')
-        self.setMinimumSize(920, 520)
-
-        root = QWidget()
-        root.setObjectName('mainRoot')
-        rootLayout = QVBoxLayout(root)
-        rootLayout.setContentsMargins(0, 10, 0, 8)
-        rootLayout.setSpacing(10)
-
-        commandBar = QWidget()
-        commandBar.setProperty('commandBar', True)
-        commandBar.setFixedHeight(48)
-        commandLayout = QHBoxLayout(commandBar)
-        commandLayout.setContentsMargins(8, 7, 8, 7)
-        commandLayout.addWidget(QPushButton('Probe'))
-        commandLayout.addStretch(1)
-
-        commandHost = QWidget()
-        commandHostLayout = QHBoxLayout(commandHost)
-        commandHostLayout.setContentsMargins(12, 0, 12, 0)
-        commandHostLayout.addWidget(commandBar)
-        rootLayout.addWidget(commandHost)
-
-        body = QWidget()
-        bodyLayout = QHBoxLayout(body)
-        bodyLayout.setContentsMargins(0, 0, 12, 0)
-        bodyLayout.setSpacing(0)
-
-        rail = QWidget()
-        rail.setProperty('navigationRail', True)
-        rail.setFixedWidth(46)
-        railLayout = QVBoxLayout(rail)
-        railLayout.setContentsMargins(4, 0, 4, 0)
-        railLayout.setSpacing(4)
-        probeTab = QPushButton()
-        probeTab.setProperty('navigationTab', True)
-        probeTab.setCheckable(True)
-        probeTab.setChecked(True)
-        probeTab.setFixedHeight(52)
-        probeTab.setIcon(actionIcon('download', size=32))
-        probeTab.setIconSize(QSize(32, 32))
-        railLayout.addWidget(probeTab)
-        railLayout.addStretch(1)
-        bodyLayout.addWidget(rail)
-
-        self.stack = QStackedWidget()
-        self.stack.setProperty('pageSurface', True)
-        bodyLayout.addWidget(self.stack, 1)
-        rootLayout.addWidget(body, 1)
-        self.setCentralWidget(root)
-
-        self.settingsPage = None
-        if mode in ('downloads', 'settingsConstructed',
-                    'settingsAdded', 'statusbar'):
-            self.downloadPage = Page(language)
-            self.completedPage = Page(language)
-            self.stack.addWidget(self.downloadPage)
-            self.stack.addWidget(self.completedPage)
-
-        if mode in ('settingsConstructed', 'settingsAdded', 'statusbar'):
-            self.settingsPage = SettingPage()
-
-        if mode in ('settingsAdded', 'statusbar'):
-            self.stack.addWidget(self.settingsPage)
-
-        if mode == 'statusbar':
-            status = QStatusBar()
-            status.addPermanentWidget(QLabel('● aria2'))
-            status.addPermanentWidget(QLabel('0B/s'))
-            self.setStatusBar(status)
-
-
-class ConstructionProbeWindow(QMainWindow):
-    """Temporary third-round constructor probe. Remove after diagnosis."""
-
-    VALID_MODES = {
-        'settingsOnly',
-        'settingsConfig',
-        'poller',
-        'actionsOnly',
-        'commandBar',
-        'navigation',
-        'realStatusBar',
-    }
-
-    def __init__(self, mode, aria2Service, language='zh_CN'):
-        super().__init__()
-        if mode not in self.VALID_MODES:
-            raise ValueError(f'Unknown construction probe mode: {mode}')
-
-        self.mode = mode
-        self.language = language
-        self.resourcePath = str(RESOURCE_DIR) + '/'
-        self.setWindowTitle(f'Ashore construction probe · {mode}')
-        self.setMinimumSize(920, 520)
-
-        self.pageSetting = SettingPage()
-        if mode == 'settingsOnly':
-            self.setCentralWidget(self._placeholder('SettingPage constructed'))
-            return
-
-        self.ashoreConfig = self.pageSetting.loadAshoreConfig()
-        self.language = self.ashoreConfig.get('language', language)
-        if mode == 'settingsConfig':
-            self.setCentralWidget(self._placeholder('Settings config loaded'))
-            return
-
-        self.aria2Service = aria2Service
-        self.aria2Client = aria2Service.client
-        self.aria2Poller = Aria2Poller(
-            self.aria2Client,
-            int(self.ashoreConfig['update_interval']),
-            self)
-        if mode == 'poller':
-            self.setCentralWidget(self._placeholder('Aria2Poller created'))
-            return
-
-        self._createActions()
-        if mode == 'actionsOnly':
-            self.setCentralWidget(self._placeholder('Actions created'))
-            return
-
-        commandHost = self._createCommandBar()
-        if mode == 'commandBar':
-            root = QWidget()
-            layout = QVBoxLayout(root)
-            layout.setContentsMargins(0, 10, 0, 8)
-            layout.addWidget(commandHost)
-            layout.addStretch(1)
-            self.setCentralWidget(root)
-            return
-
-        body = self._createNavigation()
-        root = QWidget()
-        root.setObjectName('mainRoot')
-        layout = QVBoxLayout(root)
-        layout.setContentsMargins(0, 10, 0, 8)
-        layout.setSpacing(10)
-        layout.addWidget(commandHost)
-        layout.addWidget(body, 1)
-        self.setCentralWidget(root)
-
-        if mode == 'navigation':
-            return
-
-        self._createRealStatusBar()
-
-    @staticmethod
-    def _placeholder(text):
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        label = QLabel(text)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(label)
-        return widget
-
-    def _createActions(self):
-        self.menuActions = {}
-        specs = (
-            ('saveSession', 'Ctrl+S'),
-            ('restart', None),
-            ('show', 'Ctrl+R'),
-            ('hide', 'Ctrl+W'),
-            ('about', None),
-            ('quit', 'Ctrl+Q'),
-        )
-        for key, shortcut in specs:
-            action = QAction(translate(self.language, key), self)
-            if shortcut:
-                action.setShortcut(shortcut)
-            self.menuActions[key] = action
-
-        self.moreMenu = QMenu(self)
-        for key in ('saveSession', 'restart'):
-            self.moreMenu.addAction(self.menuActions[key])
-        self.moreMenu.addSeparator()
-        for key in ('show', 'hide'):
-            self.moreMenu.addAction(self.menuActions[key])
-        self.moreMenu.addSeparator()
-        for key in ('about', 'quit'):
-            self.moreMenu.addAction(self.menuActions[key])
-
-    def _createCommandBar(self):
-        self.addBtn = QPushButton(translate(self.language, 'new'))
-        self.addBtn.setShortcut('Ctrl+N')
-        self.addBtn.setProperty('commandPrimary', True)
-
-        self.unpauseAllBtn = QPushButton(
-            translate(self.language, 'startAll'))
-        self.unpauseAllBtn.setProperty('commandSecondary', True)
-
-        self.pauseAllBtn = QPushButton(
-            translate(self.language, 'pauseAll'))
-        self.pauseAllBtn.setProperty('commandSecondary', True)
-
-        self.moreBtn = QPushButton()
-        self.moreBtn.setProperty('overflowButton', True)
-        self.moreBtn.setMenu(self.moreMenu)
-
-        bar = QWidget()
-        bar.setProperty('commandBar', True)
-        bar.setFixedHeight(48)
-        barLayout = QHBoxLayout(bar)
-        barLayout.setContentsMargins(8, 7, 8, 7)
-        barLayout.setSpacing(4)
-        barLayout.addWidget(self.addBtn)
-        barLayout.addWidget(self.unpauseAllBtn)
-        barLayout.addWidget(self.pauseAllBtn)
-        barLayout.addStretch(1)
-        barLayout.addWidget(self.moreBtn)
-
-        host = QWidget()
-        hostLayout = QHBoxLayout(host)
-        hostLayout.setContentsMargins(12, 0, 12, 0)
-        hostLayout.addWidget(bar)
-        return host
-
-    def _createNavigation(self):
-        rail = QWidget()
-        rail.setProperty('navigationRail', True)
-        rail.setFixedWidth(46)
-        railLayout = QVBoxLayout(rail)
-        railLayout.setContentsMargins(4, 0, 4, 0)
-        railLayout.setSpacing(4)
-
-        buttons = []
-        for iconName in ('download', 'completed', 'settings'):
-            button = QPushButton()
-            button.setCheckable(True)
-            button.setProperty('navigationTab', True)
-            button.setFixedHeight(52)
-            button.setIcon(actionIcon(iconName, size=32))
-            button.setIconSize(QSize(32, 32))
-            buttons.append(button)
-        buttons[0].setChecked(True)
-        railLayout.addWidget(buttons[0])
-        railLayout.addWidget(buttons[1])
-        railLayout.addStretch(1)
-        railLayout.addWidget(buttons[2])
-
-        self.pageDownloading = Page(self.language)
-        self.pageDownloaded = Page(self.language)
-        self.pageStack = QStackedWidget()
-        self.pageStack.setProperty('pageSurface', True)
-        self.pageStack.addWidget(self.pageDownloading)
-        self.pageStack.addWidget(self.pageDownloaded)
-        self.pageStack.addWidget(self.pageSetting)
-
-        body = QWidget()
-        bodyLayout = QHBoxLayout(body)
-        bodyLayout.setContentsMargins(0, 0, 12, 0)
-        bodyLayout.setSpacing(0)
-        bodyLayout.addWidget(rail)
-        bodyLayout.addWidget(self.pageStack, 1)
-        return body
-
-    def _createRealStatusBar(self):
-        status = QStatusBar()
-        status.setContentsMargins(0, 1, 10, 2)
-
-        aria2StateDot = QLabel('●')
-        aria2StateText = QLabel(
-            f'aria2 {translate(self.language, "connecting")}')
-        aria2Widget = QWidget()
-        aria2Layout = QHBoxLayout(aria2Widget)
-        aria2Layout.setContentsMargins(0, 0, 2, 0)
-        aria2Layout.setSpacing(4)
-        aria2Layout.addWidget(aria2StateDot)
-        aria2Layout.addWidget(aria2StateText)
-
-        downIcon = QLabel()
-        downIcon.setFixedSize(20, 20)
-        downIcon.setScaledContents(True)
-        downIcon.setPixmap(QPixmap(
-            self.resourcePath
-            + 'static/icon/functionIcons/downloadSpeed.png'))
-        downLabel = QLabel('0B/s')
-        downLabel.setMinimumWidth(80)
-
-        upIcon = QLabel()
-        upIcon.setFixedSize(20, 20)
-        upIcon.setScaledContents(True)
-        upIcon.setPixmap(QPixmap(
-            self.resourcePath
-            + 'static/icon/functionIcons/uploadSpeed.png'))
-        upLabel = QLabel('0B/s')
-        upLabel.setMinimumWidth(80)
-
-        status.addPermanentWidget(aria2Widget)
-        status.addPermanentWidget(downIcon)
-        status.addPermanentWidget(downLabel)
-        status.addPermanentWidget(upIcon)
-        status.addPermanentWidget(upLabel)
-        self.setStatusBar(status)
-
-
 class Ashore(QMainWindow):
     firstPainted = pyqtSignal()
 
-    def __init__(self, aria2Service, themeManager, startupProbe=''):
+
+    def __init__(self, aria2Service, themeManager):
         super().__init__()
         self.hasPainted = False
-        self.isRelease = False
+        self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'
-        if getattr(sys, 'frozen', False):
-            self.isRelease = True
+
         self.pageSetting = SettingPage()
-        #获取ashore配置信息
         ashoreConfig = self.pageSetting.loadAshoreConfig()
         self.language = ashoreConfig.get('language', 'zh_CN')
-        self.trayIconStyle = ashoreConfig.get('tray_icon_style', 'colorful')
-        self.showAria2Status = boolValue(ashoreConfig.get('show_aria2_status', True))
+        self.trayIconStyle = ashoreConfig.get(
+            'tray_icon_style', 'colorful')
+        self.showAria2Status = boolValue(
+            ashoreConfig.get('show_aria2_status', True))
+
         self.aria2Service = aria2Service
         self.aria2Service.quitWithAshore = ashoreConfig['quit_with_aria2']
         self.aria2Client = aria2Service.client
         self.aria2Poller = Aria2Poller(
-            self.aria2Client, int(ashoreConfig['update_interval']), self)
+            self.aria2Client,
+            int(ashoreConfig['update_interval']),
+            self)
         self.themeManager = themeManager
+
         self.exitWindow = None
         self.notificationTarget = None
         self.removalWorkers = {}
-
-        self.startupProbe = startupProbe
-        exactUiProbes = {
-            'realActions', 'realCommand', 'realNavigation',
-            'realPages', 'realCentral', 'realWindowMeta',
-            'realStatus',
-            'statusSpeedWidgets', 'statusTips', 'statusObject',
-            'statusAriaLabels', 'statusAriaWidget',
-            'statusAriaState', 'statusPermanent', 'statusInstalled',
-            'permAria', 'permDownIcon', 'permDownLabel',
-            'permUpIcon', 'permUpLabel',
-        }
-        createTray = startupProbe not in (
-            'controls', 'icons', *exactUiProbes)
-        refreshIcons = startupProbe not in (
-            'controls', *exactUiProbes)
-        self.initUI(
-            createTray=createTray,
-            refreshIcons=refreshIcons,
-            probeStop=startupProbe if startupProbe in exactUiProbes else '')
-        if startupProbe in exactUiProbes:
-            return
-
         self.knownStatuses = None
         self.pendingNotifications = {}
         self.notifiedDownloads = set()
@@ -431,22 +91,15 @@ class Ashore(QMainWindow):
         self.aria2Version = ''
         self.pendingConnectionStatus = '等待检测'
 
-        if startupProbe in ('controls', 'icons', 'trayCreated'):
-            return
-
+        self.initUI()
         self.connectSignals()
         self.aria2Poller.updated.connect(self.updatePage)
-        if startupProbe == 'signals':
-            return
 
         self.aria2Events = Aria2Events(self.aria2Client.rpcPort, self)
         self.aria2Events.notification.connect(self.slotAria2Notification)
         self.aria2Events.connectionStateChanged.connect(
             self.slotWebSocketStateChanged)
         self.websocketState = self.aria2Events.state
-        if startupProbe == 'events':
-            return
-
     def startRuntime(self):
         """Start asynchronous work after the startup controller is listening."""
         self.aria2Poller.poll()
@@ -464,6 +117,13 @@ class Ashore(QMainWindow):
     def finishFirstPaint(self):
         self.flushConnectionStatus()
         self.firstPainted.emit()
+
+    def event(self, event):
+        if (event.type() == QEvent.Type.StatusTip
+                and hasattr(self, 'statusMessageLabel')):
+            self.statusMessageLabel.setText(event.tip())
+            return True
+        return super().event(event)
 
     def changeEvent(self, event):
         super().changeEvent(event)
@@ -635,49 +295,20 @@ class Ashore(QMainWindow):
         self.refreshActionIcons()
 
 
-    def createStatusBar(self, probeStop='') -> None:
-        self.downSpeedIcon = QLabel('downSpeedIcon')
-        self.downSpeedIcon.setFixedSize(20, 20)
-        self.downSpeedIcon.setScaledContents(True)
-        self.downSpeedIcon.setPixmap(QPixmap(
-            self.resourcePath + 'static/icon/functionIcons/downloadSpeed.png'))
-        self.downSpeedLabel = QLabel('下载速度')
-        self.downSpeedLabel.setMinimumWidth(80)
 
-        self.upSpeedIcon = QLabel('upSpeedIcon')
-        self.upSpeedIcon.setFixedSize(20, 20)
-        self.upSpeedIcon.setScaledContents(True)
-        self.upSpeedIcon.setPixmap(QPixmap(
-            self.resourcePath + 'static/icon/functionIcons/uploadSpeed.png'))
+    def createStatusStrip(self) -> None:
+        self.statusStrip = QWidget()
+        self.statusStrip.setProperty('statusStrip', True)
+        self.statusStrip.setFixedHeight(30)
 
-        self.upSpeedLabel = QLabel('上传速度')
-        self.upSpeedLabel.setMinimumWidth(80)
-        if probeStop == 'statusSpeedWidgets':
-            return
-
-        self.downSpeedIcon.setToolTip('下载速度')
-        self.downSpeedIcon.setStatusTip('全局实时下载速度')
-        self.downSpeedLabel.setToolTip('下载速度')
-        self.downSpeedLabel.setStatusTip('全局实时下载速度')
-        self.upSpeedIcon.setToolTip('上传速度')
-        self.upSpeedIcon.setStatusTip('全局BT、磁链上传速度')
-        self.upSpeedLabel.setToolTip('上传速度')
-        self.upSpeedLabel.setStatusTip('全局BT、磁链上传速度')
-        if probeStop == 'statusTips':
-            return
-
-        self.statusBar = QStatusBar()
-        self.statusBar.setContentsMargins(0, 1, 10, 2)
-        if probeStop == 'statusObject':
-            return
+        self.statusMessageLabel = QLabel()
+        self.statusMessageLabel.setProperty('statusMessage', True)
 
         self.aria2State = 'connecting'
         self.aria2StateDot = QLabel('●')
         self.aria2StateDot.setProperty('mainConnectionDot', True)
         self.aria2StateText = QLabel()
         self.aria2StateText.setProperty('mainConnectionText', True)
-        if probeStop == 'statusAriaLabels':
-            return
 
         self.aria2StateWidget = QWidget()
         aria2Layout = QHBoxLayout(self.aria2StateWidget)
@@ -685,37 +316,47 @@ class Ashore(QMainWindow):
         aria2Layout.setSpacing(4)
         aria2Layout.addWidget(self.aria2StateDot)
         aria2Layout.addWidget(self.aria2StateText)
-        if probeStop == 'statusAriaWidget':
-            return
-
         self.setMainAria2State('connecting')
         self.aria2StateWidget.setVisible(self.showAria2Status)
-        if probeStop == 'statusAriaState':
-            return
 
-        self.statusBar.addPermanentWidget(self.aria2StateWidget)
-        if probeStop == 'permAria':
-            return
+        self.downSpeedIcon = QLabel()
+        self.downSpeedIcon.setFixedSize(20, 20)
+        self.downSpeedIcon.setScaledContents(True)
+        self.downSpeedIcon.setPixmap(QPixmap(
+            self.resourcePath
+            + 'static/icon/functionIcons/downloadSpeed.png'))
+        self.downSpeedIcon.setToolTip('下载速度')
 
-        self.statusBar.addPermanentWidget(self.downSpeedIcon)
-        if probeStop == 'permDownIcon':
-            return
+        self.downSpeedLabel = QLabel('0B/s')
+        self.downSpeedLabel.setMinimumWidth(80)
+        self.downSpeedLabel.setToolTip('全局实时下载速度')
 
-        self.statusBar.addPermanentWidget(self.downSpeedLabel)
-        if probeStop == 'permDownLabel':
-            return
+        self.upSpeedIcon = QLabel()
+        self.upSpeedIcon.setFixedSize(20, 20)
+        self.upSpeedIcon.setScaledContents(True)
+        self.upSpeedIcon.setPixmap(QPixmap(
+            self.resourcePath
+            + 'static/icon/functionIcons/uploadSpeed.png'))
+        self.upSpeedIcon.setToolTip('上传速度')
 
-        self.statusBar.addPermanentWidget(self.upSpeedIcon)
-        if probeStop == 'permUpIcon':
-            return
+        self.upSpeedLabel = QLabel('0B/s')
+        self.upSpeedLabel.setMinimumWidth(80)
+        self.upSpeedLabel.setToolTip('全局 BT / Magnet 上传速度')
 
-        self.statusBar.addPermanentWidget(self.upSpeedLabel)
-        if probeStop in ('permUpLabel', 'statusPermanent'):
-            return
+        layout = QHBoxLayout(self.statusStrip)
+        layout.setContentsMargins(10, 2, 10, 2)
+        layout.setSpacing(4)
+        layout.addWidget(self.statusMessageLabel, 1)
+        layout.addWidget(self.aria2StateWidget)
+        layout.addWidget(self.downSpeedIcon)
+        layout.addWidget(self.downSpeedLabel)
+        layout.addWidget(self.upSpeedIcon)
+        layout.addWidget(self.upSpeedLabel)
 
-        self.setStatusBar(self.statusBar)
-
-
+        self.statusMessageTimer = QTimer(self.statusStrip)
+        self.statusMessageTimer.setSingleShot(True)
+        self.statusMessageTimer.timeout.connect(
+            self.statusMessageLabel.clear)
     def setMainAria2State(self, state):
         if state not in ('connected', 'disconnected', 'connecting'):
             state = 'connecting'
@@ -737,10 +378,9 @@ class Ashore(QMainWindow):
         palette.setColor(
             QPalette.ColorRole.WindowText, colors[state])
         self.aria2StateDot.setPalette(palette)
-    def initUI(self, createTray=True, refreshIcons=True, probeStop='') -> None:
+
+    def initUI(self) -> None:
         self.createCommandActions()
-        if probeStop == 'realActions':
-            return
 
         self.addBtn = QPushButton(self.tr('new'))
         self.addBtn.setToolTip(self.tr('new'))
@@ -777,10 +417,8 @@ class Ashore(QMainWindow):
 
         commandHost = QWidget()
         commandHostLayout = QHBoxLayout(commandHost)
-        commandHostLayout.setContentsMargins(12, 0, 12, 0)
+        commandHostLayout.setContentsMargins(12, 0, 12, 10)
         commandHostLayout.addWidget(self.commandBar)
-        if probeStop == 'realCommand':
-            return
 
         self.tabDownloading = QPushButton()
         self.tabDownloaded = QPushButton()
@@ -811,8 +449,6 @@ class Ashore(QMainWindow):
         navigationLayout.addWidget(self.tabDownloaded)
         navigationLayout.addStretch(1)
         navigationLayout.addWidget(self.tabSetting)
-        if probeStop == 'realNavigation':
-            return
 
         self.pageDownloading = Page(self.language)
         self.pageDownloaded = Page(self.language)
@@ -821,8 +457,6 @@ class Ashore(QMainWindow):
         self.pageStack.addWidget(self.pageDownloading)
         self.pageStack.addWidget(self.pageDownloaded)
         self.pageStack.addWidget(self.pageSetting)
-        if probeStop == 'realPages':
-            return
 
         bodyWidget = QWidget()
         bodyWidget.setProperty('contentBody', True)
@@ -832,31 +466,24 @@ class Ashore(QMainWindow):
         bodyLayout.addWidget(self.navigationRail)
         bodyLayout.addWidget(self.pageStack, 1)
 
+        self.createStatusStrip()
+
         mainWidget = QWidget()
         mainWidget.setObjectName('mainRoot')
         mainLayout = QVBoxLayout(mainWidget)
-        mainLayout.setContentsMargins(0, 10, 0, 8)
-        mainLayout.setSpacing(10)
+        mainLayout.setContentsMargins(0, 10, 0, 0)
+        mainLayout.setSpacing(0)
         mainLayout.addWidget(commandHost)
         mainLayout.addWidget(bodyWidget, 1)
+        mainLayout.addWidget(self.statusStrip)
         self.setCentralWidget(mainWidget)
-        if probeStop == 'realCentral':
-            return
 
         self.setMinimumSize(920, 520)
         self.setWindowTitle('Ashore')
         self.setWindowIcon(
             QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
-        if probeStop == 'realWindowMeta':
-            return
-        statusProbe = probeStop if probeStop.startswith('status') else ''
-        self.createStatusBar(statusProbe)
-        if probeStop in ('realStatus', 'statusInstalled'):
-            return
-        if createTray:
-            self.createTrayIcon()
-        if refreshIcons:
-            self.refreshActionIcons()
+        self.createTrayIcon()
+        self.refreshActionIcons()
     def connectSignals(self) -> None:
         self.addBtn.clicked.connect(self.slotAdd)
         self.unpauseAllBtn.clicked.connect(self.slotUnpauseAll)
@@ -1226,20 +853,18 @@ class Ashore(QMainWindow):
                 + str(self.aria2ConfigError))
         else:
             self.showStatus(conf['isSaved'])
+
     def showStatus(self, data, end=None):
         if isinstance(data, int):
-            self.statusBar.showMessage(ERROR_MESSAGES[data], 3000)
+            message = ERROR_MESSAGES[data]
         else:
-            #将提示信息显示在状态栏中showMessage（‘提示信息’，显示时间（单位毫秒））
-            self.statusBar.showMessage(data, 3000)
-            if not self.isRelease:
-                #当程序处于coding阶段时允许输出，当为release时禁止输出
-                print(data, end=end)
+            message = str(data)
 
-class AshoreApplication(QApplication):
+        self.statusMessageLabel.setText(message)
+        self.statusMessageTimer.start(3000)
 
-    instanceMessage = pyqtSignal(list)
-
+        if not self.isRelease and not isinstance(data, int):
+            print(data, end=end)
     def __init__(self, arguments):
         configureApplication()
         super().__init__(arguments)
@@ -1347,83 +972,31 @@ class StartupController(QObject):
         self.showStage('正在准备主界面')
         QTimer.singleShot(0, lambda: self.createWindow(service))
 
+
     def createWindow(self, service):
-        probeMode = os.environ.get('ASHORE_STARTUP_PROBE', '').strip()
-        structuralProbes = {
-            'shell', 'downloads', 'settingsConstructed',
-            'settingsAdded', 'statusbar',
-        }
-        stagedAshoreProbes = {
-            'controls', 'icons', 'trayCreated', 'signals',
-            'events', 'runtime', 'trayShown',
-            'realActions', 'realCommand', 'realNavigation',
-            'realPages', 'realCentral', 'realWindowMeta',
-            'realStatus',
-            'statusSpeedWidgets', 'statusTips', 'statusObject',
-            'statusAriaLabels', 'statusAriaWidget',
-            'statusAriaState', 'statusPermanent', 'statusInstalled',
-        }
-        constructionProbes = {
-            'settingsOnly', 'settingsConfig', 'poller',
-            'actionsOnly', 'commandBar', 'navigation',
-            'realStatusBar',
-        }
-        if probeMode in constructionProbes:
-            try:
-                self.window = ConstructionProbeWindow(
-                    probeMode,
-                    service,
-                    self.settings.get('language', 'zh_CN'))
-            except (RuntimeError, OSError, ValueError) as exc:
-                self.fail(str(exc))
-                return
-            self.splash.finish(self.window)
-            return
-
-        if probeMode in structuralProbes:
-            try:
-                self.window = StartupProbeWindow(
-                    probeMode,
-                    self.settings.get('language', 'zh_CN'))
-            except (RuntimeError, OSError, ValueError) as exc:
-                self.fail(str(exc))
-                return
-            self.splash.finish(self.window)
-            return
-        if probeMode in stagedAshoreProbes:
-            try:
-                self.window = Ashore(
-                    service, self.themeManager, startupProbe=probeMode)
-            except (RuntimeError, OSError, ValueError) as exc:
-                self.fail(str(exc))
-                return
-            self.splash.finish(self.window)
-            if probeMode in ('runtime', 'trayShown'):
-                self.window.startRuntime()
-            if probeMode == 'trayShown':
-                self.window.showTray()
-            return
-
         try:
             self.window = Ashore(service, self.themeManager)
         except (RuntimeError, OSError, ValueError) as exc:
             self.fail(str(exc))
             return
+
         self.app.instanceMessage.connect(self.handleInstance)
         self.window.aria2Poller.updated.connect(self.firstSnapshot)
         self.window.firstPainted.connect(self.mainPainted)
+
         tracker = self.window.pageSetting.trackerManager
         tracker.statusChanged.connect(self.showStage)
         tracker.updated.connect(self.trackerFinished)
         tracker.failed.connect(self.trackerFinished)
+
         self.showStage('正在同步下载任务')
         self.window.startRuntime()
         if self.window.pageSetting.startAutoTracker():
-            QTimer.singleShot(self.TRACKER_GRACE_MS, self.trackerFinished)
+            QTimer.singleShot(
+                self.TRACKER_GRACE_MS, self.trackerFinished)
         else:
             self.trackerReady = True
         self.tryFinish()
-
     def firstSnapshot(self, *_):
         self.firstSnapshotReady = True
         self.tryFinish()

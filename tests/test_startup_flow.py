@@ -90,6 +90,8 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloading.height(), 52)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.commandBar.height(), 48)
+        self.assertTrue(window.statusStrip.property('statusStrip'))
+        self.assertEqual(window.statusStrip.height(), 30)
         window.aria2Poller.timer.stop()
         window.close()
 
@@ -259,6 +261,28 @@ class StartupFlowTests(unittest.TestCase):
         window.hasPainted = True
         window.flushConnectionStatus()
         window.pageSetting.setConnectionStatus.assert_called_once()
+        window.aria2Poller.timer.stop()
+        window.close()
+
+
+    def test_custom_status_strip_replaces_qstatusbar_messages(self):
+        service = Mock()
+        service.client.rpcPort = 6800
+        events = Mock()
+        events.state = 'unavailable'
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+             patch.object(SettingPage, 'ashoreConfDir', folder), \
+             patch.object(
+                 SettingPage, 'aria2ConfPath',
+                 str(Path(folder) / 'aria2.conf')), \
+             patch('Ashore.Aria2Events', return_value=events):
+            window = Ashore(service, Mock())
+
+        window.showStatus('status message')
+        self.assertEqual(
+            window.statusMessageLabel.text(), 'status message')
+        self.assertTrue(window.statusMessageTimer.isActive())
         window.aria2Poller.timer.stop()
         window.close()
 
