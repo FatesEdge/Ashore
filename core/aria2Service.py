@@ -105,6 +105,7 @@ class Aria2Poller(QThread):
     def __init__(self, client, interval=2000, parent=None):
         super().__init__(parent)
         self.client = client
+        self.version = ''
         self.timer = QTimer(parent)
         self.timer.setInterval(max(500, interval))
         self.timer.timeout.connect(self.poll)
@@ -117,7 +118,10 @@ class Aria2Poller(QThread):
     def run(self):
         missions = self.client.getMissions()
         status = self.client.lastPollGlobalStatus
+        if 'ResultError' not in status and not self.version:
+            self.version = self.client.getAria2Version()
         self.updated.emit({
             'missions': copy.deepcopy(missions),
             'globalStatus': dict(status),
+            'aria2Version': self.version,
         })

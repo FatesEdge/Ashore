@@ -9,12 +9,17 @@ from PyQt6.QtWidgets import QApplication
 
 import paths
 from core.aria2Client import Aria2Client
-from core.aria2Service import Aria2Service
+from core.aria2Service import Aria2Poller, Aria2Service
 from core.trackerSources import parseTrackers
 from interface.settingPage import SettingPage
 
 
 class Aria2Tests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        cls.app = QApplication.instance() or QApplication([])
+
     def test_tracker_response_requires_announce_urls(self):
         self.assertEqual(parseTrackers('<html>down</html>'), [])
         self.assertEqual(parseTrackers('udp://host:80/announce\n\nhttps://example.org/announce,udp://host:80/announce'),
@@ -135,6 +140,26 @@ class Aria2Tests(unittest.TestCase):
         payload = json.loads(rpc.call_args.args[0])
         self.assertEqual(payload['method'], 'aria2.shutdown')
         start.assert_called_once_with()
+
+    def test_poller_fetches_version_with_the_background_snapshot(self):
+        class Client:
+            def __init__(self):
+                self.lastPollGlobalStatus = {
+                    'downloadSpeed': '0', 'uploadSpeed': '0'}
+
+            def getMissions(self):
+                return {'active': {}, 'waiting': {}, 'paused': {},
+                        'completed': {}, 'error': {}}
+
+            def getAria2Version(self):
+                return '1.37.0'
+
+        poller = Aria2Poller(Client())
+        poller.timer.stop()
+        snapshots = []
+        poller.updated.connect(snapshots.append)
+        poller.run()
+        self.assertEqual(snapshots[0]['aria2Version'], '1.37.0')
 
     def test_parent_torrent_and_payload_display_as_one(self):
         client = Aria2Client.__new__(Aria2Client)

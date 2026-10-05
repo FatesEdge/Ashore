@@ -1,13 +1,16 @@
 """Responsive startup window for Ashore initialization."""
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QLabel, QProgressBar, QVBoxLayout, QWidget
 
 
 class StartupWindow(QWidget):
+    firstPainted = pyqtSignal()
+
     def __init__(self, imagePath):
         super().__init__(None, Qt.WindowType.SplashScreen)
+        self.hasPainted = False
         image = QLabel()
         image.setPixmap(QPixmap(str(imagePath)))
         image.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -28,8 +31,14 @@ class StartupWindow(QWidget):
     def showStatus(self, text):
         self.statusLabel.setText(text)
 
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self.hasPainted:
+            self.hasPainted = True
+            QTimer.singleShot(0, self.firstPainted.emit)
+
     def finish(self, window):
         self.progressBar.setRange(0, 1)
         self.progressBar.setValue(1)
         window.show()
-        self.close()
+        QTimer.singleShot(0, self.close)

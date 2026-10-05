@@ -1,6 +1,6 @@
 """Download task card widget."""
 
-from PyQt6.QtCore import QSize, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QFrame,
@@ -111,6 +111,10 @@ class Section(QFrame):
         self.delBtn.setIcon(QIcon(self.resourcePath + 'static/icon/functionIcons/del.png'))
         self.delBtn.setToolTip('彻底删除任务')
         self.delBtn.setStatusTip('从列表中移除任务，同时删除下载文件')
+        for button in (
+                self.actionButton, self.openDirBtn, self.copyUrlButton,
+                self.removeBtn, self.delBtn):
+            button.setProperty('cardAction', True)
 
         btnLayout = QHBoxLayout()
         btnLayout.addWidget(temp)
@@ -136,7 +140,13 @@ class Section(QFrame):
         infoLayout.addWidget(self.rateLabel)
         infoLayout.addWidget(self.speedLabel)
         self.progressBar = QProgressBar()
-        self.progressBar.setFixedHeight(10)
+        self.progressBar.setFixedHeight(20)
+        self.progressBar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.progressBar.setFormat('%p%')
+        self.progressBar.setTextVisible(True)
+        self.progressBar.setRange(0, 100)
+        self.progressBar.setValue(
+            int(self.completedSize / self.fileSize * 100) if self.fileSize else 0)
         self.progressBar.setContentsMargins(0,0,0,0)
         mainLayout = QGridLayout(self)
         mainLayout.addItem(QSpacerItem(10,0,QSizePolicy.Policy.Fixed),0,0,3,1)

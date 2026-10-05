@@ -182,6 +182,7 @@ class SettingPage(QWidget):
         formLayout.addWidget(QLabel('BT设置'))
         self.btTracker = QTextEdit()
         self.btTracker.setMinimumWidth(260)
+        self.btTracker.setMinimumHeight(120)
         self.btTracker.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.trackerBtn = QPushButton('更新Tracker')
@@ -287,6 +288,9 @@ class SettingPage(QWidget):
 
         self.setLayout(mainLayout)
         self.setMinimumWidth(760)
+
+        for button in self.findChildren(QPushButton):
+            button.setProperty('settingsButton', True)
 
         pathBtn.clicked.connect(self.slotDir)
         scrollToAria2Btn.clicked.connect(self.slotScrollToAria2)

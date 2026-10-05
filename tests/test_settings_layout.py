@@ -4,10 +4,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication, QSizePolicy
 
 import paths
 from Ashore import StartupController
+from interface.section import Section
 from interface.settingPage import SettingPage
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, ThemeManager
 
@@ -66,6 +68,33 @@ class SettingsLayoutTests(unittest.TestCase):
             manager.apply(mode, '#3f7cac')
             self.assertEqual(manager.mode, mode)
             self.assertEqual(manager.accent, '#3f7cac')
+
+    def test_light_and_dark_palettes_are_visibly_distinct(self):
+        manager = ThemeManager(self.app)
+        manager.apply('light', '#3f7cac')
+        light = self.app.palette().color(QPalette.ColorRole.Window)
+        manager.apply('dark', '#3f7cac')
+        dark = self.app.palette().color(QPalette.ColorRole.Window)
+        self.assertGreater(light.lightness(), 220)
+        self.assertLess(dark.lightness(), 80)
+
+    def test_accent_styles_cover_toolbar_and_settings_buttons(self):
+        manager = ThemeManager(self.app)
+        manager.apply('dark', '#3f7cac')
+        style = self.app.styleSheet()
+        self.assertIn('QPushButton[toolbarButton="true"]', style)
+        self.assertIn('QPushButton[settingsButton="true"]', style)
+        self.assertIn('border: 1px solid #3f7cac', style)
+
+    def test_tracker_and_download_progress_have_readable_heights(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertGreaterEqual(page.btTracker.minimumHeight(), 120)
+        section = Section('gid', 'example.bin', 'completed', 100, 100, 0)
+        self.assertGreaterEqual(section.progressBar.height(), 18)
+        self.assertTrue(section.progressBar.isTextVisible())
+        self.assertEqual(section.progressBar.format(), '%p%')
+        self.assertEqual(section.progressBar.value(), 100)
 
 
 if __name__ == '__main__':
