@@ -25,6 +25,19 @@ The three tray boundary stages differ only in teardown:
 - `trayWindowHide`: hide the main window first;
 - `trayIconHide`: also hide the tray icon first, matching Ashore's current path.
 
+If all three stages spin on exit, keep the stage at `tray` and compare the
+delay between closing the tray menu and quitting the application:
+
+```bash
+python diagnostics/cursorProbe.py --stage tray --tray-quit-delay 250
+python diagnostics/cursorProbe.py --stage tray --tray-quit-delay 1000
+python diagnostics/cursorProbe.py --stage tray --tray-quit-delay 3000
+```
+
+The terminal prints once when the tray action arrives and again immediately
+before `app.quit()`. Note whether the busy cursor starts before or after the
+second message.
+
 The stages are cumulative. Start with `base`, `tray`, and `startupWindow`. If two
 adjacent observations differ, use the stages between them to find the first
 component that changes cursor behavior. Confirm the boundary in both directions:
