@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
@@ -40,6 +41,9 @@ WINDOW_STAGES = (
     WindowStage('base', 'empty QMainWindow'),
     WindowStage('controls', 'navigation and toolbar without icons'),
     WindowStage('icons', 'add production navigation and toolbar icons'),
+    WindowStage('stack', 'add a stacked layout with blank pages'),
+    WindowStage('scrollAreas', 'replace two blank pages with scroll areas'),
+    WindowStage('firstPage', 'replace the first scroll area with Page'),
     WindowStage('pages', 'add two production download pages'),
     WindowStage('settings', 'add the production settings page'),
 )
@@ -104,10 +108,10 @@ class ProbeWindow(QMainWindow):
 
         content = QVBoxLayout()
         content.addLayout(toolbar)
-        if includes(self.stage, 'pages'):
+        if includes(self.stage, 'stack'):
             pageStack = QStackedLayout()
-            pageStack.addWidget(Page())
-            pageStack.addWidget(Page())
+            pageStack.addWidget(self.downloadPage(True))
+            pageStack.addWidget(self.downloadPage(False))
             if includes(self.stage, 'settings'):
                 pageStack.addWidget(SettingPage())
             else:
@@ -122,6 +126,20 @@ class ProbeWindow(QMainWindow):
         centralWidget = QWidget()
         centralWidget.setLayout(mainLayout)
         self.setCentralWidget(centralWidget)
+
+    def downloadPage(self, first):
+        if includes(self.stage, 'pages'):
+            return Page()
+        if first and includes(self.stage, 'firstPage'):
+            return Page()
+        if includes(self.stage, 'scrollAreas'):
+            area = QScrollArea()
+            area.setWidgetResizable(True)
+            page = QWidget()
+            page.setLayout(QVBoxLayout())
+            area.setWidget(page)
+            return area
+        return QWidget()
 
     def controlIcon(self, name):
         if not includes(self.stage, 'icons'):

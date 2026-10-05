@@ -93,6 +93,9 @@ directly and when shown through Ashore's startup window:
 python diagnostics/windowHandoffProbe.py --stage controls --handoff direct
 python diagnostics/windowHandoffProbe.py --stage controls --handoff splash
 python diagnostics/windowHandoffProbe.py --stage icons --handoff splash
+python diagnostics/windowHandoffProbe.py --stage stack --handoff splash
+python diagnostics/windowHandoffProbe.py --stage scrollAreas --handoff splash
+python diagnostics/windowHandoffProbe.py --stage firstPage --handoff splash
 python diagnostics/windowHandoffProbe.py --stage pages --handoff splash
 python diagnostics/windowHandoffProbe.py --stage settings --handoff splash
 ```
