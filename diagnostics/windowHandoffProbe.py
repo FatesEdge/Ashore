@@ -2,15 +2,18 @@
 
 import argparse
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QTimer
+from PyQt6.QtCore import QObject, QSize, QTimer
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QPushButton,
+    QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
@@ -20,17 +23,44 @@ if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
 from Ashore import AshoreApplication
+from interface.page import Page
+from interface.settingPage import SettingPage
 from interface.startupWindow import StartupWindow
 from interface.themeManager import ThemeManager
 from paths import RESOURCE_DIR
 
 
+@dataclass(frozen=True)
+class WindowStage:
+    name: str
+    description: str
+
+
+WINDOW_STAGES = (
+    WindowStage('base', 'empty QMainWindow'),
+    WindowStage('controls', 'navigation and toolbar without icons'),
+    WindowStage('icons', 'add production navigation and toolbar icons'),
+    WindowStage('pages', 'add two production download pages'),
+    WindowStage('settings', 'add the production settings page'),
+)
+
+
+def stageIndex(name):
+    return next(index for index, stage in enumerate(WINDOW_STAGES)
+                if stage.name == name)
+
+
+def includes(selected, required):
+    return stageIndex(selected) >= stageIndex(required)
+
+
 class ProbeWindow(QMainWindow):
     def __init__(self, stage):
         super().__init__()
+        self.stage = stage
         self.setWindowTitle(f'Ashore Handoff Probe — {stage}')
         self.setMinimumSize(1000, 520)
-        if stage == 'controls':
+        if includes(stage, 'controls'):
             self.buildControls()
         else:
             self.setCentralWidget(QLabel('Empty main window'))
@@ -39,9 +69,16 @@ class ProbeWindow(QMainWindow):
         navigation = QVBoxLayout()
         navigationGroup = QButtonGroup(self)
         navigationGroup.setExclusive(True)
-        for index, name in enumerate(('Downloading', 'Completed', 'Settings')):
-            button = QPushButton(name)
+        navigationItems = (
+            ('Downloading', 'download.png'),
+            ('Completed', 'completed.png'),
+            ('Settings', 'setting.png'),
+        )
+        for index, (name, iconName) in enumerate(navigationItems):
+            icon = self.controlIcon(iconName)
+            button = QPushButton(icon, name)
             button.setFlat(True)
+            button.setIconSize(QSize(23, 23))
             button.setCheckable(True)
             button.setProperty('navigationTab', True)
             button.setProperty('toolbarButton', True)
@@ -52,16 +89,32 @@ class ProbeWindow(QMainWindow):
         navigation.addStretch()
 
         toolbar = QHBoxLayout()
-        for name in ('Add', 'Start', 'Pause'):
-            button = QPushButton(name)
+        toolbarItems = (
+            ('Add', 'add.png'),
+            ('Start', 'play.png'),
+            ('Pause', 'pause.png'),
+        )
+        for name, iconName in toolbarItems:
+            button = QPushButton(self.controlIcon(iconName), name)
             button.setFlat(True)
+            button.setIconSize(QSize(20, 20))
             button.setProperty('toolbarButton', True)
             toolbar.addWidget(button)
         toolbar.addStretch()
 
         content = QVBoxLayout()
         content.addLayout(toolbar)
-        content.addWidget(QLabel('Empty content area'))
+        if includes(self.stage, 'pages'):
+            pageStack = QStackedLayout()
+            pageStack.addWidget(Page())
+            pageStack.addWidget(Page())
+            if includes(self.stage, 'settings'):
+                pageStack.addWidget(SettingPage())
+            else:
+                pageStack.addWidget(QWidget())
+            content.addLayout(pageStack)
+        else:
+            content.addWidget(QLabel('Empty content area'))
 
         mainLayout = QHBoxLayout()
         mainLayout.addLayout(navigation)
@@ -69,6 +122,11 @@ class ProbeWindow(QMainWindow):
         centralWidget = QWidget()
         centralWidget.setLayout(mainLayout)
         self.setCentralWidget(centralWidget)
+
+    def controlIcon(self, name):
+        if not includes(self.stage, 'icons'):
+            return QIcon()
+        return QIcon(str(RESOURCE_DIR / 'static/icon/functionIcons' / name))
 
 
 class HandoffProbe(QObject):
@@ -114,7 +172,9 @@ class HandoffProbe(QObject):
 
 def buildParser():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--stage', choices=('base', 'controls'), default='controls')
+    parser.add_argument(
+        '--stage', choices=[stage.name for stage in WINDOW_STAGES],
+        default='controls')
     parser.add_argument('--handoff', choices=('direct', 'splash'), default='direct')
     parser.add_argument(
         '--splash-delay', dest='splashDelay', type=int, default=900,

@@ -92,6 +92,9 @@ directly and when shown through Ashore's startup window:
 ```bash
 python diagnostics/windowHandoffProbe.py --stage controls --handoff direct
 python diagnostics/windowHandoffProbe.py --stage controls --handoff splash
+python diagnostics/windowHandoffProbe.py --stage icons --handoff splash
+python diagnostics/windowHandoffProbe.py --stage pages --handoff splash
+python diagnostics/windowHandoffProbe.py --stage settings --handoff splash
 ```
 
 Wait for the cursor to return to normal before each run. Keep each window open
