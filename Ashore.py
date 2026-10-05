@@ -4,6 +4,7 @@ import os
 import platform
 import signal
 import sys
+import time
 
 from PyQt6.QtCore import (
     QElapsedTimer,
@@ -102,7 +103,8 @@ class Ashore(QMainWindow):
             if startupProbe in (
                 'beforeStrip', 'stripBuilt', 'stripAdded',
                 'stripShell', 'stripAria', 'stripDown',
-                'stripUp', 'stripLayout', 'stripTimer',
+                'stripUp', 'stripUpDelay50', 'stripUpDelay100',
+                'stripUpDelay250', 'stripUpDelay500', 'stripLayout', 'stripTimer',
                 'layoutDetached', 'layoutAttached',
                 'layoutCtor', 'layoutMargins', 'layoutSpacing',
                 'layoutCtor', 'layoutMargins', 'layoutSpacing',
@@ -386,6 +388,15 @@ class Ashore(QMainWindow):
         self.upSpeedLabel.setToolTip('全局 BT / Magnet 上传速度')
         if probeStop == 'stripUp':
             return
+        delayMs = {
+            'stripUpDelay50': 50,
+            'stripUpDelay100': 100,
+            'stripUpDelay250': 250,
+            'stripUpDelay500': 500,
+        }.get(probeStop)
+        if delayMs is not None:
+            time.sleep(delayMs / 1000)
+            return
 
         if probeStop == 'layoutCtor':
             layout = QHBoxLayout()
@@ -579,7 +590,8 @@ class Ashore(QMainWindow):
             probeStop if probeStop.startswith('strip') else '')
         if probeStop in (
                 'stripShell', 'stripAria', 'stripDown',
-                'stripUp', 'stripLayout', 'stripTimer'):
+                'stripUp', 'stripUpDelay50', 'stripUpDelay100',
+                'stripUpDelay250', 'stripUpDelay500', 'stripLayout', 'stripTimer'):
             placeholder = QWidget()
             placeholder.setObjectName('mainRoot')
             placeholderLayout = QVBoxLayout(placeholder)
@@ -1120,7 +1132,9 @@ class StartupController(QObject):
         validProbes = {
             'beforeStrip', 'stripBuilt', 'stripAdded',
             'stripShell', 'stripAria', 'stripDown',
-            'stripUp', 'stripLayout', 'stripTimer',
+            'stripUp', 'stripUpDelay50', 'stripUpDelay100',
+            'stripUpDelay250', 'stripUpDelay500',
+            'stripLayout', 'stripTimer',
             'layoutCtor', 'layoutMargins', 'layoutSpacing',
             'layoutDetached', 'layoutAttached',
             'layoutObject', 'layoutMessageNoStretch',
