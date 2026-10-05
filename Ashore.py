@@ -408,6 +408,8 @@ class Ashore(QMainWindow):
             'statusSpeedWidgets', 'statusTips', 'statusObject',
             'statusAriaLabels', 'statusAriaWidget',
             'statusAriaState', 'statusPermanent', 'statusInstalled',
+            'permAria', 'permDownIcon', 'permDownLabel',
+            'permUpIcon', 'permUpLabel',
         }
         createTray = startupProbe not in (
             'controls', 'icons', *exactUiProbes)
@@ -692,11 +694,23 @@ class Ashore(QMainWindow):
             return
 
         self.statusBar.addPermanentWidget(self.aria2StateWidget)
+        if probeStop == 'permAria':
+            return
+
         self.statusBar.addPermanentWidget(self.downSpeedIcon)
+        if probeStop == 'permDownIcon':
+            return
+
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
+        if probeStop == 'permDownLabel':
+            return
+
         self.statusBar.addPermanentWidget(self.upSpeedIcon)
+        if probeStop == 'permUpIcon':
+            return
+
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
-        if probeStop == 'statusPermanent':
+        if probeStop in ('permUpLabel', 'statusPermanent'):
             return
 
         self.setStatusBar(self.statusBar)
