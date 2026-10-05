@@ -4,6 +4,8 @@ import os
 import sys
 from pathlib import Path
 
+from core.configStore import readOptions, writeOptions
+
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "ashore"
 
@@ -56,5 +58,9 @@ def ensureConfig(name):
             content = content.replace(b'${DOWNLOAD_DIR}', os.fsencode(systemDownloadDirectory()))
         target.write_bytes(content)
     if name == 'aria2.conf':
+        options = readOptions(target)
+        if ('check-integrity' not in options
+                and not writeOptions(target, {'check-integrity': 'true'})):
+            raise OSError(f'无法更新 aria2 配置：{target}')
         target.chmod(0o600)
     return target

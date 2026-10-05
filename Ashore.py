@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import (
 
 from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
-from core.aria2Service import Aria2Poller, Aria2Startup
+from core.aria2Service import Aria2Poller, Aria2Shutdown, Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
 from core.formatters import formatSpeed
 from interface.addNewDialog import AddNewDialog
@@ -65,8 +65,11 @@ def configureApplication():
 
 
 class Ashore(QMainWindow):
+    firstPainted = pyqtSignal()
+
     def __init__(self, aria2Service, themeManager):
         super().__init__()
+        self.hasPainted = False
         self.isRelease = False
         self.resourcePath = str(RESOURCE_DIR) + '/'
         if getattr(sys, 'frozen', False):
@@ -102,10 +105,15 @@ class Ashore(QMainWindow):
         """Start asynchronous work after the startup controller is listening."""
         self.aria2Poller.poll()
 
-    def finishStartup(self):
+    def showTray(self):
         if not self.trayIcon.isVisible():
             self.trayIcon.show()
-        self.offerDownloadMigration()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self.hasPainted:
+            self.hasPainted = True
+            QTimer.singleShot(0, self.firstPainted.emit)
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -518,9 +526,14 @@ class Ashore(QMainWindow):
         self.quitting = True
         self.aria2Poller.timer.stop()
         self.aria2Events.stop()
-        self.aria2Poller.wait()
-        self.aria2Service.close()
-        QApplication.instance().quit()
+        self.hide()
+        self.trayIcon.hide()
+        self.shutdown = Aria2Shutdown(
+            self.aria2Service, self.aria2Poller, QApplication.instance())
+        self.shutdown.failed.connect(
+            lambda message: print(f'Ashore 退出清理失败：{message}', file=sys.stderr))
+        self.shutdown.finished.connect(QApplication.instance().quit)
+        self.shutdown.start()
 
     def slotRestartAria2(self):
         self.aria2Poller.timer.stop()
@@ -752,6 +765,7 @@ class StartupController(QObject):
         self.app.fileOpenSignal.connect(self.window.addNew)
         self.app.instanceMessage.connect(self.handleInstance)
         self.window.aria2Poller.updated.connect(self.firstSnapshot)
+        self.window.firstPainted.connect(self.mainPainted)
         tracker = self.window.pageSetting.trackerManager
         tracker.statusChanged.connect(self.showStage)
         tracker.updated.connect(self.trackerFinished)
@@ -790,9 +804,23 @@ class StartupController(QObject):
         self.finishScheduled = False
         self.showStage('正在显示主界面')
         self.splash.finish(self.window)
-        QTimer.singleShot(0, self.window.finishStartup)
         if len(self.arguments) > 1:
             self.window.addNew(self.arguments[1:])
+
+    def mainPainted(self):
+        self.traceStage('主界面首帧已完成')
+        QTimer.singleShot(0, self.finishRuntime)
+
+    def finishRuntime(self):
+        self.traceStage('正在注册系统托盘')
+        self.window.showTray()
+        self.traceStage('系统托盘已就绪')
+        QTimer.singleShot(0, self.finishMigration)
+
+    def finishMigration(self):
+        self.traceStage('正在检查下载目录')
+        self.window.offerDownloadMigration()
+        self.traceStage('启动完成')
 
     def handleInstance(self, urls):
         self.window.show()
@@ -803,6 +831,9 @@ class StartupController(QObject):
 
     def showStage(self, message):
         self.splash.showStatus(message)
+        self.traceStage(message)
+
+    def traceStage(self, message):
         if os.environ.get('ASHORE_STARTUP_TRACE') == '1':
             print(f'[startup {self.clock.elapsed():4d} ms] {message}', flush=True)
 

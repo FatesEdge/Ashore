@@ -18,6 +18,21 @@ class PathTests(unittest.TestCase):
             self.assertIn(f'dir={expected}', content)
             self.assertNotIn('${DOWNLOAD_DIR}', content)
             self.assertIn('force-save=false', content)
+            self.assertIn('check-integrity=true', content)
+
+    def test_existing_config_gets_integrity_default_without_overriding_user(self):
+        with tempfile.TemporaryDirectory() as folder:
+            configRoot = Path(folder)
+            configPath = configRoot / 'aria2.conf'
+            configPath.write_text('continue=true\n', encoding='utf-8')
+            with patch.object(paths, 'CONFIG_DIR', configRoot):
+                paths.ensureConfig('aria2.conf')
+                self.assertIn('check-integrity=true', configPath.read_text(encoding='utf-8'))
+
+                configPath.write_text('check-integrity=false\n', encoding='utf-8')
+                paths.ensureConfig('aria2.conf')
+                self.assertEqual(configPath.read_text(encoding='utf-8'),
+                                 'check-integrity=false\n')
 
     def test_only_legacy_default_is_offered_for_migration(self):
         with tempfile.TemporaryDirectory() as folder:

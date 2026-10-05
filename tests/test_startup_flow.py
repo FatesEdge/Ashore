@@ -48,6 +48,17 @@ class StartupFlowTests(unittest.TestCase):
         controller.tryFinish()
         controller.finish.assert_called_once_with()
 
+    def test_runtime_services_wait_for_main_window_first_paint(self):
+        controller = StartupController(self.app, ['Ashore.py'])
+        controller.window = Mock()
+        controller.window.showTray = Mock()
+        controller.window.offerDownloadMigration = Mock()
+
+        controller.mainPainted()
+        self.app.processEvents()
+
+        controller.window.showTray.assert_called_once_with()
+
 
 if __name__ == '__main__':
     unittest.main()

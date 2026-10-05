@@ -99,6 +99,24 @@ class Aria2Startup(QThread):
             self.failed.emit(str(exc))
 
 
+class Aria2Shutdown(QThread):
+    """Finish pending RPC work and close aria2 without blocking the GUI."""
+
+    failed = pyqtSignal(str)
+
+    def __init__(self, service, poller, parent=None):
+        super().__init__(parent)
+        self.service = service
+        self.poller = poller
+
+    def run(self):
+        try:
+            self.poller.wait()
+            self.service.close()
+        except (RuntimeError, OSError, ValueError) as exc:
+            self.failed.emit(str(exc))
+
+
 class Aria2Poller(QThread):
     updated = pyqtSignal(dict)
 

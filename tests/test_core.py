@@ -3,13 +3,13 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from PyQt6.QtWidgets import QApplication
 
 import paths
 from core.aria2Client import Aria2Client
-from core.aria2Service import Aria2Poller, Aria2Service
+from core.aria2Service import Aria2Poller, Aria2Service, Aria2Shutdown
 from core.trackerSources import parseTrackers
 from interface.settingPage import SettingPage
 
@@ -160,6 +160,16 @@ class Aria2Tests(unittest.TestCase):
         poller.updated.connect(snapshots.append)
         poller.run()
         self.assertEqual(snapshots[0]['aria2Version'], '1.37.0')
+
+    def test_shutdown_waits_and_closes_outside_the_window(self):
+        service = Mock()
+        poller = Mock()
+        shutdown = Aria2Shutdown(service, poller)
+
+        shutdown.run()
+
+        poller.wait.assert_called_once_with()
+        service.close.assert_called_once_with()
 
     def test_parent_torrent_and_payload_display_as_one(self):
         client = Aria2Client.__new__(Aria2Client)

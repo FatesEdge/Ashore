@@ -18,6 +18,7 @@ class DesktopTests(unittest.TestCase):
         config = configparser.ConfigParser(interpolation=None)
         config.read(desktop, encoding='utf-8')
         self.assertEqual(config['Desktop Entry']['StartupNotify'], 'false')
+        self.assertEqual(config['Desktop Entry']['StartupWMClass'], 'Ashore')
         self.assertEqual(config['Desktop Entry']['X-GNOME-UsesNotifications'], 'true')
 
 
