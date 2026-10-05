@@ -92,7 +92,7 @@ class Ashore(QMainWindow):
         self.aria2Events.connectionStateChanged.connect(self.slotWebSocketStateChanged)
         self.websocketState = self.aria2Events.state
         self.aria2Version = ''
-        self.updateConnection('等待检测')
+        self.pendingConnectionStatus = '等待检测'
 
     def startRuntime(self):
         """Start asynchronous work after the startup controller is listening."""
@@ -106,7 +106,11 @@ class Ashore(QMainWindow):
         super().paintEvent(event)
         if not self.hasPainted:
             self.hasPainted = True
-            QTimer.singleShot(0, self.firstPainted.emit)
+            QTimer.singleShot(0, self.finishFirstPaint)
+
+    def finishFirstPaint(self):
+        self.flushConnectionStatus()
+        self.firstPainted.emit()
 
     def changeEvent(self, event):
         super().changeEvent(event)
@@ -404,7 +408,7 @@ class Ashore(QMainWindow):
                 self.tabDownloading, self.tabDownloaded, self.tabSetting):
             button.setCheckable(True)
             button.setProperty('navigationTab', True)
-            button.setFixedHeight(60)
+            button.setFixedHeight(52)
             self.navigationTabs.addButton(button)
 
         self.tabDownloading.setChecked(True)
@@ -530,6 +534,13 @@ class Ashore(QMainWindow):
         self.updateConnection('已连接' if self.aria2Version else '等待检测')
 
     def updateConnection(self, httpStatus):
+        self.pendingConnectionStatus = httpStatus
+        if not self.hasPainted:
+            return
+        self.flushConnectionStatus()
+
+    def flushConnectionStatus(self):
+        httpStatus = self.pendingConnectionStatus
         websocketText = {
             'unavailable': '不可用',
             'connecting': '连接中',
@@ -540,7 +551,8 @@ class Ashore(QMainWindow):
         endpoint = f'http://127.0.0.1:{self.aria2Client.rpcPort}/jsonrpc'
         self.aria2StateWidget.setToolTip(
             f'HTTP：{httpStatus}\nWebSocket：{websocketText}\n{endpoint}')
-        self.pageSetting.setConnectionStatus(httpStatus, websocketText, self.aria2Version)
+        self.pageSetting.setConnectionStatus(
+            httpStatus, websocketText, self.aria2Version)
 
 
     def notifyDownload(self, gid, name, status):

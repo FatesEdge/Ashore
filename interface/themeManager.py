@@ -183,8 +183,8 @@ class ThemeManager(QObject):
                 padding: 0;
                 min-width: 46px;
                 max-width: 46px;
-                min-height: 60px;
-                max-height: 60px;
+                min-height: 52px;
+                max-height: 52px;
             }}
             QPushButton[navigationTab="true"]:hover {{
                 background: {token['hover']};
@@ -260,7 +260,7 @@ class ThemeManager(QObject):
                 padding: 6px 2px;
             }}
 
-            QLineEdit, QTextEdit, QComboBox {{
+            QLineEdit, QTextEdit {{
                 background: {token['field']};
                 color: {token['text']};
                 border: 1px solid {token['border']};
@@ -269,7 +269,7 @@ class ThemeManager(QObject):
                 selection-background-color: {self.accent};
                 selection-color: {accentText};
             }}
-            QLineEdit:focus, QTextEdit:focus, QComboBox:focus {{
+            QLineEdit:focus, QTextEdit:focus {{
                 border-color: {self.accent};
             }}
             QToolButton[advancedToggle="true"] {{

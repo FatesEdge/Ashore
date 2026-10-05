@@ -87,7 +87,7 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloaded.text(), '')
         self.assertEqual(window.tabSetting.text(), '')
         self.assertEqual(window.navigationRail.width(), 46)
-        self.assertEqual(window.tabDownloading.height(), 60)
+        self.assertEqual(window.tabDownloading.height(), 52)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.commandBar.height(), 48)
         window.aria2Poller.timer.stop()
@@ -233,6 +233,32 @@ class StartupFlowTests(unittest.TestCase):
             QPalette.ColorRole.WindowText)
         self.assertNotEqual(dotColor, textColor)
         self.assertIn('aria2', window.aria2StateText.text())
+        window.aria2Poller.timer.stop()
+        window.close()
+
+
+    def test_hidden_settings_connection_status_waits_for_first_paint(self):
+        service = Mock()
+        service.client.rpcPort = 6800
+        events = Mock()
+        events.state = 'unavailable'
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+             patch.object(SettingPage, 'ashoreConfDir', folder), \
+             patch.object(
+                 SettingPage, 'aria2ConfPath',
+                 str(Path(folder) / 'aria2.conf')), \
+             patch('Ashore.Aria2Events', return_value=events):
+            window = Ashore(service, Mock())
+
+        window.pageSetting.setConnectionStatus = Mock()
+        window.hasPainted = False
+        window.updateConnection('已连接')
+        window.pageSetting.setConnectionStatus.assert_not_called()
+
+        window.hasPainted = True
+        window.flushConnectionStatus()
+        window.pageSetting.setConnectionStatus.assert_called_once()
         window.aria2Poller.timer.stop()
         window.close()
 
