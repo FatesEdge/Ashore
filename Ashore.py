@@ -57,7 +57,6 @@ from paths import (
 
 class Ashore(QMainWindow):
     firstPainted = pyqtSignal()
-    activated = pyqtSignal()
 
     def __init__(self, aria2Service, themeManager):
         super().__init__()
@@ -107,12 +106,6 @@ class Ashore(QMainWindow):
         if not self.hasPainted:
             self.hasPainted = True
             QTimer.singleShot(0, self.firstPainted.emit)
-
-    def event(self, event):
-        result = super().event(event)
-        if event.type() == QEvent.Type.WindowActivate:
-            self.activated.emit()
-        return result
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -726,10 +719,6 @@ class StartupController(QObject):
         self.finishScheduled = False
         self.firstSnapshotReady = False
         self.trackerReady = False
-        self.mainActivated = False
-        self.mainPaintedReady = False
-        self.waitForMainReady = (
-            os.environ.get('ASHORE_STARTUP_HANDOFF') == 'windowReady')
         self.clock = QElapsedTimer()
         self.themeManager = ThemeManager(app, self)
         self.splash = StartupWindow(RESOURCE_DIR / 'static/img/cover.png')
@@ -791,7 +780,6 @@ class StartupController(QObject):
         self.app.fileOpenSignal.connect(self.window.addNew)
         self.app.instanceMessage.connect(self.handleInstance)
         self.window.aria2Poller.updated.connect(self.firstSnapshot)
-        self.window.activated.connect(self.mainActivatedEvent)
         self.window.firstPainted.connect(self.mainPainted)
         tracker = self.window.pageSetting.trackerManager
         tracker.statusChanged.connect(self.showStage)
@@ -830,37 +818,13 @@ class StartupController(QObject):
         self.finished = True
         self.finishScheduled = False
         self.showStage('正在显示主界面')
-        if self.waitForMainReady:
-            self.splash.complete()
-            self.window.show()
-            self.window.raise_()
-            self.window.activateWindow()
-            self.traceStage('正在等待主窗口激活与绘制')
-        else:
-            self.splash.finish(self.window)
+        self.splash.finish(self.window)
         if len(self.arguments) > 1:
             self.window.addNew(self.arguments[1:])
 
     def mainPainted(self):
-        self.mainPaintedReady = True
         self.traceStage('主界面首帧已完成')
-        self.finishHandoff()
         QTimer.singleShot(0, self.finishRuntime)
-
-    def mainActivatedEvent(self):
-        if self.mainActivated:
-            return
-        self.mainActivated = True
-        self.traceStage('主窗口已激活')
-        self.finishHandoff()
-        self.window.activated.disconnect(self.mainActivatedEvent)
-
-    def finishHandoff(self):
-        if (not self.waitForMainReady or not self.mainActivated
-                or not self.mainPaintedReady or not self.splash.isVisible()):
-            return
-        self.splash.close()
-        self.traceStage('启动界面已关闭')
 
     def finishRuntime(self):
         self.traceStage('正在注册系统托盘')

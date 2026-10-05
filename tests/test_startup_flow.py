@@ -103,19 +103,5 @@ class StartupFlowTests(unittest.TestCase):
         exitWindow.showActive.assert_called_once_with()
         self.assertIs(window.exitWindow, exitWindow)
 
-    def test_startup_ready_handoff_waits_for_both_events(self):
-        controller = StartupController(self.app, ['Ashore.py'])
-        controller.waitForMainReady = True
-        controller.splash = Mock()
-        controller.splash.isVisible.return_value = True
-
-        controller.mainActivated = True
-        controller.finishHandoff()
-        controller.splash.close.assert_not_called()
-
-        controller.mainPaintedReady = True
-        controller.finishHandoff()
-        controller.splash.close.assert_called_once_with()
-
 if __name__ == '__main__':
     unittest.main()

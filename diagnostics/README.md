@@ -68,16 +68,17 @@ adjacent observations differ, use the stages between them to find the first
 component that changes cursor behavior. Confirm the boundary in both directions:
 the lower stage must remain clean and the first failing stage must reproduce.
 
-## Startup handoff comparison
+## Formal startup probe
 
-Run the normal startup path first, then compare it with a handoff that keeps
-the startup window visible until the main window is activated and painted:
+`startupProbe.py` follows the real startup path and adds one group at a time:
 
 ```bash
-ASHORE_STARTUP_TRACE=1 python Ashore.py
-ASHORE_STARTUP_TRACE=1 ASHORE_STARTUP_HANDOFF=windowReady python Ashore.py
+python diagnostics/startupProbe.py --list
+python diagnostics/startupProbe.py --stage base
+python diagnostics/startupProbe.py --stage ariaStartup
+python diagnostics/startupProbe.py --stage mainWindow
+python diagnostics/startupProbe.py --stage tray
 ```
 
-`ASHORE_STARTUP_HANDOFF` is a temporary diagnostic switch. It does not change
-the default startup path and should be removed after the Wayland comparison is
-complete.
+Compare the lowest clean stage with the first stage that produces the busy
+cursor. Use Ctrl+Q to close stages that construct the real Ashore window.
