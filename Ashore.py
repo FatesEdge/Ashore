@@ -104,6 +104,8 @@ class Ashore(QMainWindow):
                 'stripShell', 'stripAria', 'stripDown',
                 'stripUp', 'stripLayout', 'stripTimer',
                 'layoutDetached', 'layoutAttached',
+                'layoutCtor', 'layoutMargins', 'layoutSpacing',
+                'layoutCtor', 'layoutMargins', 'layoutSpacing',
                 'layoutDetached', 'layoutAttached',
                 'layoutObject', 'layoutMessageNoStretch',
                 'layoutMessageStretch',
@@ -383,6 +385,21 @@ class Ashore(QMainWindow):
         self.upSpeedLabel.setMinimumWidth(80)
         self.upSpeedLabel.setToolTip('全局 BT / Magnet 上传速度')
         if probeStop == 'stripUp':
+            return
+
+        if probeStop == 'layoutCtor':
+            layout = QHBoxLayout()
+            return
+
+        if probeStop == 'layoutMargins':
+            layout = QHBoxLayout()
+            layout.setContentsMargins(10, 2, 10, 2)
+            return
+
+        if probeStop == 'layoutSpacing':
+            layout = QHBoxLayout()
+            layout.setContentsMargins(10, 2, 10, 2)
+            layout.setSpacing(4)
             return
 
         if probeStop == 'layoutDetached':
@@ -1104,6 +1121,7 @@ class StartupController(QObject):
             'beforeStrip', 'stripBuilt', 'stripAdded',
             'stripShell', 'stripAria', 'stripDown',
             'stripUp', 'stripLayout', 'stripTimer',
+            'layoutCtor', 'layoutMargins', 'layoutSpacing',
             'layoutDetached', 'layoutAttached',
             'layoutObject', 'layoutMessageNoStretch',
             'layoutMessageStretch',
