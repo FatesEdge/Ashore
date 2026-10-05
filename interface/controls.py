@@ -1,19 +1,19 @@
 """Ashore-styled native controls with palette-aware accent arrows."""
 
 from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtGui import QPainter, QPen
+from PyQt6.QtGui import QPainter, QPalette, QPen
 from PyQt6.QtWidgets import (
     QComboBox, QSpinBox, QStyle, QStyleOptionComboBox, QStyleOptionSpinBox,
 )
 
 
 def _drawChevron(widget, painter, rect, direction):
-    color = widget.palette().color(widget.foregroundRole())
+    palette = widget.palette()
     if widget.isEnabled():
-        color = widget.palette().color(widget.palette().ColorRole.Highlight)
+        color = palette.color(QPalette.ColorRole.Highlight)
     else:
-        color = widget.palette().color(widget.palette().ColorRole.Disabled,
-                                       widget.palette().ColorRole.Text)
+        color = palette.color(
+            QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text)
 
     center = rect.center()
     width = min(8.0, max(5.0, rect.width() * 0.34))

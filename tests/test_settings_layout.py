@@ -201,7 +201,7 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(
                 page.getBoolOption(page.showAria2StatusComboBox), 'false')
 
-    def test_theme_leaves_native_combo_spin_arrows_and_styles_states(self):
+    def test_theme_styles_combo_spin_controls_and_accent_arrows(self):
         manager = ThemeManager(self.app)
         manager.apply('dark', '#a51d2d')
         style = self.app.styleSheet()
@@ -210,8 +210,8 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertIn('QSpinBox::down-arrow', style)
         self.assertNotIn('QLabel[connectionState="connected"]', style)
         self.assertIn('QLabel[mainConnectionDot="true"]', style)
-        self.assertNotIn('QSpinBox {', style)
-        self.assertNotIn('QComboBox {', style)
+        self.assertIn('QSpinBox {', style)
+        self.assertIn('QComboBox, QSpinBox {', style)
         self.assertNotIn('background-color: #2e7d32', style)
 
     def test_new_download_advanced_control_uses_ashore_chevron(self):

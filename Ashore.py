@@ -139,7 +139,7 @@ class Ashore(QMainWindow):
             self.titleBar.syncState()
             margin = 0 if self.isMaximized() else 5
             self.windowFrameLayout.setContentsMargins(
-                margin, 0, margin, margin)
+                margin, margin, margin, margin)
 
 
     def createCommandActions(self) -> None:
@@ -500,7 +500,7 @@ class Ashore(QMainWindow):
 
         mainLayout = QVBoxLayout(mainWidget)
         self.windowFrameLayout = mainLayout
-        mainLayout.setContentsMargins(5, 0, 5, 5)
+        mainLayout.setContentsMargins(5, 5, 5, 5)
         mainLayout.setSpacing(0)
         mainLayout.addWidget(self.titleBar)
         mainLayout.addWidget(contentWidget, 1)
