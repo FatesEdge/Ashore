@@ -76,6 +76,9 @@ class Ashore(QMainWindow):
         self.aria2Poller = Aria2Poller(
             self.aria2Client, int(ashoreConfig['update_interval']), self)
         self.themeManager = themeManager
+        self.trayQuitPending = False
+        self.trayQuitActivated = False
+        self.trayQuitPainted = False
 
         self.initUI()
         self.connectSignals()
@@ -105,6 +108,17 @@ class Ashore(QMainWindow):
         if not self.hasPainted:
             self.hasPainted = True
             QTimer.singleShot(0, self.firstPainted.emit)
+
+    def event(self, event):
+        result = super().event(event)
+        if not getattr(self, 'trayQuitPending', False):
+            return result
+        if event.type() == QEvent.Type.WindowActivate:
+            self.trayQuitActivated = True
+        elif event.type() == QEvent.Type.Paint:
+            self.trayQuitPainted = True
+        self.finishTrayQuit()
+        return result
 
     def createMenuBar(self) -> None:
         menuBar = self.menuBar()
@@ -165,7 +179,7 @@ class Ashore(QMainWindow):
         self.connectTrayAction(showWindowAction, self.slotShowWindow)
         self.connectTrayAction(newAction, self.slotAdd)
         self.connectTrayAction(aboutInfoAction, self.slotAbout)
-        self.connectTrayAction(quitAction, self.slotQuit)
+        self.connectTrayAction(quitAction, self.requestTrayQuit)
         self.trayIcon = QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayMenu)
         self.trayIcon.setToolTip('Ashore')
@@ -178,10 +192,9 @@ class Ashore(QMainWindow):
             lambda _checked=False, callback=callback: self.deferTrayAction(callback))
 
     def deferTrayAction(self, callback):
-        """Run a non-destructive tray action after its popup closes."""
+        """Run a tray action after its popup closes."""
         self.trayMenu.close()
         QTimer.singleShot(0, callback)
-
 
     def applyTrayIconStyle(self, style):
         source = QPixmap(self.resourcePath + 'static/icon/functionIcons/trayIcon.png')
@@ -519,6 +532,24 @@ class Ashore(QMainWindow):
 
     def slotShowWindow(self):
         self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def requestTrayQuit(self):
+        if self.quitting or self.trayQuitPending:
+            return
+        self.trayQuitPending = True
+        self.trayQuitActivated = self.isActiveWindow()
+        self.trayQuitPainted = False
+        self.slotShowWindow()
+        self.update()
+
+    def finishTrayQuit(self):
+        if (not self.trayQuitPending or not self.trayQuitActivated
+                or not self.trayQuitPainted):
+            return
+        self.trayQuitPending = False
+        QTimer.singleShot(0, self.slotQuit)
 
     def slotSaveSession(self):
         saveResult = self.aria2Client.saveSession()
@@ -528,6 +559,7 @@ class Ashore(QMainWindow):
     def slotQuit(self):
         if self.quitting:
             return
+        self.trayQuitPending = False
         self.quitting = True
         self.aria2Poller.timer.stop()
         self.aria2Events.stop()

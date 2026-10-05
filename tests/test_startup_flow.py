@@ -69,5 +69,29 @@ class StartupFlowTests(unittest.TestCase):
         window.trayMenu.close.assert_called_once_with()
         singleShot.assert_called_once_with(0, callback)
 
+    def test_tray_quit_waits_for_activation_and_paint(self):
+        window = Mock()
+        window.quitting = False
+        window.trayQuitPending = False
+        window.isActiveWindow.return_value = False
+
+        Ashore.requestTrayQuit(window)
+
+        self.assertTrue(window.trayQuitPending)
+        self.assertFalse(window.trayQuitActivated)
+        self.assertFalse(window.trayQuitPainted)
+        window.slotShowWindow.assert_called_once_with()
+        window.update.assert_called_once_with()
+
+        with patch('Ashore.QTimer.singleShot') as singleShot:
+            window.trayQuitActivated = True
+            Ashore.finishTrayQuit(window)
+            singleShot.assert_not_called()
+
+            window.trayQuitPainted = True
+            Ashore.finishTrayQuit(window)
+            singleShot.assert_called_once_with(0, window.slotQuit)
+            self.assertFalse(window.trayQuitPending)
+
 if __name__ == '__main__':
     unittest.main()
