@@ -1,6 +1,6 @@
-"""Application identity shared by the executable and diagnostics."""
+"""Ashore application identity."""
 
-APP_VERSION = '0.7.66'
+APP_VERSION = '0.7.67'
 
 
 def configureApplication():

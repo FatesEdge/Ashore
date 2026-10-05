@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
-    QStackedLayout,
+    QStackedWidget,
     QStatusBar,
     QSystemTrayIcon,
     QVBoxLayout,
@@ -302,13 +302,13 @@ class Ashore(QMainWindow):
         btnLayout.addStretch(10)
         self.pageDownloading = Page()
         self.pageDownloaded = Page()
-        self.pageStack = QStackedLayout()
+        self.pageStack = QStackedWidget()
         self.pageStack.addWidget(self.pageDownloading)
         self.pageStack.addWidget(self.pageDownloaded)
         self.pageStack.addWidget(self.pageSetting)
         pageLayout = QVBoxLayout()
         pageLayout.addLayout(btnLayout)
-        pageLayout.addLayout(self.pageStack)
+        pageLayout.addWidget(self.pageStack)
         mainLayout = QHBoxLayout()
         mainLayout.addLayout(tabLayout)
         mainLayout.addLayout(pageLayout)
@@ -460,7 +460,6 @@ class Ashore(QMainWindow):
         """通过命令行参数或系统接口参数运行程序、添加新任务
         :param urlList: list类型的下载地址url
         """
-        config = {'ResultError' : 0}
         config = self.aria2Client.getGlobalConfig()
         if 'ResultError' in config:
             self.showStatus(config['ResultError'])
@@ -823,19 +822,14 @@ class StartupController(QObject):
             self.window.addNew(self.arguments[1:])
 
     def mainPainted(self):
-        self.traceStage('主界面首帧已完成')
         QTimer.singleShot(0, self.finishRuntime)
 
     def finishRuntime(self):
-        self.traceStage('正在注册系统托盘')
         self.window.showTray()
-        self.traceStage('系统托盘已就绪')
         QTimer.singleShot(0, self.finishMigration)
 
     def finishMigration(self):
-        self.traceStage('正在检查下载目录')
         self.window.offerDownloadMigration()
-        self.traceStage('启动完成')
 
     def handleInstance(self, urls):
         self.window.show()
@@ -846,11 +840,6 @@ class StartupController(QObject):
 
     def showStage(self, message):
         self.splash.showStatus(message)
-        self.traceStage(message)
-
-    def traceStage(self, message):
-        if os.environ.get('ASHORE_STARTUP_TRACE') == '1':
-            print(f'[startup {self.clock.elapsed():4d} ms] {message}', flush=True)
 
     def fail(self, message):
         self.splash.close()

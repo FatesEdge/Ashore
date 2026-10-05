@@ -1,11 +1,15 @@
 import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from PyQt6.QtCore import QCoreApplication
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QStackedWidget
 
+import paths
 from Ashore import Ashore, AshoreApplication, StartupController, configureApplication
+from interface.settingPage import SettingPage
 from interface.startupWindow import ExitWindow, StartupWindow
 from paths import RESOURCE_DIR
 
@@ -58,6 +62,23 @@ class StartupFlowTests(unittest.TestCase):
         self.app.processEvents()
 
         controller.window.showTray.assert_called_once_with()
+
+    def test_main_window_uses_widget_page_stack(self):
+        service = Mock()
+        service.client.rpcPort = 6800
+        events = Mock()
+        events.state = 'unavailable'
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+             patch.object(SettingPage, 'ashoreConfDir', folder), \
+             patch.object(SettingPage, 'aria2ConfPath', str(Path(folder) / 'aria2.conf')), \
+             patch('Ashore.Aria2Events', return_value=events):
+            window = Ashore(service, Mock())
+
+        self.assertIsInstance(window.pageStack, QStackedWidget)
+        self.assertEqual(window.pageStack.count(), 3)
+        window.aria2Poller.timer.stop()
+        window.close()
 
     def test_tray_action_runs_after_popup_closes(self):
         window = Mock()
