@@ -199,8 +199,9 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertNotIn('QComboBox::down-arrow', style)
         self.assertNotIn('QSpinBox::up-arrow', style)
         self.assertNotIn('QSpinBox::down-arrow', style)
-        self.assertIn('QLabel[connectionState="connected"]', style)
+        self.assertNotIn('QLabel[connectionState="connected"]', style)
         self.assertIn('QLabel[mainConnectionDot="true"]', style)
+        self.assertNotIn('QSpinBox {', style)
         self.assertNotIn('background-color: #2e7d32', style)
 
     def test_new_download_advanced_control_uses_ashore_chevron(self):

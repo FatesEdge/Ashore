@@ -14,7 +14,7 @@ from PyQt6.QtCore import (
     QUrl,
     pyqtSignal,
 )
-from PyQt6.QtGui import QAction, QDesktopServices, QFont, QIcon, QPainter, QPalette, QPixmap
+from PyQt6.QtGui import QAction, QColor, QDesktopServices, QFont, QIcon, QPainter, QPalette, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -330,21 +330,28 @@ class Ashore(QMainWindow):
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
         self.setStatusBar(self.statusBar)
 
+
     def setMainAria2State(self, state):
         if state not in ('connected', 'disconnected', 'connecting'):
             state = 'connecting'
         self.aria2State = state
-        self.aria2StateDot.setProperty('connectionState', state)
         textKey = {
             'connected': 'connected',
             'disconnected': 'disconnected',
             'connecting': 'connecting',
         }[state]
         self.aria2StateText.setText(f'aria2 {self.tr(textKey)}')
-        style = self.aria2StateDot.style()
-        style.unpolish(self.aria2StateDot)
-        style.polish(self.aria2StateDot)
-        self.aria2StateDot.update()
+
+        colors = {
+            'connected': QColor('#69ad78'),
+            'disconnected': QColor('#d46b6b'),
+            'connecting': self.palette().color(
+                QPalette.ColorRole.PlaceholderText),
+        }
+        palette = self.aria2StateDot.palette()
+        palette.setColor(
+            QPalette.ColorRole.WindowText, colors[state])
+        self.aria2StateDot.setPalette(palette)
     def initUI(self) -> None:
         self.createCommandActions()
 
@@ -397,7 +404,7 @@ class Ashore(QMainWindow):
                 self.tabDownloading, self.tabDownloaded, self.tabSetting):
             button.setCheckable(True)
             button.setProperty('navigationTab', True)
-            button.setFixedHeight(84)
+            button.setFixedHeight(60)
             self.navigationTabs.addButton(button)
 
         self.tabDownloading.setChecked(True)

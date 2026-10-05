@@ -183,8 +183,8 @@ class ThemeManager(QObject):
                 padding: 0;
                 min-width: 46px;
                 max-width: 46px;
-                min-height: 84px;
-                max-height: 84px;
+                min-height: 60px;
+                max-height: 60px;
             }}
             QPushButton[navigationTab="true"]:hover {{
                 background: {token['hover']};
@@ -260,7 +260,7 @@ class ThemeManager(QObject):
                 padding: 6px 2px;
             }}
 
-            QLineEdit, QTextEdit, QComboBox, QSpinBox {{
+            QLineEdit, QTextEdit, QComboBox {{
                 background: {token['field']};
                 color: {token['text']};
                 border: 1px solid {token['border']};
@@ -269,7 +269,7 @@ class ThemeManager(QObject):
                 selection-background-color: {self.accent};
                 selection-color: {accentText};
             }}
-            QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus {{
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus {{
                 border-color: {self.accent};
             }}
             QToolButton[advancedToggle="true"] {{
@@ -324,16 +324,6 @@ class ThemeManager(QObject):
                 border: 1px solid {token['border']};
                 border-radius: 8px;
                 padding: 10px;
-            }}
-            QLabel[connectionState="connected"] {{
-                color: {token['success']};
-            }}
-            QLabel[connectionState="disconnected"] {{
-                color: {token['danger']};
-            }}
-            QLabel[connectionState="connecting"],
-            QLabel[connectionState="neutral"] {{
-                color: {token['muted']};
             }}
             QMenu {{
                 background: {token['surface']};

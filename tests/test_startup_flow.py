@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from PyQt6.QtCore import QCoreApplication
+from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication, QStackedWidget
 
 import paths
@@ -86,7 +87,7 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloaded.text(), '')
         self.assertEqual(window.tabSetting.text(), '')
         self.assertEqual(window.navigationRail.width(), 46)
-        self.assertEqual(window.tabDownloading.height(), 84)
+        self.assertEqual(window.tabDownloading.height(), 60)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.commandBar.height(), 48)
         window.aria2Poller.timer.stop()
@@ -226,11 +227,11 @@ class StartupFlowTests(unittest.TestCase):
             window = Ashore(service, Mock())
 
         window.setMainAria2State('connected')
-        self.assertEqual(
-            window.aria2StateDot.property('connectionState'),
-            'connected')
-        self.assertIsNone(
-            window.aria2StateText.property('connectionState'))
+        dotColor = window.aria2StateDot.palette().color(
+            QPalette.ColorRole.WindowText)
+        textColor = window.aria2StateText.palette().color(
+            QPalette.ColorRole.WindowText)
+        self.assertNotEqual(dotColor, textColor)
         self.assertIn('aria2', window.aria2StateText.text())
         window.aria2Poller.timer.stop()
         window.close()
