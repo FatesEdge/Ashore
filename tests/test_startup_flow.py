@@ -87,11 +87,18 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloaded.text(), '')
         self.assertEqual(window.tabSetting.text(), '')
         self.assertEqual(window.navigationRail.width(), 46)
+        self.assertEqual(
+            window.navigationRail.layout().contentsMargins().right(), 0)
+        self.assertEqual(window.tabDownloading.minimumWidth(), 42)
+        self.assertEqual(window.tabDownloading.maximumWidth(), 42)
         self.assertEqual(window.tabDownloading.height(), 52)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.commandBar.height(), 48)
         self.assertTrue(window.statusStrip.property('statusStrip'))
         self.assertEqual(window.statusStrip.height(), 30)
+        self.assertIs(
+            window.aria2StateWidget.parentWidget(), window.statusStrip)
+        self.assertFalse(window.aria2StateWidget.isHidden())
         window.aria2Poller.timer.stop()
         window.close()
 

@@ -178,8 +178,8 @@ class ThemeManager(QObject):
                 border: none;
                 border-radius: 10px;
                 padding: 0;
-                min-width: 38px;
-                max-width: 38px;
+                min-width: 42px;
+                max-width: 42px;
                 min-height: 52px;
                 max-height: 52px;
             }}
@@ -188,6 +188,8 @@ class ThemeManager(QObject):
             }}
             QPushButton[navigationTab="true"]:checked {{
                 background: {token['surface']};
+                border-top-right-radius: 0;
+                border-bottom-right-radius: 0;
             }}
             QStackedWidget[pageSurface="true"],
             QScrollArea[downloadPage="true"],

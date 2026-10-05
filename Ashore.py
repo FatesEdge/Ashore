@@ -1,10 +1,8 @@
 """Ashore application entry point and main window."""
 
-import os
 import platform
 import signal
 import sys
-import time
 
 from PyQt6.QtCore import (
     QElapsedTimer,
@@ -58,7 +56,7 @@ class Ashore(QMainWindow):
     firstPainted = pyqtSignal()
 
 
-    def __init__(self, aria2Service, themeManager, startupProbe=''):
+    def __init__(self, aria2Service, themeManager):
         super().__init__()
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
@@ -93,51 +91,16 @@ class Ashore(QMainWindow):
         self.aria2Version = ''
         self.pendingConnectionStatus = '等待检测'
 
-        self.startupProbe = startupProbe
-        createTray = startupProbe not in ('baseUi',)
-        refreshIcons = startupProbe not in ('baseUi', 'trayCreated')
-        self.initUI(
-            createTray=createTray,
-            refreshIcons=refreshIcons,
-            probeStop=startupProbe
-            if startupProbe in (
-                'beforeStrip', 'stripBuilt', 'stripAdded',
-                'stripShell', 'stripAria', 'stripDown',
-                'stripUp', 'stripUpDelay50', 'stripUpDelay100',
-                'stripUpDelay250', 'stripUpDelay500', 'stripLayout', 'stripTimer',
-                'layoutDetached', 'layoutAttached',
-                'layoutCtor', 'layoutMargins', 'layoutSpacing',
-                'layoutCtor', 'layoutMargins', 'layoutSpacing',
-                'layoutDetached', 'layoutAttached',
-                'layoutObject', 'layoutMessageNoStretch',
-                'layoutMessageStretch',
-                'layoutMessage', 'layoutAria', 'layoutDownIcon',
-                'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel')
-            else '')
-
-        if startupProbe in (
-                'beforeStrip', 'stripBuilt', 'stripAdded',
-                'stripShell', 'stripAria', 'stripDown',
-                'stripUp', 'stripLayout', 'stripTimer',
-                'layoutObject', 'layoutMessageNoStretch',
-                'layoutMessageStretch',
-                'layoutMessage', 'layoutAria', 'layoutDownIcon',
-                'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel',
-                'baseUi', 'trayCreated', 'iconsRefreshed'):
-            return
-
+        self.initUI()
         self.connectSignals()
         self.aria2Poller.updated.connect(self.updatePage)
-        if startupProbe == 'signals':
-            return
 
         self.aria2Events = Aria2Events(self.aria2Client.rpcPort, self)
         self.aria2Events.notification.connect(self.slotAria2Notification)
         self.aria2Events.connectionStateChanged.connect(
             self.slotWebSocketStateChanged)
         self.websocketState = self.aria2Events.state
-        if startupProbe == 'events':
-            return
+
     def startRuntime(self):
         """Start asynchronous work after the startup controller is listening."""
         self.aria2Poller.poll()
@@ -334,15 +297,13 @@ class Ashore(QMainWindow):
 
 
 
-    def createStatusStrip(self, probeStop='') -> None:
+    def createStatusStrip(self) -> None:
         self.statusStrip = QWidget()
         self.statusStrip.setProperty('statusStrip', True)
         self.statusStrip.setFixedHeight(30)
 
         self.statusMessageLabel = QLabel()
         self.statusMessageLabel.setProperty('statusMessage', True)
-        if probeStop == 'stripShell':
-            return
 
         self.aria2State = 'connecting'
         self.aria2StateDot = QLabel('●')
@@ -350,16 +311,13 @@ class Ashore(QMainWindow):
         self.aria2StateText = QLabel()
         self.aria2StateText.setProperty('mainConnectionText', True)
 
-        self.aria2StateWidget = QWidget()
+        self.aria2StateWidget = QWidget(self.statusStrip)
         aria2Layout = QHBoxLayout(self.aria2StateWidget)
         aria2Layout.setContentsMargins(0, 0, 2, 0)
         aria2Layout.setSpacing(4)
         aria2Layout.addWidget(self.aria2StateDot)
         aria2Layout.addWidget(self.aria2StateText)
         self.setMainAria2State('connecting')
-        self.aria2StateWidget.setVisible(self.showAria2Status)
-        if probeStop == 'stripAria':
-            return
 
         self.downSpeedIcon = QLabel()
         self.downSpeedIcon.setFixedSize(20, 20)
@@ -372,8 +330,6 @@ class Ashore(QMainWindow):
         self.downSpeedLabel = QLabel('0B/s')
         self.downSpeedLabel.setMinimumWidth(80)
         self.downSpeedLabel.setToolTip('全局实时下载速度')
-        if probeStop == 'stripDown':
-            return
 
         self.upSpeedIcon = QLabel()
         self.upSpeedIcon.setFixedSize(20, 20)
@@ -386,86 +342,24 @@ class Ashore(QMainWindow):
         self.upSpeedLabel = QLabel('0B/s')
         self.upSpeedLabel.setMinimumWidth(80)
         self.upSpeedLabel.setToolTip('全局 BT / Magnet 上传速度')
-        if probeStop == 'stripUp':
-            return
-        delayMs = {
-            'stripUpDelay50': 50,
-            'stripUpDelay100': 100,
-            'stripUpDelay250': 250,
-            'stripUpDelay500': 500,
-        }.get(probeStop)
-        if delayMs is not None:
-            time.sleep(delayMs / 1000)
-            return
-
-        if probeStop == 'layoutCtor':
-            layout = QHBoxLayout()
-            return
-
-        if probeStop == 'layoutMargins':
-            layout = QHBoxLayout()
-            layout.setContentsMargins(10, 2, 10, 2)
-            return
-
-        if probeStop == 'layoutSpacing':
-            layout = QHBoxLayout()
-            layout.setContentsMargins(10, 2, 10, 2)
-            layout.setSpacing(4)
-            return
-
-        if probeStop == 'layoutDetached':
-            layout = QHBoxLayout()
-            layout.setContentsMargins(10, 2, 10, 2)
-            layout.setSpacing(4)
-            return
-
-        if probeStop == 'layoutAttached':
-            layout = QHBoxLayout()
-            layout.setContentsMargins(10, 2, 10, 2)
-            layout.setSpacing(4)
-            self.statusStrip.setLayout(layout)
-            return
 
         layout = QHBoxLayout(self.statusStrip)
         layout.setContentsMargins(10, 2, 10, 2)
         layout.setSpacing(4)
-        if probeStop == 'layoutObject':
-            return
-
-        if probeStop == 'layoutMessageNoStretch':
-            layout.addWidget(self.statusMessageLabel)
-            return
-
         layout.addWidget(self.statusMessageLabel, 1)
-        if probeStop in ('layoutMessage', 'layoutMessageStretch'):
-            return
-
         layout.addWidget(self.aria2StateWidget)
-        if probeStop == 'layoutAria':
-            return
-
         layout.addWidget(self.downSpeedIcon)
-        if probeStop == 'layoutDownIcon':
-            return
-
         layout.addWidget(self.downSpeedLabel)
-        if probeStop == 'layoutDownLabel':
-            return
-
         layout.addWidget(self.upSpeedIcon)
-        if probeStop == 'layoutUpIcon':
-            return
-
         layout.addWidget(self.upSpeedLabel)
-        if probeStop in ('layoutUpLabel', 'stripLayout'):
-            return
+
+        self.aria2StateWidget.setVisible(self.showAria2Status)
 
         self.statusMessageTimer = QTimer(self.statusStrip)
         self.statusMessageTimer.setSingleShot(True)
         self.statusMessageTimer.timeout.connect(
             self.statusMessageLabel.clear)
-        if probeStop == 'stripTimer':
-            return
+
     def setMainAria2State(self, state):
         if state not in ('connected', 'disconnected', 'connecting'):
             state = 'connecting'
@@ -488,7 +382,7 @@ class Ashore(QMainWindow):
             QPalette.ColorRole.WindowText, colors[state])
         self.aria2StateDot.setPalette(palette)
 
-    def initUI(self, createTray=True, refreshIcons=True, probeStop='') -> None:
+    def initUI(self) -> None:
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
@@ -552,7 +446,7 @@ class Ashore(QMainWindow):
         self.navigationRail.setProperty('navigationRail', True)
         self.navigationRail.setFixedWidth(46)
         navigationLayout = QVBoxLayout(self.navigationRail)
-        navigationLayout.setContentsMargins(4, 0, 4, 0)
+        navigationLayout.setContentsMargins(4, 0, 0, 0)
         navigationLayout.setSpacing(4)
         navigationLayout.addWidget(self.tabDownloading)
         navigationLayout.addWidget(self.tabDownloaded)
@@ -575,42 +469,7 @@ class Ashore(QMainWindow):
         bodyLayout.addWidget(self.navigationRail)
         bodyLayout.addWidget(self.pageStack, 1)
 
-        if probeStop == 'beforeStrip':
-            placeholder = QWidget()
-            placeholder.setObjectName('mainRoot')
-            placeholderLayout = QVBoxLayout(placeholder)
-            placeholderLayout.setContentsMargins(0, 10, 0, 0)
-            placeholderLayout.setSpacing(0)
-            placeholderLayout.addWidget(commandHost)
-            placeholderLayout.addWidget(bodyWidget, 1)
-            self.setCentralWidget(placeholder)
-            return
-
-        self.createStatusStrip(
-            probeStop if probeStop.startswith('strip') else '')
-        if probeStop in (
-                'stripShell', 'stripAria', 'stripDown',
-                'stripUp', 'stripUpDelay50', 'stripUpDelay100',
-                'stripUpDelay250', 'stripUpDelay500', 'stripLayout', 'stripTimer'):
-            placeholder = QWidget()
-            placeholder.setObjectName('mainRoot')
-            placeholderLayout = QVBoxLayout(placeholder)
-            placeholderLayout.setContentsMargins(0, 10, 0, 0)
-            placeholderLayout.setSpacing(0)
-            placeholderLayout.addWidget(commandHost)
-            placeholderLayout.addWidget(bodyWidget, 1)
-            self.setCentralWidget(placeholder)
-            return
-        if probeStop == 'stripBuilt':
-            placeholder = QWidget()
-            placeholder.setObjectName('mainRoot')
-            placeholderLayout = QVBoxLayout(placeholder)
-            placeholderLayout.setContentsMargins(0, 10, 0, 0)
-            placeholderLayout.setSpacing(0)
-            placeholderLayout.addWidget(commandHost)
-            placeholderLayout.addWidget(bodyWidget, 1)
-            self.setCentralWidget(placeholder)
-            return
+        self.createStatusStrip()
 
         mainWidget = QWidget()
         mainWidget.setObjectName('mainRoot')
@@ -621,17 +480,14 @@ class Ashore(QMainWindow):
         mainLayout.addWidget(bodyWidget, 1)
         mainLayout.addWidget(self.statusStrip)
         self.setCentralWidget(mainWidget)
-        if probeStop == 'stripAdded':
-            return
 
         self.setMinimumSize(920, 520)
         self.setWindowTitle('Ashore')
         self.setWindowIcon(
             QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
-        if createTray:
-            self.createTrayIcon()
-        if refreshIcons:
-            self.refreshActionIcons()
+        self.createTrayIcon()
+        self.refreshActionIcons()
+
     def connectSignals(self) -> None:
         self.addBtn.clicked.connect(self.slotAdd)
         self.unpauseAllBtn.clicked.connect(self.slotUnpauseAll)
@@ -1128,39 +984,10 @@ class StartupController(QObject):
 
 
     def createWindow(self, service):
-        probeMode = os.environ.get('ASHORE_STARTUP_PROBE', '').strip()
-        validProbes = {
-            'beforeStrip', 'stripBuilt', 'stripAdded',
-            'stripShell', 'stripAria', 'stripDown',
-            'stripUp', 'stripUpDelay50', 'stripUpDelay100',
-            'stripUpDelay250', 'stripUpDelay500',
-            'stripLayout', 'stripTimer',
-            'layoutCtor', 'layoutMargins', 'layoutSpacing',
-            'layoutDetached', 'layoutAttached',
-            'layoutObject', 'layoutMessageNoStretch',
-            'layoutMessageStretch',
-            'layoutMessage', 'layoutAria', 'layoutDownIcon',
-            'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel',
-            'baseUi', 'trayCreated', 'iconsRefreshed',
-            'signals', 'events', 'runtime', 'trayShown',
-        }
-        if probeMode and probeMode not in validProbes:
-            self.fail(f'Unknown startup probe: {probeMode}')
-            return
-
         try:
-            self.window = Ashore(
-                service, self.themeManager, startupProbe=probeMode)
+            self.window = Ashore(service, self.themeManager)
         except (RuntimeError, OSError, ValueError) as exc:
             self.fail(str(exc))
-            return
-
-        if probeMode:
-            self.splash.finish(self.window)
-            if probeMode in ('runtime', 'trayShown'):
-                self.window.startRuntime()
-            if probeMode == 'trayShown':
-                self.window.showTray()
             return
 
         self.app.instanceMessage.connect(self.handleInstance)
