@@ -98,13 +98,15 @@ class Aria2Tests(unittest.TestCase):
                     {'rpc-listen-all': 'false'}, {'rpc-secret'}), 0)
                 self.assertNotIn(f'rpc-secret={token}', conf.read_text(encoding='utf-8'))
 
-    def test_missing_aria2_exits_with_clear_error(self):
+    def test_missing_aria2_returns_recovery_issue(self):
         with patch('core.aria2Service.Aria2Client') as clientType, \
              patch('core.aria2Service.shutil.which', return_value=None):
             clientType.return_value.isRpcReady.return_value = False
             service = Aria2Service()
-            with self.assertRaisesRegex(RuntimeError, 'aria2c'):
-                service.ensureReady()
+            issue = service.ensureReady()
+
+        self.assertEqual(issue.code, 'aria2_missing')
+        self.assertTrue(issue.installCommand)
 
     def test_rpc_uses_configured_port_and_secret_and_returns_rpc_error(self):
         client = Aria2Client.__new__(Aria2Client)
@@ -136,7 +138,7 @@ class Aria2Tests(unittest.TestCase):
         with patch.object(client, 'saveSession', return_value={}), \
              patch.object(client, 'call', return_value='OK') as rpc, \
              patch.object(client, 'isRpcReady', return_value=False), \
-             patch.object(service, 'start') as start:
+             patch.object(service, 'start', return_value=None) as start:
             service.restart()
         payload = json.loads(rpc.call_args.args[0])
         self.assertEqual(payload['method'], 'aria2.shutdown')
