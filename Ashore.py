@@ -405,6 +405,9 @@ class Ashore(QMainWindow):
             'realActions', 'realCommand', 'realNavigation',
             'realPages', 'realCentral', 'realWindowMeta',
             'realStatus',
+            'statusSpeedWidgets', 'statusTips', 'statusObject',
+            'statusAriaLabels', 'statusAriaWidget',
+            'statusAriaState', 'statusPermanent', 'statusInstalled',
         }
         createTray = startupProbe not in (
             'controls', 'icons', *exactUiProbes)
@@ -630,19 +633,14 @@ class Ashore(QMainWindow):
         self.refreshActionIcons()
 
 
-    def createStatusBar(self) -> None:
+    def createStatusBar(self, probeStop='') -> None:
         self.downSpeedIcon = QLabel('downSpeedIcon')
         self.downSpeedIcon.setFixedSize(20, 20)
         self.downSpeedIcon.setScaledContents(True)
         self.downSpeedIcon.setPixmap(QPixmap(
             self.resourcePath + 'static/icon/functionIcons/downloadSpeed.png'))
-        self.downSpeedIcon.setToolTip('下载速度')
-        self.downSpeedIcon.setStatusTip('全局实时下载速度')
-
         self.downSpeedLabel = QLabel('下载速度')
         self.downSpeedLabel.setMinimumWidth(80)
-        self.downSpeedLabel.setToolTip('下载速度')
-        self.downSpeedLabel.setStatusTip('全局实时下载速度')
 
         self.upSpeedIcon = QLabel('upSpeedIcon')
         self.upSpeedIcon.setFixedSize(20, 20)
@@ -654,17 +652,32 @@ class Ashore(QMainWindow):
 
         self.upSpeedLabel = QLabel('上传速度')
         self.upSpeedLabel.setMinimumWidth(80)
+        if probeStop == 'statusSpeedWidgets':
+            return
+
+        self.downSpeedIcon.setToolTip('下载速度')
+        self.downSpeedIcon.setStatusTip('全局实时下载速度')
+        self.downSpeedLabel.setToolTip('下载速度')
+        self.downSpeedLabel.setStatusTip('全局实时下载速度')
+        self.upSpeedIcon.setToolTip('上传速度')
+        self.upSpeedIcon.setStatusTip('全局BT、磁链上传速度')
         self.upSpeedLabel.setToolTip('上传速度')
         self.upSpeedLabel.setStatusTip('全局BT、磁链上传速度')
+        if probeStop == 'statusTips':
+            return
 
         self.statusBar = QStatusBar()
         self.statusBar.setContentsMargins(0, 1, 10, 2)
+        if probeStop == 'statusObject':
+            return
 
         self.aria2State = 'connecting'
         self.aria2StateDot = QLabel('●')
         self.aria2StateDot.setProperty('mainConnectionDot', True)
         self.aria2StateText = QLabel()
         self.aria2StateText.setProperty('mainConnectionText', True)
+        if probeStop == 'statusAriaLabels':
+            return
 
         self.aria2StateWidget = QWidget()
         aria2Layout = QHBoxLayout(self.aria2StateWidget)
@@ -672,14 +685,22 @@ class Ashore(QMainWindow):
         aria2Layout.setSpacing(4)
         aria2Layout.addWidget(self.aria2StateDot)
         aria2Layout.addWidget(self.aria2StateText)
+        if probeStop == 'statusAriaWidget':
+            return
+
         self.setMainAria2State('connecting')
         self.aria2StateWidget.setVisible(self.showAria2Status)
+        if probeStop == 'statusAriaState':
+            return
 
         self.statusBar.addPermanentWidget(self.aria2StateWidget)
         self.statusBar.addPermanentWidget(self.downSpeedIcon)
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
         self.statusBar.addPermanentWidget(self.upSpeedIcon)
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
+        if probeStop == 'statusPermanent':
+            return
+
         self.setStatusBar(self.statusBar)
 
 
@@ -816,8 +837,9 @@ class Ashore(QMainWindow):
             QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
         if probeStop == 'realWindowMeta':
             return
-        self.createStatusBar()
-        if probeStop == 'realStatus':
+        statusProbe = probeStop if probeStop.startswith('status') else ''
+        self.createStatusBar(statusProbe)
+        if probeStop in ('realStatus', 'statusInstalled'):
             return
         if createTray:
             self.createTrayIcon()
@@ -1325,6 +1347,9 @@ class StartupController(QObject):
             'realActions', 'realCommand', 'realNavigation',
             'realPages', 'realCentral', 'realWindowMeta',
             'realStatus',
+            'statusSpeedWidgets', 'statusTips', 'statusObject',
+            'statusAriaLabels', 'statusAriaWidget',
+            'statusAriaState', 'statusPermanent', 'statusInstalled',
         }
         constructionProbes = {
             'settingsOnly', 'settingsConfig', 'poller',
