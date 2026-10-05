@@ -149,6 +149,19 @@ class StartupFlowTests(unittest.TestCase):
         exitWindow.ready.connect.assert_called_once_with(window.slotQuit)
         exitWindow.showActive.assert_called_once_with()
         self.assertIs(window.exitWindow, exitWindow)
+    def test_notification_click_restores_window_and_focuses_task(self):
+        window = Mock()
+        window.notificationTarget = 'gid'
+        window.pageDownloaded.focusSection.return_value = True
+
+        Ashore.slotNotificationClicked(window)
+
+        window.slotShowWindow.assert_called_once_with()
+        window.pageDownloaded.focusSection.assert_called_once_with('gid')
+        window.showCompleted.assert_called_once_with()
+        window.pageDownloading.focusSection.assert_not_called()
+
+
 
 if __name__ == '__main__':
     unittest.main()

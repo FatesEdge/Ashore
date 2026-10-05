@@ -130,6 +130,42 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
             self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
 
+    def test_overflow_menu_only_contains_non_quick_actions(self):
+        section = Section(
+            'gid-menu', 'file.bin', 'paused', 100, 50, 0,
+            files=['file.bin'])
+        overflow = [
+            action for action in section.overflowMenu.actions()
+            if not action.isSeparator()]
+        self.assertEqual(
+            overflow, [section.removeAction, section.deleteAction])
+
+        section.prepareContextMenu()
+        context = [
+            action for action in section.contextMenu.actions()
+            if not action.isSeparator()]
+        self.assertEqual(
+            context,
+            [
+                section.primaryAction,
+                section.openFolderAction,
+                section.copyUrlAction,
+                section.removeAction,
+                section.deleteAction,
+            ])
+
+    def test_multifile_context_menu_does_not_duplicate_open_folder(self):
+        section = Section(
+            'gid-multi', 'bundle', 'completed', 100, 100, 0,
+            isTorrent=True, files=['a.bin', 'b.bin'])
+        section.prepareContextMenu()
+        actions = [
+            action for action in section.contextMenu.actions()
+            if not action.isSeparator()]
+        self.assertEqual(actions.count(section.openFolderAction), 0)
+        self.assertEqual(section.primaryActionKind(), 'open-folder')
+
+
 
 if __name__ == '__main__':
     unittest.main()
