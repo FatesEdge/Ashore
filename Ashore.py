@@ -1,5 +1,6 @@
 """Ashore application entry point and main window."""
 
+import os
 import platform
 import signal
 import sys
@@ -51,6 +52,95 @@ from paths import (
     ensureConfig,
     legacyDownloadDirectoryMigration,
 )
+
+
+class StartupProbeWindow(QMainWindow):
+    """Temporary startup structure probe. Remove after cursor diagnosis."""
+
+    VALID_MODES = {
+        'shell',
+        'downloads',
+        'settingsConstructed',
+        'settingsAdded',
+        'statusbar',
+    }
+
+    def __init__(self, mode, language='zh_CN'):
+        super().__init__()
+        if mode not in self.VALID_MODES:
+            raise ValueError(f'Unknown startup probe mode: {mode}')
+        self.mode = mode
+        self.language = language
+        self.setWindowTitle(f'Ashore startup probe · {mode}')
+        self.setMinimumSize(920, 520)
+
+        root = QWidget()
+        root.setObjectName('mainRoot')
+        rootLayout = QVBoxLayout(root)
+        rootLayout.setContentsMargins(0, 10, 0, 8)
+        rootLayout.setSpacing(10)
+
+        commandBar = QWidget()
+        commandBar.setProperty('commandBar', True)
+        commandBar.setFixedHeight(48)
+        commandLayout = QHBoxLayout(commandBar)
+        commandLayout.setContentsMargins(8, 7, 8, 7)
+        commandLayout.addWidget(QPushButton('Probe'))
+        commandLayout.addStretch(1)
+
+        commandHost = QWidget()
+        commandHostLayout = QHBoxLayout(commandHost)
+        commandHostLayout.setContentsMargins(12, 0, 12, 0)
+        commandHostLayout.addWidget(commandBar)
+        rootLayout.addWidget(commandHost)
+
+        body = QWidget()
+        bodyLayout = QHBoxLayout(body)
+        bodyLayout.setContentsMargins(0, 0, 12, 0)
+        bodyLayout.setSpacing(0)
+
+        rail = QWidget()
+        rail.setProperty('navigationRail', True)
+        rail.setFixedWidth(46)
+        railLayout = QVBoxLayout(rail)
+        railLayout.setContentsMargins(4, 0, 4, 0)
+        railLayout.setSpacing(4)
+        probeTab = QPushButton()
+        probeTab.setProperty('navigationTab', True)
+        probeTab.setCheckable(True)
+        probeTab.setChecked(True)
+        probeTab.setFixedHeight(52)
+        probeTab.setIcon(actionIcon('download', size=32))
+        probeTab.setIconSize(QSize(32, 32))
+        railLayout.addWidget(probeTab)
+        railLayout.addStretch(1)
+        bodyLayout.addWidget(rail)
+
+        self.stack = QStackedWidget()
+        self.stack.setProperty('pageSurface', True)
+        bodyLayout.addWidget(self.stack, 1)
+        rootLayout.addWidget(body, 1)
+        self.setCentralWidget(root)
+
+        self.settingsPage = None
+        if mode in ('downloads', 'settingsConstructed',
+                    'settingsAdded', 'statusbar'):
+            self.downloadPage = Page(language)
+            self.completedPage = Page(language)
+            self.stack.addWidget(self.downloadPage)
+            self.stack.addWidget(self.completedPage)
+
+        if mode in ('settingsConstructed', 'settingsAdded', 'statusbar'):
+            self.settingsPage = SettingPage()
+
+        if mode in ('settingsAdded', 'statusbar'):
+            self.stack.addWidget(self.settingsPage)
+
+        if mode == 'statusbar':
+            status = QStatusBar()
+            status.addPermanentWidget(QLabel('● aria2'))
+            status.addPermanentWidget(QLabel('0B/s'))
+            self.setStatusBar(status)
 
 
 class Ashore(QMainWindow):
@@ -420,7 +510,7 @@ class Ashore(QMainWindow):
         self.navigationRail.setProperty('navigationRail', True)
         self.navigationRail.setFixedWidth(46)
         navigationLayout = QVBoxLayout(self.navigationRail)
-        navigationLayout.setContentsMargins(0, 0, 0, 0)
+        navigationLayout.setContentsMargins(4, 0, 4, 0)
         navigationLayout.setSpacing(4)
         navigationLayout.addWidget(self.tabDownloading)
         navigationLayout.addWidget(self.tabDownloaded)
@@ -950,6 +1040,18 @@ class StartupController(QObject):
         QTimer.singleShot(0, lambda: self.createWindow(service))
 
     def createWindow(self, service):
+        probeMode = os.environ.get('ASHORE_STARTUP_PROBE', '').strip()
+        if probeMode:
+            try:
+                self.window = StartupProbeWindow(
+                    probeMode,
+                    self.settings.get('language', 'zh_CN'))
+            except (RuntimeError, OSError, ValueError) as exc:
+                self.fail(str(exc))
+                return
+            self.splash.finish(self.window)
+            return
+
         try:
             self.window = Ashore(service, self.themeManager)
         except (RuntimeError, OSError, ValueError) as exc:

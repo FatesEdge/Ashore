@@ -176,13 +176,10 @@ class ThemeManager(QObject):
             QPushButton[navigationTab="true"] {{
                 background: transparent;
                 border: none;
-                border-top-left-radius: 11px;
-                border-bottom-left-radius: 11px;
-                border-top-right-radius: 0px;
-                border-bottom-right-radius: 0px;
+                border-radius: 10px;
                 padding: 0;
-                min-width: 46px;
-                max-width: 46px;
+                min-width: 38px;
+                max-width: 38px;
                 min-height: 52px;
                 max-height: 52px;
             }}
