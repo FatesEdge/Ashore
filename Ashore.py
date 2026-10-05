@@ -1,5 +1,6 @@
 """Ashore application entry point and main window."""
 
+import os
 import platform
 import signal
 import sys
@@ -56,7 +57,7 @@ class Ashore(QMainWindow):
     firstPainted = pyqtSignal()
 
 
-    def __init__(self, aria2Service, themeManager):
+    def __init__(self, aria2Service, themeManager, startupProbe=''):
         super().__init__()
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
@@ -91,15 +92,26 @@ class Ashore(QMainWindow):
         self.aria2Version = ''
         self.pendingConnectionStatus = '等待检测'
 
-        self.initUI()
+        self.startupProbe = startupProbe
+        createTray = startupProbe not in ('baseUi',)
+        refreshIcons = startupProbe not in ('baseUi', 'trayCreated')
+        self.initUI(createTray=createTray, refreshIcons=refreshIcons)
+
+        if startupProbe in ('baseUi', 'trayCreated', 'iconsRefreshed'):
+            return
+
         self.connectSignals()
         self.aria2Poller.updated.connect(self.updatePage)
+        if startupProbe == 'signals':
+            return
 
         self.aria2Events = Aria2Events(self.aria2Client.rpcPort, self)
         self.aria2Events.notification.connect(self.slotAria2Notification)
         self.aria2Events.connectionStateChanged.connect(
             self.slotWebSocketStateChanged)
         self.websocketState = self.aria2Events.state
+        if startupProbe == 'events':
+            return
     def startRuntime(self):
         """Start asynchronous work after the startup controller is listening."""
         self.aria2Poller.poll()
@@ -379,7 +391,7 @@ class Ashore(QMainWindow):
             QPalette.ColorRole.WindowText, colors[state])
         self.aria2StateDot.setPalette(palette)
 
-    def initUI(self) -> None:
+    def initUI(self, createTray=True, refreshIcons=True) -> None:
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
@@ -482,8 +494,10 @@ class Ashore(QMainWindow):
         self.setWindowTitle('Ashore')
         self.setWindowIcon(
             QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
-        self.createTrayIcon()
-        self.refreshActionIcons()
+        if createTray:
+            self.createTrayIcon()
+        if refreshIcons:
+            self.refreshActionIcons()
     def connectSignals(self) -> None:
         self.addBtn.clicked.connect(self.slotAdd)
         self.unpauseAllBtn.clicked.connect(self.slotUnpauseAll)
@@ -980,10 +994,28 @@ class StartupController(QObject):
 
 
     def createWindow(self, service):
+        probeMode = os.environ.get('ASHORE_STARTUP_PROBE', '').strip()
+        validProbes = {
+            'baseUi', 'trayCreated', 'iconsRefreshed',
+            'signals', 'events', 'runtime', 'trayShown',
+        }
+        if probeMode and probeMode not in validProbes:
+            self.fail(f'Unknown startup probe: {probeMode}')
+            return
+
         try:
-            self.window = Ashore(service, self.themeManager)
+            self.window = Ashore(
+                service, self.themeManager, startupProbe=probeMode)
         except (RuntimeError, OSError, ValueError) as exc:
             self.fail(str(exc))
+            return
+
+        if probeMode:
+            self.splash.finish(self.window)
+            if probeMode in ('runtime', 'trayShown'):
+                self.window.startRuntime()
+            if probeMode == 'trayShown':
+                self.window.showTray()
             return
 
         self.app.instanceMessage.connect(self.handleInstance)
@@ -1003,6 +1035,7 @@ class StartupController(QObject):
         else:
             self.trackerReady = True
         self.tryFinish()
+
     def firstSnapshot(self, *_):
         self.firstSnapshotReady = True
         self.tryFinish()
