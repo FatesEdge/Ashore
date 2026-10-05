@@ -20,8 +20,8 @@ Ashore 的启动和退出持续显示忙碌光标问题已经解决，并由用�
 
 - 仓库：`FatesEdge/Ashore`
 - 开发分支：`codex/python-stability-refactor`
-- 最新远端提交：`e6342b37fab0a0b600c92d548a0ddd2dbec495b3`
-- 提交说明：`Replace stacked layout and remove diagnostics`
+- 当前功能基线提交：`e6342b37fab0a0b600c92d548a0ddd2dbec495b3`
+- 功能基线说明：`Replace stacked layout and remove diagnostics`
 - 版本：`0.7.67`
 - `main` 尚未在本轮合并，合并前需要用户确认。
 
@@ -279,4 +279,3 @@ python Ashore.py
 4. 与用户确认视觉方向和需要保留的旧设计感。
 5. 统一重构 `ThemeManager` 与控件语义属性，删除被取代的旧 QSS。
 6. 运行正式测试，并由用户实际检查浅色、深色、跟随系统、主题色、窗口伸缩和三语文本。
-
