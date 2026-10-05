@@ -35,7 +35,7 @@ STARTUP_STAGES = (
     StartupStage('windowBase', 'Ashore base state and an empty central widget'),
     StartupStage('windowFrame', 'production window size, title and application icon'),
     StartupStage('windowControlsPlain', 'navigation and toolbar without image icons'),
-    StartupStage('windowDownloadIcon', 'add only the downloading navigation icon'),
+    StartupStage('windowSingleIcon', 'add one selected button image icon'),
     StartupStage('windowFirstTwoIcons', 'add downloading and completed icons'),
     StartupStage('windowNavigationIcons', 'add the three navigation image icons'),
     StartupStage('windowControls', 'navigation and toolbar with placeholder pages'),
@@ -112,8 +112,9 @@ class IdlePage(QWidget):
 class StagedAshore(Ashore):
     """Expose cumulative boundaries inside Ashore.__init__ for diagnosis."""
 
-    def __init__(self, aria2Service, themeManager, probeStage):
+    def __init__(self, aria2Service, themeManager, probeStage, singleIcon):
         self.probeStage = probeStage
+        self.singleIcon = singleIcon
         super().__init__(aria2Service, themeManager)
 
     def initUI(self):
@@ -129,7 +130,7 @@ class StagedAshore(Ashore):
             self.setWindowIcon(QIcon(
                 self.resourcePath + 'static/icon/functionIcons/icon.png'))
             return
-        if not includes(self.probeStage, 'windowDownloadIcon'):
+        if not includes(self.probeStage, 'windowSingleIcon'):
             with (
                     patch('Ashore.Page', IdlePage),
                     patch('Ashore.QIcon', lambda *_args: QIcon())):
@@ -138,7 +139,7 @@ class StagedAshore(Ashore):
         if not includes(self.probeStage, 'windowFirstTwoIcons'):
             with (
                     patch('Ashore.Page', IdlePage),
-                    patch('Ashore.QIcon', iconLoader({'download.png'}))):
+                    patch('Ashore.QIcon', iconLoader({self.singleIcon}))):
                 super().initUI()
             return
         if not includes(self.probeStage, 'windowNavigationIcons'):
@@ -185,10 +186,11 @@ class StagedAshore(Ashore):
 class StartupProbe(QObject):
     TRACKER_GRACE_MS = 1000
 
-    def __init__(self, app, stage):
+    def __init__(self, app, stage, singleIcon):
         super().__init__(app)
         self.app = app
         self.stage = stage
+        self.singleIcon = singleIcon
         self.splash = StartupWindow(RESOURCE_DIR / 'static/img/cover.png')
         self.splash.firstPainted.connect(self.begin)
         self.themeManager = ThemeManager(app, self)
@@ -243,7 +245,7 @@ class StartupProbe(QObject):
         eventsClass = Aria2Events if includes(self.stage, 'mainWindow') else IdleEvents
         with patch('Ashore.Aria2Events', eventsClass):
             self.window = StagedAshore(
-                self.service, self.themeManager, self.stage)
+                self.service, self.themeManager, self.stage, self.singleIcon)
         if not includes(self.stage, 'runtime'):
             self.window.aria2Poller.timer.stop()
             self.splash.finish(self.window)
@@ -286,6 +288,11 @@ def buildParser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--stage', choices=[stage.name for stage in STARTUP_STAGES],
                         default='base')
+    parser.add_argument(
+        '--single-icon', dest='singleIcon', default='download.png',
+        choices=('download.png', 'completed.png', 'setting.png',
+                 'add.png', 'play.png', 'pause.png'),
+        help='button image used by the windowSingleIcon stage')
     parser.add_argument('--list', action='store_true', help='list cumulative stages')
     return parser
 
@@ -298,7 +305,7 @@ def main(arguments=None):
             print(f'{index:2d}  {stage.name:12s} {stage.description}')
         return 0
     app = AshoreApplication([sys.argv[0]])
-    probe = StartupProbe(app, options.stage)
+    probe = StartupProbe(app, options.stage, options.singleIcon)
     app.startupProbe = probe
     probe.start()
     return app.exec()

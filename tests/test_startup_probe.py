@@ -17,9 +17,9 @@ class StartupProbeTests(unittest.TestCase):
         self.assertLess(stageIndex('windowBase'), stageIndex('windowFrame'))
         self.assertLess(stageIndex('windowFrame'), stageIndex('windowControlsPlain'))
         self.assertLess(
-            stageIndex('windowControlsPlain'), stageIndex('windowDownloadIcon'))
+            stageIndex('windowControlsPlain'), stageIndex('windowSingleIcon'))
         self.assertLess(
-            stageIndex('windowDownloadIcon'), stageIndex('windowFirstTwoIcons'))
+            stageIndex('windowSingleIcon'), stageIndex('windowFirstTwoIcons'))
         self.assertLess(
             stageIndex('windowFirstTwoIcons'), stageIndex('windowNavigationIcons'))
         self.assertLess(stageIndex('windowNavigationIcons'), stageIndex('windowControls'))
@@ -32,8 +32,10 @@ class StartupProbeTests(unittest.TestCase):
         self.assertFalse(includes('config', 'ariaStartup'))
 
     def test_parser_accepts_stage(self):
-        options = buildParser().parse_args(['--stage', 'mainWindow'])
+        options = buildParser().parse_args(
+            ['--stage', 'mainWindow', '--single-icon', 'add.png'])
         self.assertEqual(options.stage, 'mainWindow')
+        self.assertEqual(options.singleIcon, 'add.png')
 
 
 if __name__ == '__main__':
