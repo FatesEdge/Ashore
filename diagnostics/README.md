@@ -76,26 +76,24 @@ the lower stage must remain clean and the first failing stage must reproduce.
 python diagnostics/startupProbe.py --list
 python diagnostics/startupProbe.py --stage base
 python diagnostics/startupProbe.py --stage ariaStartup
-python diagnostics/startupProbe.py --stage windowBase
-python diagnostics/startupProbe.py --stage windowFrame
-python diagnostics/startupProbe.py --stage windowControlsPlain
-python diagnostics/startupProbe.py --stage windowSingleIcon
-python diagnostics/startupProbe.py --stage windowSingleIcon --single-icon add.png
-python diagnostics/startupProbe.py --stage windowSingleIcon --single-icon add.png --icon-mode preloaded
-python diagnostics/startupProbe.py --stage windowSingleIcon --single-icon add.png --icon-mode delayed --icon-delay 3000
-python diagnostics/startupProbe.py --stage windowFirstTwoIcons
-python diagnostics/startupProbe.py --stage windowNavigationIcons
-python diagnostics/startupProbe.py --stage windowControls
-python diagnostics/startupProbe.py --stage windowContent
-python diagnostics/startupProbe.py --stage windowMenus
-python diagnostics/startupProbe.py --stage windowStatus
-python diagnostics/startupProbe.py --stage windowTray
-python diagnostics/startupProbe.py --stage windowSignals
 python diagnostics/startupProbe.py --stage mainWindow
 python diagnostics/startupProbe.py --stage tray
 ```
 
 Compare the lowest clean stage with the first stage that produces the busy
-cursor. Use Ctrl+C in the terminal to close stages before `windowTray`; those
-stages intentionally omit the production quit action and tray object. From
-`windowTray` onward, Ctrl+Q and the tray exit path are available.
+cursor. Use Ctrl+Q to close stages that construct the real Ashore window.
+
+## Window handoff A/B probe
+
+`windowHandoffProbe.py` deliberately excludes aria2, WebSocket, task pages,
+menus, tray objects and image icons. It compares the same window when shown
+directly and when shown through Ashore's startup window:
+
+```bash
+python diagnostics/windowHandoffProbe.py --stage controls --handoff direct
+python diagnostics/windowHandoffProbe.py --stage controls --handoff splash
+```
+
+Wait for the cursor to return to normal before each run. Keep each window open
+for at least 15 seconds and use Ctrl+C to close it, so exit feedback does not
+contaminate the startup observation.
