@@ -63,6 +63,8 @@ def includes(selected, required):
 def iconLoader(names, mode='file'):
     def loadIcon(source=None):
         if source is not None and Path(str(source)).name in names:
+            if mode == 'delayed':
+                return QIcon()
             if mode == 'preloaded':
                 pixmap = QPixmap(source).scaled(
                     QSize(24, 24), Qt.AspectRatioMode.KeepAspectRatio,
@@ -190,6 +192,19 @@ class StagedAshore(Ashore):
         if includes(self.probeStage, 'windowStatus'):
             super().updateConnection(httpStatus)
 
+    def applyDelayedIcon(self):
+        buttons = {
+            'download.png': self.tabDownloading,
+            'completed.png': self.tabDownloaded,
+            'setting.png': self.tabSetting,
+            'add.png': self.addBtn,
+            'play.png': self.unpauseAllBtn,
+            'pause.png': self.pauseAllBtn,
+        }
+        source = self.resourcePath + 'static/icon/functionIcons/' + self.singleIcon
+        buttons[self.singleIcon].setIcon(QIcon(source))
+        print(f'Delayed icon applied after first paint: {self.singleIcon}', flush=True)
+
 
 class StartupProbe(QObject):
     TRACKER_GRACE_MS = 1000
@@ -258,6 +273,8 @@ class StartupProbe(QObject):
                 self.singleIcon, self.iconMode)
         if not includes(self.stage, 'runtime'):
             self.window.aria2Poller.timer.stop()
+            if self.iconMode == 'delayed':
+                self.window.firstPainted.connect(self.window.applyDelayedIcon)
             self.splash.finish(self.window)
             return
         self.window.aria2Poller.updated.connect(self.snapshotFinished)
@@ -304,7 +321,7 @@ def buildParser():
                  'add.png', 'play.png', 'pause.png'),
         help='button image used by the windowSingleIcon stage')
     parser.add_argument(
-        '--icon-mode', dest='iconMode', choices=('file', 'preloaded'),
+        '--icon-mode', dest='iconMode', choices=('file', 'preloaded', 'delayed'),
         default='file', help='how the selected image is converted to QIcon')
     parser.add_argument('--list', action='store_true', help='list cumulative stages')
     return parser
