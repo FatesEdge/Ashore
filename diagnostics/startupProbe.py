@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
-from PyQt6.QtCore import QObject, QTimer, pyqtSignal
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QObject, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -60,9 +60,14 @@ def includes(selected, required):
     return stageIndex(selected) >= stageIndex(required)
 
 
-def iconLoader(names):
+def iconLoader(names, mode='file'):
     def loadIcon(source=None):
         if source is not None and Path(str(source)).name in names:
+            if mode == 'preloaded':
+                pixmap = QPixmap(source).scaled(
+                    QSize(24, 24), Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation)
+                return QIcon(pixmap)
             return QIcon(source)
         return QIcon()
     return loadIcon
@@ -112,9 +117,11 @@ class IdlePage(QWidget):
 class StagedAshore(Ashore):
     """Expose cumulative boundaries inside Ashore.__init__ for diagnosis."""
 
-    def __init__(self, aria2Service, themeManager, probeStage, singleIcon):
+    def __init__(
+            self, aria2Service, themeManager, probeStage, singleIcon, iconMode):
         self.probeStage = probeStage
         self.singleIcon = singleIcon
+        self.iconMode = iconMode
         super().__init__(aria2Service, themeManager)
 
     def initUI(self):
@@ -139,7 +146,8 @@ class StagedAshore(Ashore):
         if not includes(self.probeStage, 'windowFirstTwoIcons'):
             with (
                     patch('Ashore.Page', IdlePage),
-                    patch('Ashore.QIcon', iconLoader({self.singleIcon}))):
+                    patch('Ashore.QIcon', iconLoader(
+                        {self.singleIcon}, self.iconMode))):
                 super().initUI()
             return
         if not includes(self.probeStage, 'windowNavigationIcons'):
@@ -186,11 +194,12 @@ class StagedAshore(Ashore):
 class StartupProbe(QObject):
     TRACKER_GRACE_MS = 1000
 
-    def __init__(self, app, stage, singleIcon):
+    def __init__(self, app, stage, singleIcon, iconMode):
         super().__init__(app)
         self.app = app
         self.stage = stage
         self.singleIcon = singleIcon
+        self.iconMode = iconMode
         self.splash = StartupWindow(RESOURCE_DIR / 'static/img/cover.png')
         self.splash.firstPainted.connect(self.begin)
         self.themeManager = ThemeManager(app, self)
@@ -245,7 +254,8 @@ class StartupProbe(QObject):
         eventsClass = Aria2Events if includes(self.stage, 'mainWindow') else IdleEvents
         with patch('Ashore.Aria2Events', eventsClass):
             self.window = StagedAshore(
-                self.service, self.themeManager, self.stage, self.singleIcon)
+                self.service, self.themeManager, self.stage,
+                self.singleIcon, self.iconMode)
         if not includes(self.stage, 'runtime'):
             self.window.aria2Poller.timer.stop()
             self.splash.finish(self.window)
@@ -293,6 +303,9 @@ def buildParser():
         choices=('download.png', 'completed.png', 'setting.png',
                  'add.png', 'play.png', 'pause.png'),
         help='button image used by the windowSingleIcon stage')
+    parser.add_argument(
+        '--icon-mode', dest='iconMode', choices=('file', 'preloaded'),
+        default='file', help='how the selected image is converted to QIcon')
     parser.add_argument('--list', action='store_true', help='list cumulative stages')
     return parser
 
@@ -305,7 +318,8 @@ def main(arguments=None):
             print(f'{index:2d}  {stage.name:12s} {stage.description}')
         return 0
     app = AshoreApplication([sys.argv[0]])
-    probe = StartupProbe(app, options.stage, options.singleIcon)
+    probe = StartupProbe(
+        app, options.stage, options.singleIcon, options.iconMode)
     app.startupProbe = probe
     probe.start()
     return app.exec()

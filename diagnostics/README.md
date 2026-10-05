@@ -81,6 +81,7 @@ python diagnostics/startupProbe.py --stage windowFrame
 python diagnostics/startupProbe.py --stage windowControlsPlain
 python diagnostics/startupProbe.py --stage windowSingleIcon
 python diagnostics/startupProbe.py --stage windowSingleIcon --single-icon add.png
+python diagnostics/startupProbe.py --stage windowSingleIcon --single-icon add.png --icon-mode preloaded
 python diagnostics/startupProbe.py --stage windowFirstTwoIcons
 python diagnostics/startupProbe.py --stage windowNavigationIcons
 python diagnostics/startupProbe.py --stage windowControls

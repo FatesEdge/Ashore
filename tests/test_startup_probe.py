@@ -33,9 +33,11 @@ class StartupProbeTests(unittest.TestCase):
 
     def test_parser_accepts_stage(self):
         options = buildParser().parse_args(
-            ['--stage', 'mainWindow', '--single-icon', 'add.png'])
+            ['--stage', 'mainWindow', '--single-icon', 'add.png',
+             '--icon-mode', 'preloaded'])
         self.assertEqual(options.stage, 'mainWindow')
         self.assertEqual(options.singleIcon, 'add.png')
+        self.assertEqual(options.iconMode, 'preloaded')
 
 
 if __name__ == '__main__':
