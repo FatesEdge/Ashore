@@ -209,12 +209,13 @@ class StagedAshore(Ashore):
 class StartupProbe(QObject):
     TRACKER_GRACE_MS = 1000
 
-    def __init__(self, app, stage, singleIcon, iconMode):
+    def __init__(self, app, stage, singleIcon, iconMode, iconDelay):
         super().__init__(app)
         self.app = app
         self.stage = stage
         self.singleIcon = singleIcon
         self.iconMode = iconMode
+        self.iconDelay = iconDelay
         self.splash = StartupWindow(RESOURCE_DIR / 'static/img/cover.png')
         self.splash.firstPainted.connect(self.begin)
         self.themeManager = ThemeManager(app, self)
@@ -274,7 +275,7 @@ class StartupProbe(QObject):
         if not includes(self.stage, 'runtime'):
             self.window.aria2Poller.timer.stop()
             if self.iconMode == 'delayed':
-                self.window.firstPainted.connect(self.window.applyDelayedIcon)
+                self.window.firstPainted.connect(self.scheduleDelayedIcon)
             self.splash.finish(self.window)
             return
         self.window.aria2Poller.updated.connect(self.snapshotFinished)
@@ -290,6 +291,12 @@ class StartupProbe(QObject):
         else:
             self.trackerReady = True
         self.tryShow()
+
+    def scheduleDelayedIcon(self):
+        print(
+            f'First paint completed; applying icon in {self.iconDelay} ms',
+            flush=True)
+        QTimer.singleShot(self.iconDelay, self.window.applyDelayedIcon)
 
     def snapshotFinished(self, *_):
         self.snapshotReady = True
@@ -323,6 +330,9 @@ def buildParser():
     parser.add_argument(
         '--icon-mode', dest='iconMode', choices=('file', 'preloaded', 'delayed'),
         default='file', help='how the selected image is converted to QIcon')
+    parser.add_argument(
+        '--icon-delay', dest='iconDelay', type=int, default=3000,
+        help='milliseconds between first paint and delayed icon assignment')
     parser.add_argument('--list', action='store_true', help='list cumulative stages')
     return parser
 
@@ -336,7 +346,8 @@ def main(arguments=None):
         return 0
     app = AshoreApplication([sys.argv[0]])
     probe = StartupProbe(
-        app, options.stage, options.singleIcon, options.iconMode)
+        app, options.stage, options.singleIcon, options.iconMode,
+        max(0, options.iconDelay))
     app.startupProbe = probe
     probe.start()
     return app.exec()
