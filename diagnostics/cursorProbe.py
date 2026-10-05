@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PyQt6.QtCore import QObject, QTimer
+from PyQt6.QtCore import QEvent, QObject, QTimer
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtNetwork import QLocalServer
 from PyQt6.QtWidgets import (
@@ -81,6 +81,9 @@ class ProbeWindow(QMainWindow):
         self.trayQuitDelay = trayQuitDelay
         self.trayAction = trayAction
         self.trayQuitPending = False
+        self.waitForWindowReady = False
+        self.windowActivated = False
+        self.windowPainted = False
         self.trayIcon = None
         self.trayMenu = None
         self.localServer = None
@@ -169,6 +172,7 @@ class ProbeWindow(QMainWindow):
             'quit': 'Quit probe',
             'observe': 'Observe action only',
             'activate': 'Activate then quit',
+            'windowReady': 'Wait for window then quit',
         }
         quitAction = QAction(actionLabels[self.trayAction], self)
         showAction.triggered.connect(
@@ -195,6 +199,15 @@ class ProbeWindow(QMainWindow):
         if self.trayAction == 'observe':
             print('Observation mode; app.quit was not scheduled', flush=True)
             return
+        if self.trayAction == 'windowReady':
+            self.trayQuitPending = True
+            self.waitForWindowReady = True
+            self.windowActivated = False
+            self.windowPainted = False
+            self.showFromTray()
+            self.update()
+            print('Waiting for WindowActivate and Paint events', flush=True)
+            return
         if self.trayAction == 'activate':
             self.showFromTray()
             print('Main window activation requested', flush=True)
@@ -206,6 +219,22 @@ class ProbeWindow(QMainWindow):
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def event(self, event):
+        result = super().event(event)
+        if not getattr(self, 'waitForWindowReady', False):
+            return result
+        if event.type() == QEvent.Type.WindowActivate:
+            self.windowActivated = True
+            print('WindowActivate received', flush=True)
+        elif event.type() == QEvent.Type.Paint:
+            self.windowPainted = True
+            print('Paint received', flush=True)
+        if self.windowActivated and self.windowPainted:
+            self.waitForWindowReady = False
+            print('Window ready; app.quit scheduled for next event', flush=True)
+            QTimer.singleShot(0, self.quitProbe)
+        return result
 
     def buildSingleInstance(self):
         name = f'Ashore-CursorProbe-{os.getpid()}'
@@ -322,7 +351,8 @@ def buildParser():
                         default=0, metavar='MILLISECONDS',
                         help='wait after the tray menu closes before app.quit')
     parser.add_argument('--tray-action', dest='trayAction',
-                        choices=('quit', 'observe', 'activate'), default='quit',
+                        choices=('quit', 'observe', 'activate', 'windowReady'),
+                        default='quit',
                         help='choose how the diagnostic tray action responds')
     parser.add_argument('--list', action='store_true', help='list cumulative stages')
     return parser

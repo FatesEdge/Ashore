@@ -52,6 +52,17 @@ then use Ctrl+Q after observing the cursor. For `activate`, close the main
 window first and choose **Activate then quit**; the window should reappear and
 the process exits three seconds later.
 
+If activation prevents the busy cursor with a delay but not at zero
+milliseconds, wait for actual window activation and painting instead of using a
+fixed delay:
+
+```bash
+python diagnostics/cursorProbe.py --stage tray --tray-action windowReady
+```
+
+Close the main window first, then choose **Wait for window then quit**. The
+terminal reports both window events before the application exits.
+
 The stages are cumulative. Start with `base`, `tray`, and `startupWindow`. If two
 adjacent observations differ, use the stages between them to find the first
 component that changes cursor behavior. Confirm the boundary in both directions:

@@ -16,10 +16,10 @@ class CursorProbeTests(unittest.TestCase):
     def test_parser_accepts_named_stage(self):
         options = buildParser().parse_args([
             '--stage', 'webSocket', '--tray-quit-delay', '1000',
-            '--tray-action', 'activate'])
+            '--tray-action', 'windowReady'])
         self.assertEqual(options.stage, 'webSocket')
         self.assertEqual(options.trayQuitDelay, 1000)
-        self.assertEqual(options.trayAction, 'activate')
+        self.assertEqual(options.trayAction, 'windowReady')
 
 
 if __name__ == '__main__':
