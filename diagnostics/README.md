@@ -77,6 +77,8 @@ python diagnostics/startupProbe.py --list
 python diagnostics/startupProbe.py --stage base
 python diagnostics/startupProbe.py --stage ariaStartup
 python diagnostics/startupProbe.py --stage windowBase
+python diagnostics/startupProbe.py --stage windowFrame
+python diagnostics/startupProbe.py --stage windowControlsPlain
 python diagnostics/startupProbe.py --stage windowControls
 python diagnostics/startupProbe.py --stage windowContent
 python diagnostics/startupProbe.py --stage windowMenus

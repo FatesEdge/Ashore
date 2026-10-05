@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -32,6 +33,8 @@ STARTUP_STAGES = (
     StartupStage('config', 'configuration loading and ThemeManager'),
     StartupStage('ariaStartup', 'Aria2Startup.ensureReady in its worker thread'),
     StartupStage('windowBase', 'Ashore base state and an empty central widget'),
+    StartupStage('windowFrame', 'production window size, title and application icon'),
+    StartupStage('windowControlsPlain', 'navigation and toolbar without image icons'),
     StartupStage('windowControls', 'navigation and toolbar with placeholder pages'),
     StartupStage('windowContent', 'navigation, toolbar and all three pages'),
     StartupStage('windowMenus', 'production application menus'),
@@ -103,10 +106,23 @@ class StagedAshore(Ashore):
         super().__init__(aria2Service, themeManager)
 
     def initUI(self):
-        if not includes(self.probeStage, 'windowControls'):
+        if not includes(self.probeStage, 'windowFrame'):
             self.setCentralWidget(QLabel(f'Ashore window base: {self.probeStage}'))
             self.setWindowTitle('Ashore Startup Probe')
             self.resize(640, 360)
+            return
+        if not includes(self.probeStage, 'windowControlsPlain'):
+            self.setCentralWidget(QLabel('Ashore production window frame'))
+            self.setMinimumSize(1000, 520)
+            self.setWindowTitle('Ashore')
+            self.setWindowIcon(QIcon(
+                self.resourcePath + 'static/icon/functionIcons/icon.png'))
+            return
+        if not includes(self.probeStage, 'windowControls'):
+            with (
+                    patch('Ashore.Page', IdlePage),
+                    patch('Ashore.QIcon', lambda *_args: QIcon())):
+                super().initUI()
             return
         if not includes(self.probeStage, 'windowContent'):
             with patch('Ashore.Page', IdlePage):
