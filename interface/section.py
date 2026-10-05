@@ -22,7 +22,7 @@ class HoverMenuButton(QPushButton):
         self.hoverTimer.setSingleShot(True)
         self.hoverTimer.setInterval(280)
         self.hoverTimer.timeout.connect(self.menuRequested)
-        self.clicked.connect(self.menuRequested)
+        self.clicked.connect(lambda _checked=False: self.menuRequested.emit())
 
     def enterEvent(self, event):
         self.hoverTimer.start()
