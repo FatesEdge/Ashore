@@ -69,15 +69,5 @@ class StartupFlowTests(unittest.TestCase):
         window.trayMenu.close.assert_called_once_with()
         singleShot.assert_called_once_with(0, callback)
 
-    def test_tray_quit_waits_for_desktop_round_trip(self):
-        window = Mock()
-
-        Ashore.deferTrayQuit(window)
-
-        window.trayMenu.close.assert_called_once_with()
-        window.desktopIntegration.afterTrayEvent.assert_called_once_with(
-            window.slotQuit)
-
-
 if __name__ == '__main__':
     unittest.main()

@@ -34,11 +34,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from core.applicationInfo import APP_VERSION, configureApplication
 from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Shutdown, Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
-from core.desktopIntegration import DesktopIntegration
 from core.formatters import formatSpeed
 from interface.addNewDialog import AddNewDialog
 from interface.languageManager import translate
@@ -53,16 +53,6 @@ from paths import (
     ensureConfig,
     legacyDownloadDirectoryMigration,
 )
-
-APP_VERSION = '0.7.66'
-
-
-def configureApplication():
-    """Set the stable desktop identity before Qt initializes its platform plugin."""
-    QApplication.setApplicationVersion(APP_VERSION)
-    QApplication.setOrganizationName('PanZK')
-    QApplication.setApplicationName('Ashore')
-    QApplication.setDesktopFileName('ashore')
 
 
 class Ashore(QMainWindow):
@@ -86,7 +76,6 @@ class Ashore(QMainWindow):
         self.aria2Poller = Aria2Poller(
             self.aria2Client, int(ashoreConfig['update_interval']), self)
         self.themeManager = themeManager
-        self.desktopIntegration = DesktopIntegration(self)
 
         self.initUI()
         self.connectSignals()
@@ -176,7 +165,7 @@ class Ashore(QMainWindow):
         self.connectTrayAction(showWindowAction, self.slotShowWindow)
         self.connectTrayAction(newAction, self.slotAdd)
         self.connectTrayAction(aboutInfoAction, self.slotAbout)
-        quitAction.triggered.connect(self.deferTrayQuit)
+        self.connectTrayAction(quitAction, self.slotQuit)
         self.trayIcon = QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayMenu)
         self.trayIcon.setToolTip('Ashore')
@@ -193,10 +182,6 @@ class Ashore(QMainWindow):
         self.trayMenu.close()
         QTimer.singleShot(0, callback)
 
-    def deferTrayQuit(self):
-        """Let the desktop acknowledge its tray action before process teardown."""
-        self.trayMenu.close()
-        self.desktopIntegration.afterTrayEvent(self.slotQuit)
 
     def applyTrayIconStyle(self, style):
         source = QPixmap(self.resourcePath + 'static/icon/functionIcons/trayIcon.png')
