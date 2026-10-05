@@ -105,9 +105,49 @@ class ThemeManager(QObject):
         accentText = contrastText(self.accent)
         accentSoft = translucent(self.accent, 52 if dark else 34)
         return f"""
-            QMainWindow, QWidget#mainRoot {{
+            QMainWindow {{
+                background: transparent;
+                color: {token['text']};
+            }}
+            QWidget#mainRoot, QWidget[windowFrame="true"] {{
                 background: {token['background']};
                 color: {token['text']};
+                border: 1px solid {token['border']};
+                border-radius: 10px;
+            }}
+            QWidget[windowContent="true"] {{
+                background: {token['background']};
+                border: none;
+            }}
+            QWidget[customTitleBar="true"] {{
+                background: {token['raised']};
+                border: none;
+                border-bottom: 1px solid {token['border']};
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+            }}
+            QLabel[windowTitleText="true"] {{
+                color: {token['text']};
+                background: transparent;
+                border: none;
+                font-weight: 600;
+            }}
+            QToolButton[windowControl="true"] {{
+                background: transparent;
+                color: {token['muted']};
+                border: none;
+                border-radius: 14px;
+                padding: 0;
+                font-size: 16px;
+                font-weight: 500;
+            }}
+            QToolButton[windowControl="true"]:hover {{
+                background: {token['hover']};
+                color: {token['text']};
+            }}
+            QToolButton[windowControlRole="close"]:hover {{
+                background: {token['danger']};
+                color: white;
             }}
             QWidget[commandBar="true"] {{
                 background: {token['surface']};
@@ -259,6 +299,67 @@ class ThemeManager(QObject):
                 color: {token['text']};
                 font-weight: 600;
                 padding: 6px 2px;
+            }}
+
+            QComboBox, QSpinBox {{
+                background: {token['field']};
+                color: {token['text']};
+                border: 1px solid {token['border']};
+                border-radius: 7px;
+                min-height: 28px;
+                padding: 2px 28px 2px 7px;
+                selection-background-color: {self.accent};
+                selection-color: {accentText};
+            }}
+            QComboBox:hover, QSpinBox:hover {{
+                border-color: {token['borderStrong']};
+            }}
+            QComboBox:focus, QSpinBox:focus {{
+                border-color: {self.accent};
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                background: transparent;
+                border: none;
+                border-left: 1px solid {token['border']};
+                border-top-right-radius: 7px;
+                border-bottom-right-radius: 7px;
+            }}
+            QComboBox::drop-down:hover {{
+                background: {accentSoft};
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                width: 10px;
+                height: 10px;
+            }}
+            QSpinBox {{
+                padding-right: 26px;
+            }}
+            QSpinBox::up-button, QSpinBox::down-button {{
+                subcontrol-origin: border;
+                width: 22px;
+                background: transparent;
+                border-left: 1px solid {token['border']};
+            }}
+            QSpinBox::up-button {{
+                subcontrol-position: top right;
+                border-top-right-radius: 7px;
+                border-bottom: 1px solid {token['border']};
+            }}
+            QSpinBox::down-button {{
+                subcontrol-position: bottom right;
+                border-bottom-right-radius: 7px;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background: {accentSoft};
+            }}
+            QSpinBox::up-arrow, QSpinBox::down-arrow {{
+                image: none;
+                width: 9px;
+                height: 9px;
             }}
 
             QLineEdit, QTextEdit {{

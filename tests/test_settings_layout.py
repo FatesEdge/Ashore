@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import QApplication, QSizePolicy
 import paths
 from Ashore import StartupController
 from interface.addNewDialog import AddNewDialog
+from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.section import Section
 from interface.settingPage import SettingPage
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, ThemeManager
@@ -52,6 +53,12 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(page.rpcSecretLineEdit.text(), '●' * 12)
             page.toggleToken()
             self.assertEqual(page.rpcSecretLineEdit.text(), token)
+
+    def test_settings_use_ashore_combo_and_spin_controls(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertIsInstance(page.languageComboBox, AshoreComboBox)
+            self.assertIsInstance(page.updateIntervalSpin, AshoreSpinBox)
 
     def test_theme_and_tracker_controls_have_persistable_values(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -198,9 +205,9 @@ class SettingsLayoutTests(unittest.TestCase):
         manager = ThemeManager(self.app)
         manager.apply('dark', '#a51d2d')
         style = self.app.styleSheet()
-        self.assertNotIn('QComboBox::down-arrow', style)
-        self.assertNotIn('QSpinBox::up-arrow', style)
-        self.assertNotIn('QSpinBox::down-arrow', style)
+        self.assertIn('QComboBox::down-arrow', style)
+        self.assertIn('QSpinBox::up-arrow', style)
+        self.assertIn('QSpinBox::down-arrow', style)
         self.assertNotIn('QLabel[connectionState="connected"]', style)
         self.assertIn('QLabel[mainConnectionDot="true"]', style)
         self.assertNotIn('QSpinBox {', style)

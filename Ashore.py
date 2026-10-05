@@ -43,6 +43,7 @@ from interface.languageManager import translate
 from interface.page import Page
 from interface.settingPage import SettingPage
 from interface.startupWindow import ExitWindow, RecoveryWindow, StartupWindow
+from interface.titleBar import AshoreTitleBar, WindowFrame
 from interface.themeManager import TRAY_GRAY, ThemeManager
 from paths import (
     CONFIG_DIR,
@@ -58,6 +59,8 @@ class Ashore(QMainWindow):
 
     def __init__(self, aria2Service, themeManager):
         super().__init__()
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'
@@ -131,6 +134,12 @@ class Ashore(QMainWindow):
         if (event.type() == QEvent.Type.PaletteChange
                 and hasattr(self, 'addBtn')):
             self.refreshActionIcons()
+        if (event.type() == QEvent.Type.WindowStateChange
+                and hasattr(self, 'titleBar')):
+            self.titleBar.syncState()
+            margin = 0 if self.isMaximized() else 5
+            self.windowFrameLayout.setContentsMargins(
+                margin, 0, margin, margin)
 
 
     def createCommandActions(self) -> None:
@@ -473,19 +482,31 @@ class Ashore(QMainWindow):
 
         self.createStatusStrip()
 
-        mainWidget = QWidget()
+        self.setWindowTitle('Ashore')
+        mainWidget = WindowFrame(self)
         mainWidget.setObjectName('mainRoot')
+        self.windowFrame = mainWidget
+        self.titleBar = AshoreTitleBar(self)
+
+        contentWidget = QWidget()
+        contentWidget.setProperty('windowContent', True)
+        contentLayout = QVBoxLayout(contentWidget)
+        contentLayout.setContentsMargins(0, 10, 0, 0)
+        contentLayout.setSpacing(0)
+        contentLayout.addWidget(commandHost)
+        contentLayout.addWidget(bodyWidget, 1)
+        contentLayout.addSpacing(8)
+        contentLayout.addWidget(self.statusStrip)
+
         mainLayout = QVBoxLayout(mainWidget)
-        mainLayout.setContentsMargins(0, 10, 0, 0)
+        self.windowFrameLayout = mainLayout
+        mainLayout.setContentsMargins(5, 0, 5, 5)
         mainLayout.setSpacing(0)
-        mainLayout.addWidget(commandHost)
-        mainLayout.addWidget(bodyWidget, 1)
-        mainLayout.addSpacing(8)
-        mainLayout.addWidget(self.statusStrip)
+        mainLayout.addWidget(self.titleBar)
+        mainLayout.addWidget(contentWidget, 1)
         self.setCentralWidget(mainWidget)
 
         self.setMinimumSize(920, 520)
-        self.setWindowTitle('Ashore')
         self.setWindowIcon(
             QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
         self.createTrayIcon()
@@ -716,6 +737,9 @@ class Ashore(QMainWindow):
             self.show()
         self.raise_()
         self.activateWindow()
+        handle = self.windowHandle()
+        if handle is not None:
+            handle.requestActivate()
     def requestTrayQuit(self):
         if self.quitting or self.exitWindow is not None:
             return

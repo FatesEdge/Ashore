@@ -153,7 +153,7 @@ class Section(QFrame):
 
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(14, 6, 10, 5)
-        mainLayout.setSpacing(1)
+        mainLayout.setSpacing(3)
         mainLayout.addLayout(bodyLayout)
         mainLayout.addWidget(self.progressBar)
 

@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 from core.configStore import readAshore, readOptions, writeAshore, writeOptions
 from core.trackerManager import TrackerManager, displayTime
 from core.trackerSources import parseTrackers
+from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.languageManager import LANGUAGES, translate
 from interface.statusBadge import setConnectionBadge
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, validColor
@@ -106,19 +107,19 @@ class SettingPage(QWidget):
         self.defaultDownloadDirLabel = QLabel()
         formLayout.addRow(self.defaultDownloadDirLabel, pathLayout)
 
-        self.maxDownloadsSpin = QSpinBox()
+        self.maxDownloadsSpin = AshoreSpinBox()
         self.maxDownloadsSpin.setRange(1, 100)
         self.maxDownloadsSpin.setMaximumWidth(100)
         self.maxDownloadsLabel = QLabel()
         formLayout.addRow(self.maxDownloadsLabel, self.maxDownloadsSpin)
 
-        self.maxConnectionSpin = QSpinBox()
+        self.maxConnectionSpin = AshoreSpinBox()
         self.maxConnectionSpin.setRange(1, 16)
         self.maxConnectionSpin.setMaximumWidth(100)
         self.maxConnectionsLabel = QLabel()
         formLayout.addRow(self.maxConnectionsLabel, self.maxConnectionSpin)
 
-        self.userAgentComboBox = QComboBox()
+        self.userAgentComboBox = AshoreComboBox()
         self.userAgentComboBox.setEditable(True)
         self.userAgentComboBox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.userAgentComboBox.addItems(self.ashoreConfig['user_agent_presets'])
@@ -129,17 +130,17 @@ class SettingPage(QWidget):
         formLayout.addRow(self.userAgentLabel, self.userAgentComboBox)
 
         self.uploadLimitLabel = QLabel()
-        self.uploadLimitSpin = QSpinBox()
+        self.uploadLimitSpin = AshoreSpinBox()
         self.uploadLimitSpin.setRange(0, 1024)
         self.uploadLimitSpin.setMinimumWidth(150)
-        self.uploadLimitComboBox = QComboBox()
+        self.uploadLimitComboBox = AshoreComboBox()
         self.uploadLimitComboBox.addItems(['B/s', 'KB/s', 'MB/s', 'GB/s'])
 
         self.downloadLimitLabel = QLabel()
-        self.downloadLimitSpin = QSpinBox()
+        self.downloadLimitSpin = AshoreSpinBox()
         self.downloadLimitSpin.setRange(0, 1024)
         self.downloadLimitSpin.setMinimumWidth(150)
-        self.downloadLimitComboBox = QComboBox()
+        self.downloadLimitComboBox = AshoreComboBox()
         self.downloadLimitComboBox.addItems(['B/s', 'KB/s', 'MB/s', 'GB/s'])
 
         transLayout = QGridLayout()
@@ -185,7 +186,7 @@ class SettingPage(QWidget):
         formLayout.addRow(
             self.aria2VersionFormLabel, self.aria2VersionLabel)
 
-        self.rpcListenAllComboBox = QComboBox()
+        self.rpcListenAllComboBox = AshoreComboBox()
         self.rpcListenAllComboBox.addItems(['', ''])
         self.rpcListenAllComboBox.setCurrentIndex(1)
         listenAllLayout = QHBoxLayout()
@@ -232,7 +233,7 @@ class SettingPage(QWidget):
         self.btTrackerLabel = QLabel('BT Tracker:')
         formLayout.addRow(self.btTrackerLabel, trackerLayout)
 
-        self.autoTrackerComboBox = QComboBox()
+        self.autoTrackerComboBox = AshoreComboBox()
         self.autoTrackerComboBox.addItems(['', ''])
         self.autoTrackerHintLabel = QLabel()
         autoTrackerLayout = QHBoxLayout()
@@ -246,7 +247,7 @@ class SettingPage(QWidget):
         self.ashoreSettingLabel.setProperty('settingsSectionTitle', True)
         formLayout.addRow(self.ashoreSettingLabel)
 
-        self.withAria2QuitComboBox = QComboBox()
+        self.withAria2QuitComboBox = AshoreComboBox()
         self.withAria2QuitComboBox.addItems(['', ''])
         quitWithAria2Layout = QHBoxLayout()
         quitWithAria2Layout.addWidget(self.withAria2QuitComboBox)
@@ -254,7 +255,7 @@ class SettingPage(QWidget):
         self.quitWithAria2Label = QLabel()
         formLayout.addRow(self.quitWithAria2Label, quitWithAria2Layout)
 
-        self.showAria2StatusComboBox = QComboBox()
+        self.showAria2StatusComboBox = AshoreComboBox()
         self.showAria2StatusComboBox.addItems(['', ''])
         showAria2StatusLayout = QHBoxLayout()
         showAria2StatusLayout.addWidget(self.showAria2StatusComboBox)
@@ -263,7 +264,7 @@ class SettingPage(QWidget):
         formLayout.addRow(
             self.showAria2StatusLabel, showAria2StatusLayout)
 
-        self.updateIntervalSpin = QSpinBox()
+        self.updateIntervalSpin = AshoreSpinBox()
         self.updateIntervalSpin.setRange(500, 10000)
         self.updateIntervalSpin.setSingleStep(100)
         self.updateIntervalSpin.setMaximumWidth(110)
@@ -274,7 +275,7 @@ class SettingPage(QWidget):
         self.refreshIntervalLabel = QLabel()
         formLayout.addRow(self.refreshIntervalLabel, updateIntervalLayout)
 
-        self.rpcPortChangeableComboBox = QComboBox()
+        self.rpcPortChangeableComboBox = AshoreComboBox()
         self.rpcPortChangeableComboBox.addItems(['', ''])
         rpcPortChangeableLayout = QHBoxLayout()
         rpcPortChangeableLayout.addWidget(self.rpcPortChangeableComboBox)
@@ -282,7 +283,7 @@ class SettingPage(QWidget):
         self.rpcChangeLabel = QLabel()
         formLayout.addRow(self.rpcChangeLabel, rpcPortChangeableLayout)
 
-        self.languageComboBox = QComboBox()
+        self.languageComboBox = AshoreComboBox()
         for code, name in LANGUAGES.items():
             self.languageComboBox.addItem(name, code)
         languageLayout = QHBoxLayout()
@@ -291,7 +292,7 @@ class SettingPage(QWidget):
         self.languageLabel = QLabel()
         formLayout.addRow(self.languageLabel, languageLayout)
 
-        self.trayIconStyleComboBox = QComboBox()
+        self.trayIconStyleComboBox = AshoreComboBox()
         self.trayIconStyleComboBox.addItem('', 'colorful')
         self.trayIconStyleComboBox.addItem('', 'gray')
         trayIconLayout = QHBoxLayout()
@@ -300,7 +301,7 @@ class SettingPage(QWidget):
         self.trayIconStyleLabel = QLabel()
         formLayout.addRow(self.trayIconStyleLabel, trayIconLayout)
 
-        self.themeModeComboBox = QComboBox()
+        self.themeModeComboBox = AshoreComboBox()
         for mode in THEME_MODES:
             self.themeModeComboBox.addItem('', mode)
         themeLayout = QHBoxLayout()
@@ -309,7 +310,7 @@ class SettingPage(QWidget):
         self.themeModeLabel = QLabel()
         formLayout.addRow(self.themeModeLabel, themeLayout)
 
-        self.accentComboBox = QComboBox()
+        self.accentComboBox = AshoreComboBox()
         self.accentComboBox.setEditable(True)
         for color in ACCENT_PRESETS:
             self.accentComboBox.addItem(color, color)

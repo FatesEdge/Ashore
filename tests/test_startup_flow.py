@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from PyQt6.QtCore import QCoreApplication
+from PyQt6.QtCore import QCoreApplication, Qt
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication, QStackedWidget
 
@@ -81,6 +81,9 @@ class StartupFlowTests(unittest.TestCase):
         self.assertIsInstance(window.pageStack, QStackedWidget)
         self.assertEqual(window.pageStack.count(), 3)
         self.assertTrue(window.commandBar.property('commandBar'))
+        self.assertTrue(
+            window.windowFlags() & Qt.WindowType.FramelessWindowHint)
+        self.assertTrue(window.titleBar.property('customTitleBar'))
         self.assertTrue(window.pageStack.property('pageSurface'))
         self.assertIs(window.moreBtn.menu(), window.moreMenu)
         self.assertEqual(window.tabDownloading.text(), '')
