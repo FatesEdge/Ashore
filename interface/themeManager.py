@@ -1,4 +1,4 @@
-"""Central application palette and accent styling."""
+"""Central Ashore palette, design tokens, and semantic widget styling."""
 
 from PyQt6.QtCore import QObject, Qt
 from PyQt6.QtGui import QColor, QPalette
@@ -72,70 +72,255 @@ class ThemeManager(QObject):
     @staticmethod
     def lightPalette():
         palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor('#f4f5f7'))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor('#202124'))
+        palette.setColor(QPalette.ColorRole.Window, QColor('#f3f4f6'))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor('#1f2328'))
         palette.setColor(QPalette.ColorRole.Base, QColor('#ffffff'))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor('#eceff1'))
-        palette.setColor(QPalette.ColorRole.Text, QColor('#202124'))
-        palette.setColor(QPalette.ColorRole.Button, QColor('#f8f9fa'))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor('#202124'))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor('#f7f8fa'))
+        palette.setColor(QPalette.ColorRole.Text, QColor('#1f2328'))
+        palette.setColor(QPalette.ColorRole.Button, QColor('#f8f9fb'))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor('#1f2328'))
         palette.setColor(QPalette.ColorRole.ToolTipBase, QColor('#ffffff'))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor('#202124'))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor('#1f2328'))
         return palette
 
     @staticmethod
     def darkPalette():
         palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor('#242424'))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor('#f2f2f2'))
-        palette.setColor(QPalette.ColorRole.Base, QColor('#1d1d1d'))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor('#2c2c2c'))
-        palette.setColor(QPalette.ColorRole.Text, QColor('#f2f2f2'))
-        palette.setColor(QPalette.ColorRole.Button, QColor('#303030'))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor('#f2f2f2'))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor('#303030'))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor('#f2f2f2'))
+        palette.setColor(QPalette.ColorRole.Window, QColor('#1f2023'))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor('#f1f3f5'))
+        palette.setColor(QPalette.ColorRole.Base, QColor('#27282c'))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor('#2d2f34'))
+        palette.setColor(QPalette.ColorRole.Text, QColor('#f1f3f5'))
+        palette.setColor(QPalette.ColorRole.Button, QColor('#2d2f34'))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor('#f1f3f5'))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor('#2d2f34'))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor('#f1f3f5'))
         palette.setColor(QPalette.ColorRole.HighlightedText, QColor('#ffffff'))
         return palette
 
     def styleSheet(self, dark):
-        hover = QColor(self.accent).lighter(115).name()
-        pressed = QColor(self.accent).darker(120).name()
-        text = contrastText(self.accent)
-        windowText = '#f2f2f2' if dark else '#202124'
-        fieldBackground = '#1d1d1d' if dark else '#ffffff'
-        subtle = translucent(self.accent, 55 if dark else 34)
-        cardBackground = translucent(self.accent, 105 if dark else 54)
-        return f'''
-            QPushButton {{
-                background-color: {subtle}; border: 1px solid {self.accent};
-                border-radius: 6px; padding: 4px 10px; color: {windowText};
+        token = self.tokens(dark)
+        accentHover = QColor(self.accent).lighter(112 if dark else 108).name()
+        accentPressed = QColor(self.accent).darker(118).name()
+        accentText = contrastText(self.accent)
+        accentSoft = translucent(self.accent, 52 if dark else 34)
+        return f"""
+            QMainWindow, QWidget#mainRoot {{
+                background: {token['background']};
+                color: {token['text']};
             }}
-            QPushButton:hover {{ background-color: {self.accent}; color: {text}; border-color: {hover}; }}
-            QPushButton:pressed, QPushButton:checked {{ background-color: {pressed}; color: {text}; }}
-            QPushButton:disabled {{ background-color: transparent; color: #888888; border-color: #777777; }}
-            QPushButton[toolbarButton="true"] {{
-                min-width: 38px; max-width: 38px; min-height: 34px; max-height: 34px;
-                border-radius: 8px; padding: 0; background-color: transparent;
+            QWidget[commandBar="true"] {{
+                background: {token['surface']};
+                border: 1px solid {token['border']};
+                border-radius: 12px;
+            }}
+            QPushButton {{
+                background: {token['raised']};
+                color: {token['text']};
+                border: 1px solid {token['border']};
+                border-radius: 8px;
+                min-height: 30px;
+                padding: 4px 11px;
+            }}
+            QPushButton:hover {{
+                background: {token['hover']};
+                border-color: {token['borderStrong']};
+            }}
+            QPushButton:pressed {{ background: {token['pressed']}; }}
+            QPushButton:disabled {{
+                background: transparent;
+                color: {token['disabled']};
+                border-color: {token['border']};
+            }}
+            QPushButton[commandPrimary="true"], QPushButton[primaryAction="true"] {{
+                background: {self.accent};
+                color: {accentText};
+                border: 1px solid {self.accent};
+                min-height: 36px;
+                padding: 0 15px;
+                font-weight: 600;
+            }}
+            QPushButton[commandPrimary="true"]:hover, QPushButton[primaryAction="true"]:hover {{
+                background: {accentHover}; border-color: {accentHover};
+            }}
+            QPushButton[commandPrimary="true"]:pressed, QPushButton[primaryAction="true"]:pressed {{
+                background: {accentPressed}; border-color: {accentPressed};
+            }}
+            QPushButton[commandSecondary="true"] {{
+                background: transparent;
+                border-color: transparent;
+                min-height: 36px;
+                padding: 0 12px;
+                font-weight: 500;
+            }}
+            QPushButton[commandSecondary="true"]:hover {{
+                background: {token['hover']}; border-color: {token['border']};
+            }}
+            QPushButton[overflowButton="true"] {{
+                min-width: 36px; max-width: 36px;
+                min-height: 36px; max-height: 36px;
+                padding: 0;
+                background: transparent;
+                border-color: transparent;
+                font-size: 20px;
+                font-weight: 700;
+            }}
+            QPushButton[overflowButton="true"]:hover {{
+                background: {token['hover']}; border-color: {token['border']};
+            }}
+            QPushButton[overflowButton="true"]::menu-indicator,
+            QPushButton[cardAction="true"]::menu-indicator {{
+                image: none; width: 0px;
+            }}
+            QWidget[navigationRail="true"] {{ background: {token['background']}; }}
+            QPushButton[navigationTab="true"] {{
+                background: transparent;
+                color: {token['muted']};
+                border: none;
+                border-top-left-radius: 9px;
+                border-bottom-left-radius: 9px;
+                border-top-right-radius: 0px;
+                border-bottom-right-radius: 0px;
+                padding: 0 14px;
+                text-align: left;
+                font-weight: 500;
+            }}
+            QPushButton[navigationTab="true"]:hover {{
+                background: {token['hover']}; color: {token['text']};
             }}
             QPushButton[navigationTab="true"]:checked {{
-                background-color: {self.accent}; color: {text}; border-color: {hover};
+                background: {token['surface']};
+                color: {self.accent};
+                font-weight: 600;
             }}
-            QPushButton[settingsButton="true"] {{
-                background-color: {self.accent}; color: {text}; border-color: {hover};
+            QStackedWidget[pageSurface="true"],
+            QScrollArea[downloadPage="true"],
+            QWidget[pageViewport="true"],
+            QWidget[pageBody="true"] {{
+                background: {token['surface']};
+                border: none;
             }}
-            QPushButton[settingsButton="true"]:hover {{ background-color: {hover}; }}
-            QPushButton[settingsButton="true"]:pressed {{ background-color: {pressed}; }}
+            QStackedWidget[pageSurface="true"] {{
+                border-top-right-radius: 12px;
+                border-bottom-right-radius: 12px;
+            }}
+            QFrame[downloadCard="true"] {{
+                background: {token['raised']};
+                border: 1px solid {token['border']};
+                border-radius: 10px;
+            }}
+            QFrame[downloadCard="true"]:hover {{
+                background: {token['cardHover']};
+                border-color: {token['borderStrong']};
+            }}
+            QLabel[cardTitle="true"] {{
+                color: {token['text']}; font-size: 14px; font-weight: 600;
+            }}
+            QLabel[cardMeta="true"] {{
+                color: {token['muted']}; font-size: 12px;
+            }}
+            QLabel[cardPercent="true"] {{
+                color: {token['text']}; font-size: 16px; font-weight: 600;
+            }}
             QPushButton[cardAction="true"] {{
-                min-width: 23px; max-width: 23px; min-height: 23px; max-height: 23px;
-                padding: 0; border-radius: 4px; background-color: {subtle};
+                min-width: 30px; max-width: 30px;
+                min-height: 30px; max-height: 30px;
+                padding: 0;
+                background: transparent;
+                border-color: transparent;
+                border-radius: 7px;
             }}
-            QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus {{ border: 1px solid {self.accent}; }}
-            QProgressBar {{
-                background-color: {fieldBackground}; color: {text}; border: 1px solid {self.accent};
-                border-radius: 4px; text-align: center;
+            QPushButton[cardAction="true"]:hover {{
+                background: {token['hover']}; border-color: {token['border']};
             }}
-            QProgressBar::chunk {{ background-color: {self.accent}; }}
-            QFrame[downloadCard="true"] {{ background-color: {cardBackground}; border: 1px solid {self.accent}; border-radius: 6px; }}
-            QFrame[downloadCard="true"]:hover {{ border: 2px solid {hover}; }}
-        '''
+            QProgressBar[cardProgress="true"] {{
+                min-height: 4px; max-height: 4px;
+                background: {token['track']};
+                border: none;
+                border-radius: 2px;
+                text-align: center;
+            }}
+            QProgressBar[cardProgress="true"]::chunk {{
+                background: {self.accent}; border-radius: 2px;
+            }}
+            QLineEdit, QTextEdit, QComboBox, QSpinBox {{
+                background: {token['field']};
+                color: {token['text']};
+                border: 1px solid {token['border']};
+                border-radius: 7px;
+                padding: 4px 7px;
+                selection-background-color: {self.accent};
+                selection-color: {accentText};
+            }}
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus {{
+                border-color: {self.accent};
+            }}
+            QMenu {{
+                background: {token['surface']};
+                color: {token['text']};
+                border: 1px solid {token['border']};
+                border-radius: 8px;
+                padding: 6px;
+            }}
+            QMenu::item {{
+                border-radius: 6px;
+                padding: 7px 24px 7px 10px;
+            }}
+            QMenu::item:selected {{ background: {accentSoft}; }}
+            QMenu::separator {{
+                height: 1px; background: {token['border']}; margin: 5px 8px;
+            }}
+            QScrollBar:vertical {{
+                background: transparent; width: 10px; margin: 0;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {token['scroll']};
+                min-height: 32px;
+                border-radius: 4px;
+                margin: 2px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background: {token['scrollHover']}; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: transparent; }}
+            QScrollBar:horizontal {{
+                background: transparent; height: 10px; margin: 0;
+            }}
+            QScrollBar::handle:horizontal {{
+                background: {token['scroll']};
+                min-width: 32px;
+                border-radius: 4px;
+                margin: 2px;
+            }}
+            QScrollBar::handle:horizontal:hover {{ background: {token['scrollHover']}; }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: transparent; }}
+            QStatusBar {{
+                background: {token['background']};
+                color: {token['muted']};
+                border-top: 1px solid {token['border']};
+            }}
+            QToolTip {{
+                background: {token['surface']};
+                color: {token['text']};
+                border: 1px solid {token['borderStrong']};
+                padding: 4px 6px;
+            }}
+        """
+
+    @staticmethod
+    def tokens(dark):
+        if dark:
+            return {
+                'background': '#1f2023', 'surface': '#27282c', 'raised': '#2d2f34',
+                'field': '#24262a', 'hover': '#35373d', 'pressed': '#3c3f45',
+                'cardHover': '#313339', 'border': '#3f4248', 'borderStrong': '#565a63',
+                'text': '#f1f3f5', 'muted': '#aeb4bc', 'disabled': '#737981',
+                'track': '#41444a', 'scroll': '#666b73', 'scrollHover': '#858b94',
+            }
+        return {
+            'background': '#f3f4f6', 'surface': '#ffffff', 'raised': '#f8f9fb',
+            'field': '#ffffff', 'hover': '#eef1f4', 'pressed': '#e3e7eb',
+            'cardHover': '#f3f5f7', 'border': '#d7dbe0', 'borderStrong': '#b9c0c8',
+            'text': '#1f2328', 'muted': '#626a73', 'disabled': '#9aa1a9',
+            'track': '#dfe3e8', 'scroll': '#aab1b8', 'scrollHover': '#858d96',
+        }

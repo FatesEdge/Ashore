@@ -15,7 +15,7 @@ TEXT = {
         'quit': '退出程序', 'startAll': '开始全部', 'pauseAll': '暂停全部',
         'show': '显示窗口', 'hide': '关闭窗口', 'about': '关于 Ashore',
         'showMain': '显示主窗口', 'trayQuit': '退出', 'exiting': '正在退出…',
-        'downloading': '下载中', 'downloaded': '已完成', 'settings': '设置',
+        'downloading': '下载中', 'downloaded': '已完成', 'settings': '设置', 'more': '更多',
     },
     'zh_TW': {
         'file': '檔案', 'edit': '編輯', 'window': '視窗', 'help': '說明',
@@ -23,7 +23,7 @@ TEXT = {
         'quit': '結束程式', 'startAll': '全部開始', 'pauseAll': '全部暫停',
         'show': '顯示視窗', 'hide': '關閉視窗', 'about': '關於 Ashore',
         'showMain': '顯示主視窗', 'trayQuit': '結束', 'exiting': '正在結束…',
-        'downloading': '下載中', 'downloaded': '已完成', 'settings': '設定',
+        'downloading': '下載中', 'downloaded': '已完成', 'settings': '設定', 'more': '更多',
     },
     'en': {
         'file': 'File', 'edit': 'Edit', 'window': 'Window', 'help': 'Help',
@@ -31,7 +31,7 @@ TEXT = {
         'quit': 'Quit Ashore', 'startAll': 'Start All', 'pauseAll': 'Pause All',
         'show': 'Show Window', 'hide': 'Hide Window', 'about': 'About Ashore',
         'showMain': 'Show Main Window', 'trayQuit': 'Quit', 'exiting': 'Exiting…',
-        'downloading': 'Downloading', 'downloaded': 'Completed', 'settings': 'Settings',
+        'downloading': 'Downloading', 'downloaded': 'Completed', 'settings': 'Settings', 'more': 'More',
     },
 }
 

@@ -272,6 +272,7 @@ class SettingPage(QWidget):
         scrollToAria2Btn = QPushButton('Aria2 设置')
         scrollToAshoreBtn = QPushButton('Ashore 设置')
         self.saveBtn = QPushButton('保存设置')
+        self.saveBtn.setProperty('primaryAction', True)
         scrollBtnLayout = QVBoxLayout()
         scrollBtnLayout.addWidget(scrollToAria2Btn)
         scrollBtnLayout.addWidget(scrollToAshoreBtn)
@@ -288,9 +289,6 @@ class SettingPage(QWidget):
 
         self.setLayout(mainLayout)
         self.setMinimumWidth(760)
-
-        for button in self.findChildren(QPushButton):
-            button.setProperty('settingsButton', True)
 
         pathBtn.clicked.connect(self.slotDir)
         scrollToAria2Btn.clicked.connect(self.slotScrollToAria2)

@@ -107,51 +107,39 @@ class Ashore(QMainWindow):
             self.hasPainted = True
             QTimer.singleShot(0, self.firstPainted.emit)
 
-    def createMenuBar(self) -> None:
-        menuBar = self.menuBar()
+
+    def createCommandActions(self) -> None:
+        """Create low-frequency actions for the command-bar overflow menu."""
         self.menuActions = {}
-        newAction = QAction(self.tr('new'),self, triggered=self.slotAdd)
-        newAction.setStatusTip('新建下载任务')
-        newAction.setShortcut('Ctrl+N')
-        saveAction = QAction(self.tr('saveSession'),self, triggered=self.slotSaveSession)
+        saveAction = QAction(self.tr('saveSession'), self, triggered=self.slotSaveSession)
         saveAction.setStatusTip('保存下载任务')
         saveAction.setShortcut('Ctrl+S')
-        restartAction = QAction(self.tr('restart'),self, triggered=self.slotRestartAria2)
-        restartAction.setStatusTip('重新启动Aria2,可能导致程序短暂卡顿')
-        quitAction = QAction(self.tr('quit'),self, triggered=self.slotQuit)
-        quitAction.setStatusTip('彻底退出程序')
-        quitAction.setShortcut('Ctrl+Q')
-        fileMenu = menuBar.addMenu(self.tr('file'))
-        fileMenu.addAction(newAction)
-        fileMenu.addAction(saveAction)
-        fileMenu.addSeparator()
-        fileMenu.addAction(restartAction)
-        fileMenu.addAction(quitAction)
-        unpauseAllAction = QAction(self.tr('startAll'),self, triggered=self.slotUnpauseAll)
-        unpauseAllAction.setStatusTip('开始全部任务')
-        pauseAllAction = QAction(self.tr('pauseAll'),self, triggered=self.slotPauseAll)
-        pauseAllAction.setStatusTip('逐步暂停全部任务')
-        editMenu = menuBar.addMenu(self.tr('edit'))
-        editMenu.addAction(unpauseAllAction)
-        editMenu.addAction(pauseAllAction)
-        showAction = QAction(self.tr('show'),self, triggered=self.show)
+        restartAction = QAction(self.tr('restart'), self, triggered=self.slotRestartAria2)
+        restartAction.setStatusTip('重新启动 Aria2，运行中的任务会短暂刷新')
+        showAction = QAction(self.tr('show'), self, triggered=self.show)
         showAction.setShortcut('Ctrl+R')
-        hideAction = QAction(self.tr('hide'),self, triggered=self.hide)
-        hideAction.setStatusTip('退出当前应用')
+        hideAction = QAction(self.tr('hide'), self, triggered=self.hide)
         hideAction.setShortcut('Ctrl+W')
-        windowMenu = menuBar.addMenu(self.tr('window'))
-        windowMenu.addAction(showAction)
-        windowMenu.addAction(hideAction)
-        aboutInfoAction = QAction(self.tr('about'), self, triggered=self.slotAbout)
-        aboutInfoAction.setStatusTip('关于Ashore')
-        helpMenu = menuBar.addMenu(self.tr('help'))
-        helpMenu.addAction(aboutInfoAction)
-        self.menuActions.update(new=newAction, saveSession=saveAction, restart=restartAction,
-                                quit=quitAction, startAll=unpauseAllAction, pauseAll=pauseAllAction,
-                                show=showAction, hide=hideAction, about=aboutInfoAction)
-        self.mainMenus = {'file': fileMenu, 'edit': editMenu, 'window': windowMenu, 'help': helpMenu}
-        self.setMenuBar(menuBar)
-
+        aboutAction = QAction(self.tr('about'), self, triggered=self.slotAbout)
+        quitAction = QAction(self.tr('quit'), self, triggered=self.slotQuit)
+        quitAction.setShortcut('Ctrl+Q')
+        self.menuActions.update(
+            saveSession=saveAction,
+            restart=restartAction,
+            show=showAction,
+            hide=hideAction,
+            about=aboutAction,
+            quit=quitAction,
+        )
+        self.moreMenu = QMenu(self)
+        self.moreMenu.addAction(saveAction)
+        self.moreMenu.addAction(restartAction)
+        self.moreMenu.addSeparator()
+        self.moreMenu.addAction(showAction)
+        self.moreMenu.addAction(hideAction)
+        self.moreMenu.addSeparator()
+        self.moreMenu.addAction(aboutAction)
+        self.moreMenu.addAction(quitAction)
     def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
         showWindowAction = QAction(self.tr('showMain'), self)
         newAction = QAction(self.tr('new'), self)
@@ -202,18 +190,22 @@ class Ashore(QMainWindow):
     def tr(self, key):
         return translate(self.language, key)
 
+
     def applyLanguage(self):
         for key, action in self.menuActions.items():
             action.setText(self.tr(key))
-        for key, menu in self.mainMenus.items():
-            menu.setTitle(self.tr(key))
         for key, action in self.trayActions.items():
             action.setText(self.tr(key))
+        self.addBtn.setText(self.tr('new'))
+        self.unpauseAllBtn.setText(self.tr('startAll'))
+        self.pauseAllBtn.setText(self.tr('pauseAll'))
+        self.moreBtn.setToolTip(self.tr('more'))
+        self.tabDownloading.setText(self.tr('downloading'))
+        self.tabDownloaded.setText(self.tr('downloaded'))
+        self.tabSetting.setText(self.tr('settings'))
         self.tabDownloading.setToolTip(self.tr('downloading'))
         self.tabDownloaded.setToolTip(self.tr('downloaded'))
         self.tabSetting.setToolTip(self.tr('settings'))
-
-
     def createStatusBar(self) -> None:   #设置状态栏
         self.downSpeedIcon = QLabel('upSpeedIcon')
         self.downSpeedIcon.setFixedSize(20,20)
@@ -246,83 +238,118 @@ class Ashore(QMainWindow):
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
         self.setStatusBar(self.statusBar)
 
+
     def initUI(self) -> None:
-        self.tabDownloading = QPushButton(QIcon(self.resourcePath + 'static/icon/functionIcons/download.png'),'')
-        self.tabDownloading.setFlat(True)
-        self.tabDownloading.setIconSize(QSize(23,23))
-        self.tabDownloading.setToolTip('下载中')
-        self.tabDownloading.setStatusTip('显示所有下载、等待、暂停中的任务')
-        self.tabDownloaded = QPushButton(QIcon(self.resourcePath + 'static/icon/functionIcons/completed.png'),'')
-        self.tabDownloaded.setFlat(True)
-        self.tabDownloaded.setIconSize(QSize(23,23))
-        self.tabDownloaded.setToolTip('已完成')
-        self.tabDownloaded.setStatusTip('显示所有已完成、错误的任务')
-        self.tabSetting = QPushButton(QIcon(self.resourcePath + 'static/icon/functionIcons/setting.png'),'')
-        self.tabSetting.setFlat(True)
-        self.tabSetting.setIconSize(QSize(23,23))
-        self.tabSetting.setToolTip('设置')
-        self.tabSetting.setStatusTip('Ashore及aria2相关设置')
-        self.tabSetting.setShortcut("Ctrl+,")
+        self.createCommandActions()
+
+        self.addBtn = QPushButton(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/add.png'),
+            self.tr('new'))
+        self.addBtn.setIconSize(QSize(18, 18))
+        self.addBtn.setToolTip(self.tr('new'))
+        self.addBtn.setStatusTip('新建下载任务')
+        self.addBtn.setShortcut('Ctrl+N')
+        self.addBtn.setProperty('commandPrimary', True)
+
+        self.unpauseAllBtn = QPushButton(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/play.png'),
+            self.tr('startAll'))
+        self.unpauseAllBtn.setIconSize(QSize(17, 17))
+        self.unpauseAllBtn.setToolTip(self.tr('startAll'))
+        self.unpauseAllBtn.setStatusTip('恢复所有暂停的任务')
+        self.unpauseAllBtn.setProperty('commandSecondary', True)
+
+        self.pauseAllBtn = QPushButton(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/pause.png'),
+            self.tr('pauseAll'))
+        self.pauseAllBtn.setIconSize(QSize(17, 17))
+        self.pauseAllBtn.setToolTip(self.tr('pauseAll'))
+        self.pauseAllBtn.setStatusTip('暂停所有下载中的任务')
+        self.pauseAllBtn.setProperty('commandSecondary', True)
+
+        self.moreBtn = QPushButton('⋯')
+        self.moreBtn.setToolTip(self.tr('more'))
+        self.moreBtn.setProperty('overflowButton', True)
+        self.moreBtn.setMenu(self.moreMenu)
+
+        self.commandBar = QWidget()
+        self.commandBar.setProperty('commandBar', True)
+        self.commandBar.setFixedHeight(56)
+        commandLayout = QHBoxLayout(self.commandBar)
+        commandLayout.setContentsMargins(10, 8, 10, 8)
+        commandLayout.setSpacing(6)
+        commandLayout.addWidget(self.addBtn)
+        commandLayout.addWidget(self.unpauseAllBtn)
+        commandLayout.addWidget(self.pauseAllBtn)
+        commandLayout.addStretch(1)
+        commandLayout.addWidget(self.moreBtn)
+
+        self.tabDownloading = QPushButton(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/download.png'),
+            self.tr('downloading'))
+        self.tabDownloaded = QPushButton(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/completed.png'),
+            self.tr('downloaded'))
+        self.tabSetting = QPushButton(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/setting.png'),
+            self.tr('settings'))
+        self.tabSetting.setShortcut('Ctrl+,')
+
         self.navigationTabs = QButtonGroup(self)
         self.navigationTabs.setExclusive(True)
         for button in (self.tabDownloading, self.tabDownloaded, self.tabSetting):
             button.setCheckable(True)
+            button.setIconSize(QSize(20, 20))
             button.setProperty('navigationTab', True)
-            button.setProperty('toolbarButton', True)
+            button.setFixedHeight(46)
             self.navigationTabs.addButton(button)
+
         self.tabDownloading.setChecked(True)
-        tabLayout = QVBoxLayout()
-        tabLayout.addWidget(self.tabDownloading)
-        tabLayout.addWidget(self.tabDownloaded)
-        tabLayout.addStretch(10)
-        tabLayout.addWidget(self.tabSetting)
-        self.addBtn = QPushButton(QIcon(self.resourcePath + 'static/icon/functionIcons/add.png'),'')
-        self.addBtn.setFlat(True)
-        self.addBtn.setIconSize(QSize(20,20))
-        self.addBtn.setToolTip('新建下载')
-        self.addBtn.setStatusTip('新建下载任务')
-        self.addBtn.setShortcut("Ctrl+N")
-        self.unpauseAllBtn = QPushButton(QIcon(self.resourcePath + 'static/icon/functionIcons/play.png'),'')
-        self.unpauseAllBtn.setFlat(True)
-        self.unpauseAllBtn.setIconSize(QSize(20,20))
-        self.unpauseAllBtn.setToolTip('开始全部')
-        self.unpauseAllBtn.setStatusTip('恢复所有暂停的任务')
-        self.pauseAllBtn = QPushButton(QIcon(self.resourcePath + 'static/icon/functionIcons/pause.png'),'')
-        self.pauseAllBtn.setFlat(True)
-        self.pauseAllBtn.setIconSize(QSize(20,20))
-        self.pauseAllBtn.setToolTip('暂停全部')
-        self.pauseAllBtn.setStatusTip('暂停所有下载中的任务')
-        for button in (self.addBtn, self.unpauseAllBtn, self.pauseAllBtn):
-            button.setProperty('toolbarButton', True)
-        btnLayout = QHBoxLayout()
-        btnLayout.addWidget(self.addBtn)
-        btnLayout.addWidget(self.unpauseAllBtn)
-        btnLayout.addWidget(self.pauseAllBtn)
-        #添加弹簧
-        btnLayout.addStretch(10)
+        self.tabDownloading.setStatusTip('显示所有下载、等待、暂停中的任务')
+        self.tabDownloaded.setStatusTip('显示所有已完成、错误的任务')
+        self.tabSetting.setStatusTip('Ashore 及 aria2 相关设置')
+
+        self.navigationRail = QWidget()
+        self.navigationRail.setProperty('navigationRail', True)
+        self.navigationRail.setFixedWidth(160)
+        navigationLayout = QVBoxLayout(self.navigationRail)
+        navigationLayout.setContentsMargins(0, 14, 0, 14)
+        navigationLayout.setSpacing(4)
+        navigationLayout.addWidget(self.tabDownloading)
+        navigationLayout.addWidget(self.tabDownloaded)
+        navigationLayout.addStretch(1)
+        navigationLayout.addWidget(self.tabSetting)
+
         self.pageDownloading = Page()
         self.pageDownloaded = Page()
         self.pageStack = QStackedWidget()
+        self.pageStack.setProperty('pageSurface', True)
         self.pageStack.addWidget(self.pageDownloading)
         self.pageStack.addWidget(self.pageDownloaded)
         self.pageStack.addWidget(self.pageSetting)
-        pageLayout = QVBoxLayout()
-        pageLayout.addLayout(btnLayout)
-        pageLayout.addWidget(self.pageStack)
-        mainLayout = QHBoxLayout()
-        mainLayout.addLayout(tabLayout)
-        mainLayout.addLayout(pageLayout)
+
+        bodyWidget = QWidget()
+        bodyWidget.setProperty('contentBody', True)
+        bodyLayout = QHBoxLayout(bodyWidget)
+        bodyLayout.setContentsMargins(0, 0, 0, 0)
+        bodyLayout.setSpacing(0)
+        bodyLayout.addWidget(self.navigationRail)
+        bodyLayout.addWidget(self.pageStack, 1)
+
         mainWidget = QWidget()
-        mainWidget.setLayout(mainLayout)
+        mainWidget.setObjectName('mainRoot')
+        mainLayout = QVBoxLayout(mainWidget)
+        mainLayout.setContentsMargins(12, 10, 12, 8)
+        mainLayout.setSpacing(10)
+        mainLayout.addWidget(self.commandBar)
+        mainLayout.addWidget(bodyWidget, 1)
         self.setCentralWidget(mainWidget)
-        self.setMinimumSize(1000,520)
-        #创建窗口标题
+
+        self.setMinimumSize(1000, 520)
         self.setWindowTitle('Ashore')
         self.setWindowIcon(QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
-        self.createMenuBar()
         self.createStatusBar()
         self.createTrayIcon()
-
     def connectSignals(self) -> None:
         self.addBtn.clicked.connect(self.slotAdd)
         self.unpauseAllBtn.clicked.connect(self.slotUnpauseAll)

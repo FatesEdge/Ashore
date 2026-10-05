@@ -77,6 +77,10 @@ class StartupFlowTests(unittest.TestCase):
 
         self.assertIsInstance(window.pageStack, QStackedWidget)
         self.assertEqual(window.pageStack.count(), 3)
+        self.assertTrue(window.commandBar.property('commandBar'))
+        self.assertTrue(window.pageStack.property('pageSurface'))
+        self.assertIs(window.moreBtn.menu(), window.moreMenu)
+        self.assertEqual(window.tabDownloading.text(), window.tr('downloading'))
         window.aria2Poller.timer.stop()
         window.close()
 

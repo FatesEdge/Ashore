@@ -1,7 +1,7 @@
 """Scrollable collection of download task cards."""
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
 
 from interface.section import Section
 
@@ -12,10 +12,16 @@ class Page(QScrollArea):
     def __init__(self):
         super().__init__()
         self.sections = {}
+        self.setProperty('downloadPage', True)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.viewport().setProperty('pageViewport', True)
         self.sectionLayout = QVBoxLayout()
         self.sectionLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.sectionLayout.setContentsMargins(14, 14, 14, 14)
         self.sectionLayout.setSpacing(10)
         self.sectionListWidget = QWidget()
+        self.sectionListWidget.setProperty('pageBody', True)
         self.sectionListWidget.setLayout(self.sectionLayout)
         self.setWidgetResizable(True)
         self.setWidget(self.sectionListWidget)
@@ -46,7 +52,6 @@ class Page(QScrollArea):
                         speed=attributes['downloadSpeed'],
                         fileName=attributes['filename'],
                         isTorrent=attributes['isTorrent'])
-
         for gid in set(self.sections) - currentGids:
             section = self.sections.pop(gid)
             self.sectionLayout.removeWidget(section)

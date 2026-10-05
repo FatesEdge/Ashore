@@ -78,23 +78,26 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertGreater(light.lightness(), 220)
         self.assertLess(dark.lightness(), 80)
 
-    def test_accent_styles_cover_toolbar_and_settings_buttons(self):
+    def test_semantic_styles_cover_command_navigation_cards_and_scrollbars(self):
         manager = ThemeManager(self.app)
         manager.apply('dark', '#3f7cac')
         style = self.app.styleSheet()
-        self.assertIn('QPushButton[toolbarButton="true"]', style)
-        self.assertIn('QPushButton[settingsButton="true"]', style)
-        self.assertIn('border: 1px solid #3f7cac', style)
+        self.assertIn('QPushButton[commandPrimary="true"]', style)
+        self.assertIn('QPushButton[navigationTab="true"]:checked', style)
+        self.assertIn('QFrame[downloadCard="true"]', style)
+        self.assertIn('QScrollBar:vertical', style)
 
-    def test_tracker_and_download_progress_have_readable_heights(self):
+    def test_tracker_and_download_progress_use_dense_row_card_layout(self):
         with tempfile.TemporaryDirectory() as folder:
             page = self.makePage(folder)
             self.assertGreaterEqual(page.btTracker.minimumHeight(), 120)
+            self.assertTrue(page.saveBtn.property('primaryAction'))
         section = Section('gid', 'example.bin', 'completed', 100, 100, 0)
-        self.assertGreaterEqual(section.progressBar.height(), 18)
-        self.assertTrue(section.progressBar.isTextVisible())
-        self.assertEqual(section.progressBar.format(), '%p%')
+        self.assertEqual(section.progressBar.height(), 4)
+        self.assertFalse(section.progressBar.isTextVisible())
+        self.assertEqual(section.rateLabel.text(), '100%')
         self.assertEqual(section.progressBar.value(), 100)
+        self.assertEqual(section.property('downloadCard'), True)
 
 
 if __name__ == '__main__':
