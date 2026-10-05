@@ -116,7 +116,9 @@ class AddNewDialog(QDialog):
         self.cancelBtn = QPushButton('取消')
         self.confirmBtn = QPushButton('开始下载')
         self.confirmBtn.setProperty('primaryAction', True)
-        self.confirmBtn.setIcon(actionIcon(\n            'download', color=self.palette().color(\n                QPalette.ColorRole.HighlightedText), size=18))
+        self.confirmBtn.setIcon(actionIcon(
+            'download', color=self.palette().color(
+                QPalette.ColorRole.HighlightedText), size=18))
         buttonRow = QHBoxLayout()
         buttonRow.addStretch(1)
         buttonRow.addWidget(self.cancelBtn)
@@ -153,7 +155,9 @@ class AddNewDialog(QDialog):
         if event.type() == QEvent.Type.PaletteChange and hasattr(self, 'dirBtn'):
             self.openTorrentBtn.setIcon(actionIcon('open-file', size=18))
             self.dirBtn.setIcon(actionIcon('open-folder', size=18))
-            self.confirmBtn.setIcon(actionIcon(\n                'download', color=self.palette().color(\n                    QPalette.ColorRole.HighlightedText), size=18))
+            self.confirmBtn.setIcon(actionIcon(
+                'download', color=self.palette().color(
+                    QPalette.ColorRole.HighlightedText), size=18))
 
     def toggleAdvanced(self, checked):
         self.advancedPanel.setVisible(checked)
