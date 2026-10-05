@@ -865,6 +865,12 @@ class Ashore(QMainWindow):
 
         if not self.isRelease and not isinstance(data, int):
             print(data, end=end)
+
+
+class AshoreApplication(QApplication):
+
+    instanceMessage = pyqtSignal(list)
+
     def __init__(self, arguments):
         configureApplication()
         super().__init__(arguments)
