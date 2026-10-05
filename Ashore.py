@@ -102,13 +102,17 @@ class Ashore(QMainWindow):
             if startupProbe in (
                 'beforeStrip', 'stripBuilt', 'stripAdded',
                 'stripShell', 'stripAria', 'stripDown',
-                'stripUp', 'stripLayout', 'stripTimer')
+                'stripUp', 'stripLayout', 'stripTimer',
+                'layoutMessage', 'layoutAria', 'layoutDownIcon',
+                'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel')
             else '')
 
         if startupProbe in (
                 'beforeStrip', 'stripBuilt', 'stripAdded',
                 'stripShell', 'stripAria', 'stripDown',
                 'stripUp', 'stripLayout', 'stripTimer',
+                'layoutMessage', 'layoutAria', 'layoutDownIcon',
+                'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel',
                 'baseUi', 'trayCreated', 'iconsRefreshed'):
             return
 
@@ -379,12 +383,27 @@ class Ashore(QMainWindow):
         layout.setContentsMargins(10, 2, 10, 2)
         layout.setSpacing(4)
         layout.addWidget(self.statusMessageLabel, 1)
+        if probeStop == 'layoutMessage':
+            return
+
         layout.addWidget(self.aria2StateWidget)
+        if probeStop == 'layoutAria':
+            return
+
         layout.addWidget(self.downSpeedIcon)
+        if probeStop == 'layoutDownIcon':
+            return
+
         layout.addWidget(self.downSpeedLabel)
+        if probeStop == 'layoutDownLabel':
+            return
+
         layout.addWidget(self.upSpeedIcon)
+        if probeStop == 'layoutUpIcon':
+            return
+
         layout.addWidget(self.upSpeedLabel)
-        if probeStop == 'stripLayout':
+        if probeStop in ('layoutUpLabel', 'stripLayout'):
             return
 
         self.statusMessageTimer = QTimer(self.statusStrip)
@@ -1059,6 +1078,8 @@ class StartupController(QObject):
             'beforeStrip', 'stripBuilt', 'stripAdded',
             'stripShell', 'stripAria', 'stripDown',
             'stripUp', 'stripLayout', 'stripTimer',
+            'layoutMessage', 'layoutAria', 'layoutDownIcon',
+            'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel',
             'baseUi', 'trayCreated', 'iconsRefreshed',
             'signals', 'events', 'runtime', 'trayShown',
         }
