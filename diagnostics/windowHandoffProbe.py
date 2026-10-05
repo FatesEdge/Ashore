@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStackedLayout,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -62,9 +63,10 @@ def includes(selected, required):
 
 
 class ProbeWindow(QMainWindow):
-    def __init__(self, stage):
+    def __init__(self, stage, stackKind):
         super().__init__()
         self.stage = stage
+        self.stackKind = stackKind
         self.setWindowTitle(f'Ashore Handoff Probe — {stage}')
         self.setMinimumSize(1000, 520)
         if includes(stage, 'controls'):
@@ -112,17 +114,17 @@ class ProbeWindow(QMainWindow):
         content = QVBoxLayout()
         content.addLayout(toolbar)
         if includes(self.stage, 'stackEmpty'):
-            pageStack = QStackedLayout()
+            pages = []
             if includes(self.stage, 'stackOne'):
-                pageStack.addWidget(self.downloadPage(True))
+                pages.append(self.downloadPage(True))
             if includes(self.stage, 'stackTwo'):
-                pageStack.addWidget(self.downloadPage(False))
+                pages.append(self.downloadPage(False))
             if includes(self.stage, 'stack'):
                 if includes(self.stage, 'settings'):
-                    pageStack.addWidget(SettingPage())
+                    pages.append(SettingPage())
                 else:
-                    pageStack.addWidget(QWidget())
-            content.addLayout(pageStack)
+                    pages.append(QWidget())
+            self.addPages(content, pages)
         else:
             content.addWidget(QLabel('Empty content area'))
 
@@ -132,6 +134,24 @@ class ProbeWindow(QMainWindow):
         centralWidget = QWidget()
         centralWidget.setLayout(mainLayout)
         self.setCentralWidget(centralWidget)
+
+    def addPages(self, content, pages):
+        if self.stackKind == 'widget':
+            stack = QStackedWidget()
+            for page in pages:
+                stack.addWidget(page)
+            content.addWidget(stack)
+            return
+        if self.stackKind == 'vertical':
+            layout = QVBoxLayout()
+            for page in pages:
+                layout.addWidget(page)
+            content.addLayout(layout)
+            return
+        stack = QStackedLayout()
+        for page in pages:
+            stack.addWidget(page)
+        content.addLayout(stack)
 
     def downloadPage(self, first):
         if includes(self.stage, 'pages'):
@@ -154,12 +174,13 @@ class ProbeWindow(QMainWindow):
 
 
 class HandoffProbe(QObject):
-    def __init__(self, app, stage, handoff, splashDelay):
+    def __init__(self, app, stage, handoff, splashDelay, stackKind):
         super().__init__(app)
         self.app = app
         self.stage = stage
         self.handoff = handoff
         self.splashDelay = splashDelay
+        self.stackKind = stackKind
         self.themeManager = ThemeManager(app, self)
         self.themeManager.apply('system', '#5d795f')
         self.splash = None
@@ -167,7 +188,8 @@ class HandoffProbe(QObject):
 
     def start(self):
         print(
-            f'Window handoff probe: stage={self.stage}, handoff={self.handoff}',
+            f'Window handoff probe: stage={self.stage}, handoff={self.handoff}, '
+            f'stack={self.stackKind}',
             flush=True)
         if self.handoff == 'direct':
             QTimer.singleShot(0, self.showDirect)
@@ -177,7 +199,7 @@ class HandoffProbe(QObject):
         self.splash.show()
 
     def buildWindow(self):
-        self.window = ProbeWindow(self.stage)
+        self.window = ProbeWindow(self.stage, self.stackKind)
 
     def showDirect(self):
         self.buildWindow()
@@ -201,6 +223,10 @@ def buildParser():
         default='controls')
     parser.add_argument('--handoff', choices=('direct', 'splash'), default='direct')
     parser.add_argument(
+        '--stack-kind', dest='stackKind',
+        choices=('layout', 'widget', 'vertical'), default='layout',
+        help='container used for the page tiers')
+    parser.add_argument(
         '--splash-delay', dest='splashDelay', type=int, default=900,
         help='milliseconds between splash paint and main-window handoff')
     return parser
@@ -211,7 +237,8 @@ def main(arguments=None):
         sys.argv[1:] if arguments is None else arguments)
     app = AshoreApplication([sys.argv[0]])
     probe = HandoffProbe(
-        app, options.stage, options.handoff, max(0, options.splashDelay))
+        app, options.stage, options.handoff, max(0, options.splashDelay),
+        options.stackKind)
     app.handoffProbe = probe
     probe.start()
     return app.exec()
