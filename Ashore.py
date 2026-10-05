@@ -103,6 +103,8 @@ class Ashore(QMainWindow):
                 'beforeStrip', 'stripBuilt', 'stripAdded',
                 'stripShell', 'stripAria', 'stripDown',
                 'stripUp', 'stripLayout', 'stripTimer',
+                'layoutObject', 'layoutMessageNoStretch',
+                'layoutMessageStretch',
                 'layoutMessage', 'layoutAria', 'layoutDownIcon',
                 'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel')
             else '')
@@ -111,6 +113,8 @@ class Ashore(QMainWindow):
                 'beforeStrip', 'stripBuilt', 'stripAdded',
                 'stripShell', 'stripAria', 'stripDown',
                 'stripUp', 'stripLayout', 'stripTimer',
+                'layoutObject', 'layoutMessageNoStretch',
+                'layoutMessageStretch',
                 'layoutMessage', 'layoutAria', 'layoutDownIcon',
                 'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel',
                 'baseUi', 'trayCreated', 'iconsRefreshed'):
@@ -382,8 +386,15 @@ class Ashore(QMainWindow):
         layout = QHBoxLayout(self.statusStrip)
         layout.setContentsMargins(10, 2, 10, 2)
         layout.setSpacing(4)
+        if probeStop == 'layoutObject':
+            return
+
+        if probeStop == 'layoutMessageNoStretch':
+            layout.addWidget(self.statusMessageLabel)
+            return
+
         layout.addWidget(self.statusMessageLabel, 1)
-        if probeStop == 'layoutMessage':
+        if probeStop in ('layoutMessage', 'layoutMessageStretch'):
             return
 
         layout.addWidget(self.aria2StateWidget)
@@ -1078,6 +1089,8 @@ class StartupController(QObject):
             'beforeStrip', 'stripBuilt', 'stripAdded',
             'stripShell', 'stripAria', 'stripDown',
             'stripUp', 'stripLayout', 'stripTimer',
+            'layoutObject', 'layoutMessageNoStretch',
+            'layoutMessageStretch',
             'layoutMessage', 'layoutAria', 'layoutDownIcon',
             'layoutDownLabel', 'layoutUpIcon', 'layoutUpLabel',
             'baseUi', 'trayCreated', 'iconsRefreshed',
