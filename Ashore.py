@@ -7,6 +7,7 @@ import signal
 import sys
 
 from PyQt6.QtCore import (
+    QAbstractEventDispatcher,
     QElapsedTimer,
     QEvent,
     QObject,
@@ -187,9 +188,32 @@ class Ashore(QMainWindow):
             lambda _checked=False, callback=callback: self.deferTrayAction(callback))
 
     def deferTrayAction(self, callback):
-        """Run tray actions after its popup has released the pointer grab."""
+        """Run a tray action only after its desktop-menu event is fully drained."""
+        self.pendingTrayAction = callback
         self.trayMenu.close()
-        QTimer.singleShot(0, callback)
+        dispatcher = QAbstractEventDispatcher.instance()
+        if dispatcher is None:
+            QTimer.singleShot(0, self.runTrayAction)
+            return
+        self.trayDispatcher = dispatcher
+        try:
+            dispatcher.aboutToBlock.disconnect(self.dispatchTrayAction)
+        except TypeError:
+            pass
+        dispatcher.aboutToBlock.connect(self.dispatchTrayAction)
+
+    def dispatchTrayAction(self):
+        try:
+            self.trayDispatcher.aboutToBlock.disconnect(self.dispatchTrayAction)
+        except (AttributeError, TypeError):
+            pass
+        QTimer.singleShot(0, self.runTrayAction)
+
+    def runTrayAction(self):
+        callback = getattr(self, 'pendingTrayAction', None)
+        self.pendingTrayAction = None
+        if callback is not None:
+            callback()
 
     def applyTrayIconStyle(self, style):
         source = QPixmap(self.resourcePath + 'static/icon/functionIcons/trayIcon.png')

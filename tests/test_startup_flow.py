@@ -62,12 +62,19 @@ class StartupFlowTests(unittest.TestCase):
     def test_tray_action_runs_after_popup_closes(self):
         window = Mock()
         callback = Mock()
+        dispatcher = Mock()
 
-        with patch('Ashore.QTimer.singleShot') as singleShot:
+        with patch('Ashore.QAbstractEventDispatcher.instance', return_value=dispatcher), \
+             patch('Ashore.QTimer.singleShot') as singleShot:
             Ashore.deferTrayAction(window, callback)
+            dispatcher.aboutToBlock.connect.assert_called_once_with(
+                window.dispatchTrayAction)
+            callback.assert_not_called()
+
+            Ashore.dispatchTrayAction(window)
 
         window.trayMenu.close.assert_called_once_with()
-        singleShot.assert_called_once_with(0, callback)
+        singleShot.assert_called_once_with(0, window.runTrayAction)
 
 
 if __name__ == '__main__':
