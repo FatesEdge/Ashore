@@ -35,6 +35,7 @@ STARTUP_STAGES = (
     StartupStage('windowBase', 'Ashore base state and an empty central widget'),
     StartupStage('windowFrame', 'production window size, title and application icon'),
     StartupStage('windowControlsPlain', 'navigation and toolbar without image icons'),
+    StartupStage('windowNavigationIcons', 'add the three navigation image icons'),
     StartupStage('windowControls', 'navigation and toolbar with placeholder pages'),
     StartupStage('windowContent', 'navigation, toolbar and all three pages'),
     StartupStage('windowMenus', 'production application menus'),
@@ -55,6 +56,14 @@ def stageIndex(name):
 
 def includes(selected, required):
     return stageIndex(selected) >= stageIndex(required)
+
+
+def iconLoader(names):
+    def loadIcon(source=None):
+        if source is not None and Path(str(source)).name in names:
+            return QIcon(source)
+        return QIcon()
+    return loadIcon
 
 
 class PlainWindow(QWidget):
@@ -118,10 +127,17 @@ class StagedAshore(Ashore):
             self.setWindowIcon(QIcon(
                 self.resourcePath + 'static/icon/functionIcons/icon.png'))
             return
-        if not includes(self.probeStage, 'windowControls'):
+        if not includes(self.probeStage, 'windowNavigationIcons'):
             with (
                     patch('Ashore.Page', IdlePage),
                     patch('Ashore.QIcon', lambda *_args: QIcon())):
+                super().initUI()
+            return
+        if not includes(self.probeStage, 'windowControls'):
+            navigationIcons = {'download.png', 'completed.png', 'setting.png'}
+            with (
+                    patch('Ashore.Page', IdlePage),
+                    patch('Ashore.QIcon', iconLoader(navigationIcons))):
                 super().initUI()
             return
         if not includes(self.probeStage, 'windowContent'):

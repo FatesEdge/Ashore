@@ -16,7 +16,9 @@ class StartupProbeTests(unittest.TestCase):
         self.assertLess(stageIndex('ariaStartup'), stageIndex('windowBase'))
         self.assertLess(stageIndex('windowBase'), stageIndex('windowFrame'))
         self.assertLess(stageIndex('windowFrame'), stageIndex('windowControlsPlain'))
-        self.assertLess(stageIndex('windowControlsPlain'), stageIndex('windowControls'))
+        self.assertLess(
+            stageIndex('windowControlsPlain'), stageIndex('windowNavigationIcons'))
+        self.assertLess(stageIndex('windowNavigationIcons'), stageIndex('windowControls'))
         self.assertLess(stageIndex('windowControls'), stageIndex('windowContent'))
         self.assertLess(stageIndex('windowContent'), stageIndex('windowMenus'))
         self.assertLess(stageIndex('windowSignals'), stageIndex('mainWindow'))
