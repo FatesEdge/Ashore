@@ -74,11 +74,12 @@ class BaseProbeWindow(QWidget):
 
 
 class ProbeWindow(QMainWindow):
-    def __init__(self, stage, app, trayQuitDelay=0):
+    def __init__(self, stage, app, trayQuitDelay=0, trayAction='quit'):
         super().__init__()
         self.stage = stage
         self.app = app
         self.trayQuitDelay = trayQuitDelay
+        self.trayAction = trayAction
         self.trayQuitPending = False
         self.trayIcon = None
         self.trayMenu = None
@@ -164,10 +165,15 @@ class ProbeWindow(QMainWindow):
         self.app.setQuitOnLastWindowClosed(False)
         self.trayMenu = QMenu()
         showAction = QAction('Show window', self)
-        quitAction = QAction('Quit probe', self)
+        actionLabels = {
+            'quit': 'Quit probe',
+            'observe': 'Observe action only',
+            'activate': 'Activate then quit',
+        }
+        quitAction = QAction(actionLabels[self.trayAction], self)
         showAction.triggered.connect(
             lambda: self.deferTrayAction(self.showFromTray))
-        quitAction.triggered.connect(self.requestTrayQuit)
+        quitAction.triggered.connect(self.requestTrayAction)
         self.trayMenu.addAction(showAction)
         self.trayMenu.addAction(quitAction)
         iconPath = RESOURCE_DIR / 'static/icon/functionIcons/trayIcon.png'
@@ -180,11 +186,20 @@ class ProbeWindow(QMainWindow):
         self.trayMenu.close()
         QTimer.singleShot(0, callback)
 
-    def requestTrayQuit(self):
-        self.trayQuitPending = True
+    def requestTrayAction(self):
         self.trayMenu.close()
-        print(f'Tray action received; app.quit in '
-              f'{self.trayQuitDelay} ms', flush=True)
+        print(f'Tray action received; mode={self.trayAction}', flush=True)
+        QTimer.singleShot(0, self.finishTrayAction)
+
+    def finishTrayAction(self):
+        if self.trayAction == 'observe':
+            print('Observation mode; app.quit was not scheduled', flush=True)
+            return
+        if self.trayAction == 'activate':
+            self.showFromTray()
+            print('Main window activation requested', flush=True)
+        self.trayQuitPending = True
+        print(f'app.quit scheduled in {self.trayQuitDelay} ms', flush=True)
         QTimer.singleShot(self.trayQuitDelay, self.quitProbe)
 
     def showFromTray(self):
@@ -260,18 +275,20 @@ class ProbeWindow(QMainWindow):
 
 
 class CursorProbe(QObject):
-    def __init__(self, app, stage, trayQuitDelay=0):
+    def __init__(self, app, stage, trayQuitDelay=0, trayAction='quit'):
         super().__init__(app)
         self.app = app
         self.stage = stage
         self.trayQuitDelay = trayQuitDelay
+        self.trayAction = trayAction
         self.window = None
         if not includes(stage, 'startupWindow'):
             self.window = self.buildWindow()
         self.startupWindow = None
 
     def buildWindow(self):
-        return (ProbeWindow(self.stage, self.app, self.trayQuitDelay)
+        return (ProbeWindow(self.stage, self.app, self.trayQuitDelay,
+                            self.trayAction)
                 if includes(self.stage, 'shell') else BaseProbeWindow(self.stage))
 
     def start(self):
@@ -304,6 +321,9 @@ def buildParser():
     parser.add_argument('--tray-quit-delay', dest='trayQuitDelay', type=int,
                         default=0, metavar='MILLISECONDS',
                         help='wait after the tray menu closes before app.quit')
+    parser.add_argument('--tray-action', dest='trayAction',
+                        choices=('quit', 'observe', 'activate'), default='quit',
+                        help='choose how the diagnostic tray action responds')
     parser.add_argument('--list', action='store_true', help='list cumulative stages')
     return parser
 
@@ -322,7 +342,8 @@ def main(arguments=None):
 
         configureApplication()
     app = QApplication([sys.argv[0]])
-    probe = CursorProbe(app, options.stage, options.trayQuitDelay)
+    probe = CursorProbe(app, options.stage, options.trayQuitDelay,
+                        options.trayAction)
     app.cursorProbe = probe
     probe.start()
     return app.exec()

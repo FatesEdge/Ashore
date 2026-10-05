@@ -38,6 +38,20 @@ The terminal prints once when the tray action arrives and again immediately
 before `app.quit()`. Note whether the busy cursor starts before or after the
 second message.
 
+If the cursor starts spinning as soon as the action arrives, compare a tray
+action that performs no exit with one that explicitly activates the main
+window before exiting:
+
+```bash
+python diagnostics/cursorProbe.py --stage tray --tray-action observe
+python diagnostics/cursorProbe.py --stage tray --tray-action activate --tray-quit-delay 3000
+```
+
+For `observe`, leave the main window open, choose **Observe action only**, and
+then use Ctrl+Q after observing the cursor. For `activate`, close the main
+window first and choose **Activate then quit**; the window should reappear and
+the process exits three seconds later.
+
 The stages are cumulative. Start with `base`, `tray`, and `startupWindow`. If two
 adjacent observations differ, use the stages between them to find the first
 component that changes cursor behavior. Confirm the boundary in both directions:
