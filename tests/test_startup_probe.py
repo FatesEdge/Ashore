@@ -13,7 +13,12 @@ class StartupProbeTests(unittest.TestCase):
         names = [stage.name for stage in STARTUP_STAGES]
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(stageIndex('base'), 0)
+        self.assertLess(stageIndex('ariaStartup'), stageIndex('windowBase'))
+        self.assertLess(stageIndex('windowContent'), stageIndex('windowMenus'))
+        self.assertLess(stageIndex('windowSignals'), stageIndex('mainWindow'))
         self.assertTrue(includes('tray', 'ariaStartup'))
+        self.assertTrue(includes('mainWindow', 'windowStatus'))
+        self.assertFalse(includes('windowTray', 'windowSignals'))
         self.assertFalse(includes('config', 'ariaStartup'))
 
     def test_parser_accepts_stage(self):

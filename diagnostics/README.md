@@ -76,9 +76,17 @@ the lower stage must remain clean and the first failing stage must reproduce.
 python diagnostics/startupProbe.py --list
 python diagnostics/startupProbe.py --stage base
 python diagnostics/startupProbe.py --stage ariaStartup
+python diagnostics/startupProbe.py --stage windowBase
+python diagnostics/startupProbe.py --stage windowContent
+python diagnostics/startupProbe.py --stage windowMenus
+python diagnostics/startupProbe.py --stage windowStatus
+python diagnostics/startupProbe.py --stage windowTray
+python diagnostics/startupProbe.py --stage windowSignals
 python diagnostics/startupProbe.py --stage mainWindow
 python diagnostics/startupProbe.py --stage tray
 ```
 
 Compare the lowest clean stage with the first stage that produces the busy
-cursor. Use Ctrl+Q to close stages that construct the real Ashore window.
+cursor. Use Ctrl+C in the terminal to close stages before `windowTray`; those
+stages intentionally omit the production quit action and tray object. From
+`windowTray` onward, Ctrl+Q and the tray exit path are available.

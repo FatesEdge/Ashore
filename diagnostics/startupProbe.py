@@ -4,15 +4,16 @@ import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import patch
 
-from PyQt6.QtCore import QObject, QTimer
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
-from Ashore import Ashore, AshoreApplication
+from Ashore import Aria2Events, Ashore, AshoreApplication
 from core.aria2Service import Aria2Startup
 from core.configStore import boolValue, readAshore
 from interface.startupWindow import StartupWindow
@@ -30,7 +31,13 @@ STARTUP_STAGES = (
     StartupStage('base', 'AshoreApplication, StartupWindow and plain QWidget'),
     StartupStage('config', 'configuration loading and ThemeManager'),
     StartupStage('ariaStartup', 'Aria2Startup.ensureReady in its worker thread'),
-    StartupStage('mainWindow', 'construct the real Ashore main window'),
+    StartupStage('windowBase', 'Ashore base state and an empty central widget'),
+    StartupStage('windowContent', 'navigation, toolbar and all three pages'),
+    StartupStage('windowMenus', 'production application menus'),
+    StartupStage('windowStatus', 'production status bar and connection labels'),
+    StartupStage('windowTray', 'construct the tray icon and its menu'),
+    StartupStage('windowSignals', 'connect production window signals'),
+    StartupStage('mainWindow', 'add the production aria2 WebSocket client'),
     StartupStage('runtime', 'wait for the first aria2 HTTP snapshot'),
     StartupStage('tracker', 'include the startup BT Tracker decision'),
     StartupStage('tray', 'register the production system tray icon'),
@@ -62,6 +69,56 @@ class PlainWindow(QWidget):
     def closeEvent(self, event):
         event.accept()
         self.app.quit()
+
+
+class IdleEvents(QObject):
+    """Keep pre-WebSocket stages structurally identical without doing I/O."""
+
+    notification = pyqtSignal(str, str)
+    connectionStateChanged = pyqtSignal(str)
+    state = 'unavailable'
+
+    def __init__(self, _port, parent=None):
+        super().__init__(parent)
+
+    def stop(self):
+        pass
+
+
+class StagedAshore(Ashore):
+    """Expose cumulative boundaries inside Ashore.__init__ for diagnosis."""
+
+    def __init__(self, aria2Service, themeManager, probeStage):
+        self.probeStage = probeStage
+        super().__init__(aria2Service, themeManager)
+
+    def initUI(self):
+        if not includes(self.probeStage, 'windowContent'):
+            self.setCentralWidget(QLabel(f'Ashore window base: {self.probeStage}'))
+            self.setWindowTitle('Ashore Startup Probe')
+            self.resize(640, 360)
+            return
+        super().initUI()
+
+    def createMenuBar(self):
+        if includes(self.probeStage, 'windowMenus'):
+            super().createMenuBar()
+
+    def createStatusBar(self):
+        if includes(self.probeStage, 'windowStatus'):
+            super().createStatusBar()
+
+    def createTrayIcon(self):
+        if includes(self.probeStage, 'windowTray'):
+            super().createTrayIcon()
+
+    def connectSignals(self):
+        if includes(self.probeStage, 'windowSignals'):
+            super().connectSignals()
+
+    def updateConnection(self, httpStatus):
+        if includes(self.probeStage, 'windowStatus'):
+            super().updateConnection(httpStatus)
 
 
 class StartupProbe(QObject):
@@ -116,13 +173,16 @@ class StartupProbe(QObject):
 
     def ariaReady(self, service):
         self.service = service
-        if not includes(self.stage, 'mainWindow'):
+        if not includes(self.stage, 'windowBase'):
             self.showPlain()
             return
         self.buildWindow()
 
     def buildWindow(self):
-        self.window = Ashore(self.service, self.themeManager)
+        eventsClass = Aria2Events if includes(self.stage, 'mainWindow') else IdleEvents
+        with patch('Ashore.Aria2Events', eventsClass):
+            self.window = StagedAshore(
+                self.service, self.themeManager, self.stage)
         if not includes(self.stage, 'runtime'):
             self.window.aria2Poller.timer.stop()
             self.splash.finish(self.window)
