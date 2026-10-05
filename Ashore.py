@@ -95,9 +95,16 @@ class Ashore(QMainWindow):
         self.startupProbe = startupProbe
         createTray = startupProbe not in ('baseUi',)
         refreshIcons = startupProbe not in ('baseUi', 'trayCreated')
-        self.initUI(createTray=createTray, refreshIcons=refreshIcons)
+        self.initUI(
+            createTray=createTray,
+            refreshIcons=refreshIcons,
+            probeStop=startupProbe
+            if startupProbe in ('beforeStrip', 'stripBuilt', 'stripAdded')
+            else '')
 
-        if startupProbe in ('baseUi', 'trayCreated', 'iconsRefreshed'):
+        if startupProbe in (
+                'beforeStrip', 'stripBuilt', 'stripAdded',
+                'baseUi', 'trayCreated', 'iconsRefreshed'):
             return
 
         self.connectSignals()
@@ -391,7 +398,7 @@ class Ashore(QMainWindow):
             QPalette.ColorRole.WindowText, colors[state])
         self.aria2StateDot.setPalette(palette)
 
-    def initUI(self, createTray=True, refreshIcons=True) -> None:
+    def initUI(self, createTray=True, refreshIcons=True, probeStop='') -> None:
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
@@ -478,7 +485,28 @@ class Ashore(QMainWindow):
         bodyLayout.addWidget(self.navigationRail)
         bodyLayout.addWidget(self.pageStack, 1)
 
+        if probeStop == 'beforeStrip':
+            placeholder = QWidget()
+            placeholder.setObjectName('mainRoot')
+            placeholderLayout = QVBoxLayout(placeholder)
+            placeholderLayout.setContentsMargins(0, 10, 0, 0)
+            placeholderLayout.setSpacing(0)
+            placeholderLayout.addWidget(commandHost)
+            placeholderLayout.addWidget(bodyWidget, 1)
+            self.setCentralWidget(placeholder)
+            return
+
         self.createStatusStrip()
+        if probeStop == 'stripBuilt':
+            placeholder = QWidget()
+            placeholder.setObjectName('mainRoot')
+            placeholderLayout = QVBoxLayout(placeholder)
+            placeholderLayout.setContentsMargins(0, 10, 0, 0)
+            placeholderLayout.setSpacing(0)
+            placeholderLayout.addWidget(commandHost)
+            placeholderLayout.addWidget(bodyWidget, 1)
+            self.setCentralWidget(placeholder)
+            return
 
         mainWidget = QWidget()
         mainWidget.setObjectName('mainRoot')
@@ -489,6 +517,8 @@ class Ashore(QMainWindow):
         mainLayout.addWidget(bodyWidget, 1)
         mainLayout.addWidget(self.statusStrip)
         self.setCentralWidget(mainWidget)
+        if probeStop == 'stripAdded':
+            return
 
         self.setMinimumSize(920, 520)
         self.setWindowTitle('Ashore')
@@ -996,6 +1026,7 @@ class StartupController(QObject):
     def createWindow(self, service):
         probeMode = os.environ.get('ASHORE_STARTUP_PROBE', '').strip()
         validProbes = {
+            'beforeStrip', 'stripBuilt', 'stripAdded',
             'baseUi', 'trayCreated', 'iconsRefreshed',
             'signals', 'events', 'runtime', 'trayShown',
         }
