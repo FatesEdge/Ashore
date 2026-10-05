@@ -83,7 +83,9 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloading.text(), '')
         self.assertEqual(window.tabDownloaded.text(), '')
         self.assertEqual(window.tabSetting.text(), '')
-        self.assertEqual(window.navigationRail.width(), 64)
+        self.assertEqual(window.navigationRail.width(), 46)
+        self.assertEqual(window.tabDownloading.height(), 108)
+        self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.commandBar.height(), 48)
         window.aria2Poller.timer.stop()
         window.close()
@@ -160,6 +162,33 @@ class StartupFlowTests(unittest.TestCase):
         window.pageDownloaded.focusSection.assert_called_once_with('gid')
         window.showCompleted.assert_called_once_with()
         window.pageDownloading.focusSection.assert_not_called()
+
+
+    def test_aria2_status_visibility_can_change_at_runtime(self):
+        service = Mock()
+        service.client.rpcPort = 6800
+        service.quitWithAshore = False
+        events = Mock()
+        events.state = 'unavailable'
+        theme = Mock()
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(paths, 'CONFIG_DIR', Path(folder)), \
+             patch.object(SettingPage, 'ashoreConfDir', folder), \
+             patch.object(
+                 SettingPage, 'aria2ConfPath',
+                 str(Path(folder) / 'aria2.conf')), \
+             patch('Ashore.Aria2Events', return_value=events):
+            window = Ashore(service, theme)
+
+        window.applyAshoreConfig({
+            'quit_with_aria2': 'false',
+            'update_interval': '2000',
+            'show_aria2_status': 'false',
+            'isSaved': 'saved',
+        })
+        self.assertFalse(window.aria2StateLabel.isVisible())
+        window.aria2Poller.timer.stop()
+        window.close()
 
 
 

@@ -49,7 +49,7 @@ class SettingPage(QWidget):
         'trackers_list_time', 'trackers_list_source', 'trackers_auto_update',
         'quit_with_aria2', 'update_interval', 'rpc_port_changeable', 'language',
         'legacy_download_path_handled', 'tray_icon_style', 'user_agent_presets',
-        'theme_mode', 'accent_color',
+        'theme_mode', 'accent_color', 'show_aria2_status',
     )
 
     def __init__(self):
@@ -254,6 +254,15 @@ class SettingPage(QWidget):
         self.quitWithAria2Label = QLabel()
         formLayout.addRow(self.quitWithAria2Label, quitWithAria2Layout)
 
+        self.showAria2StatusComboBox = QComboBox()
+        self.showAria2StatusComboBox.addItems(['', ''])
+        showAria2StatusLayout = QHBoxLayout()
+        showAria2StatusLayout.addWidget(self.showAria2StatusComboBox)
+        showAria2StatusLayout.addStretch(10)
+        self.showAria2StatusLabel = QLabel()
+        formLayout.addRow(
+            self.showAria2StatusLabel, showAria2StatusLayout)
+
         self.updateIntervalSpin = QSpinBox()
         self.updateIntervalSpin.setRange(500, 10000)
         self.updateIntervalSpin.setSingleStep(100)
@@ -361,12 +370,37 @@ class SettingPage(QWidget):
         self.accentComboBox.currentTextChanged.connect(self.previewTheme)
         self.accentButton.clicked.connect(self.pickAccent)
 
+        self.formLabelWidgets = (
+            self.defaultDownloadDirLabel, self.maxDownloadsLabel,
+            self.maxConnectionsLabel, self.userAgentLabel,
+            self.speedLimitsLabel, self.rpcPortLabel,
+            self.httpPollingLabel, self.websocketLabel,
+            self.aria2VersionFormLabel, self.externalRpcLabel,
+            self.rpcSecretLabel, self.btTrackerLabel,
+            self.autoTrackerLabel, self.quitWithAria2Label,
+            self.showAria2StatusLabel, self.refreshIntervalLabel,
+            self.rpcChangeLabel, self.languageLabel,
+            self.trayIconStyleLabel, self.themeModeLabel,
+            self.accentColorLabel,
+        )
+        for label in self.formLabelWidgets:
+            label.setWordWrap(True)
+
+        self.configureFormLabels()
         self.retranslateUi()
         self.updateTokenRow()
 
     def setLanguage(self, language):
         self.language = language or 'zh_CN'
+        self.configureFormLabels()
         self.retranslateUi()
+
+    def configureFormLabels(self):
+        if not hasattr(self, 'formLabelWidgets'):
+            return
+        maxWidth = 150 if self.language == 'en' else 165
+        for label in self.formLabelWidgets:
+            label.setMaximumWidth(maxWidth)
 
     def retranslateUi(self):
         self.aria2SettingLabel.setText(
@@ -407,8 +441,11 @@ class SettingPage(QWidget):
         self.autoTrackerComboBox.setItemText(1, self.tr('no'))
 
         self.quitWithAria2Label.setText(self.tr('quitWithAria2'))
+        self.showAria2StatusLabel.setText(self.tr('showAria2Status'))
         self.withAria2QuitComboBox.setItemText(0, self.tr('yes'))
         self.withAria2QuitComboBox.setItemText(1, self.tr('no'))
+        self.showAria2StatusComboBox.setItemText(0, self.tr('yes'))
+        self.showAria2StatusComboBox.setItemText(1, self.tr('no'))
         self.refreshIntervalLabel.setText(self.tr('refreshInterval'))
         self.updateIntervalUnitLabel.setText(self.tr('milliseconds'))
         self.rpcChangeLabel.setText(self.tr('allowRpcPortChange'))
@@ -463,6 +500,9 @@ class SettingPage(QWidget):
         self.showTrackerStatus()
         self.setBoolOption(
             self.withAria2QuitComboBox, ashoreConfig['quit_with_aria2'])
+        self.setBoolOption(
+            self.showAria2StatusComboBox,
+            ashoreConfig.get('show_aria2_status', True))
         self.setBoolOption(
             self.rpcPortChangeableComboBox,
             ashoreConfig['rpc_port_changeable'])
@@ -641,6 +681,7 @@ class SettingPage(QWidget):
             'rpc_port_changeable'   :   self.getBoolOption(self.rpcPortChangeableComboBox),
             'language'              :   self.languageComboBox.currentData(),
             'tray_icon_style'       :   self.trayIconStyleComboBox.currentData(),
+            'show_aria2_status'     :   self.getBoolOption(self.showAria2StatusComboBox),
             'trackers_auto_update'  :   self.getBoolOption(self.autoTrackerComboBox),
             'theme_mode'            :   self.themeModeComboBox.currentData(),
             'accent_color'          :   validColor(self.accentComboBox.currentText()),
@@ -722,6 +763,7 @@ class SettingPage(QWidget):
         self.websocketEndpointLabel.setText(f'ws://127.0.0.1:{port}/jsonrpc')
 
 
+
     def setConnectionStatus(
             self, httpStatus:str, websocketStatus:str,
             aria2Version:str='') -> None:
@@ -736,11 +778,20 @@ class SettingPage(QWidget):
         httpText = self.tr(httpKey) if httpKey else httpStatus
         websocketText = (
             self.tr(websocketKey) if websocketKey else websocketStatus)
+
+        httpState = (
+            'connected' if httpKey == 'connected'
+            else 'connecting' if httpKey in ('connecting', 'waitingCheck')
+            else 'disconnected')
+        websocketState = (
+            'connected' if websocketKey == 'connected'
+            else 'connecting' if websocketKey in ('connecting', 'waitingCheck')
+            else 'disconnected')
+
         setConnectionBadge(
-            self.httpStatusLabel, httpText, httpKey == 'connected')
+            self.httpStatusLabel, httpText, httpState)
         setConnectionBadge(
-            self.websocketStatusLabel, websocketText,
-            websocketKey == 'connected')
+            self.websocketStatusLabel, websocketText, websocketState)
         self.aria2VersionLabel.setText(aria2Version or '—')
     def saveAshoreConf(self, ashoreValues:dict) -> int:
         cleanValues = {key: value for key, value in ashoreValues.items()

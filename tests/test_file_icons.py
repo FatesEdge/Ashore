@@ -1,11 +1,19 @@
+import os
 import unittest
 
-from PyQt6.QtCore import QRectF
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
-from interface.fileIcons import fileIconSpec, fitSvgRect, iconColorForStatus, statusHasErrorBadge
+from PyQt6.QtCore import QRectF
+from PyQt6.QtWidgets import QApplication
+
+from interface.fileIcons import TILE_HEIGHT, TILE_WIDTH, fileIconPixmap, fileIconSpec, fitSvgRect, iconColorForStatus, statusHasErrorBadge
 
 
 class FileIconTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+
     def test_family_and_format_are_classified_independently(self):
         self.assertEqual((fileIconSpec('Movie.MKV').family, fileIconSpec('Movie.MKV').label), ('video', 'MKV'))
         self.assertEqual((fileIconSpec('photo.JPEG').family, fileIconSpec('photo.JPEG').label), ('image', 'JPEG'))
@@ -42,6 +50,14 @@ class FileIconTests(unittest.TestCase):
         self.assertAlmostEqual(fitted.width() / fitted.height(), 2.0)
         self.assertLessEqual(fitted.width(), 30)
         self.assertLessEqual(fitted.height(), 30)
+
+
+    def test_file_tile_is_drawn_as_portrait_geometry(self):
+        self.assertLess(TILE_WIDTH, TILE_HEIGHT)
+        pixmap = fileIconPixmap('ubuntu.iso', status='paused')
+        self.assertEqual(pixmap.width(), TILE_WIDTH)
+        self.assertEqual(pixmap.height(), TILE_HEIGHT)
+        self.assertEqual((TILE_WIDTH, TILE_HEIGHT), (44, 56))
 
 
 

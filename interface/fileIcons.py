@@ -52,11 +52,10 @@ FORMAT_LABELS = {
     'appimage': 'APP', 'sqlite3': 'SQL',
 }
 GLYPH_SCALE = {
-    'disk': 0.86,
-    'font': 0.88,
-    'code': 0.92,
-    'torrent': 0.90,
+    'disk': 0.86, 'font': 0.88, 'code': 0.92, 'torrent': 0.90,
 }
+TILE_WIDTH = 44
+TILE_HEIGHT = 56
 PAUSED_COLOR = QColor('#858585')
 ERROR_COLOR = QColor('#767676')
 ERROR_BADGE_COLOR = QColor('#c42b1c')
@@ -123,66 +122,62 @@ def fitSvgRect(renderer, bounds, scale=1.0):
     viewBox = renderer.viewBoxF()
     if viewBox.width() <= 0 or viewBox.height() <= 0:
         return bounds
-    availableWidth = bounds.width() * scale
-    availableHeight = bounds.height() * scale
     ratio = min(
-        availableWidth / viewBox.width(),
-        availableHeight / viewBox.height())
+        bounds.width() * scale / viewBox.width(),
+        bounds.height() * scale / viewBox.height())
     width = viewBox.width() * ratio
     height = viewBox.height() * ratio
     return QRectF(
         bounds.center().x() - width / 2,
         bounds.center().y() - height / 2,
-        width,
-        height,
-    )
+        width, height)
 
 
-def fileIconPixmap(fileName, isTorrent=False, status='active', size=52):
+def fileIconPixmap(fileName, isTorrent=False, status='active'):
+    """Render a native portrait tile; no post-render horizontal compression."""
     spec = fileIconSpec(fileName, isTorrent)
-    size = max(32, int(size))
-    pixmap = QPixmap(size, size)
+    width = TILE_WIDTH
+    height = TILE_HEIGHT
+    pixmap = QPixmap(width, height)
     pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(iconColorForStatus(spec.color, status))
-    radius = size * 0.18
+    radius = min(width, height) * 0.18
     painter.drawRoundedRect(
-        QRectF(0.5, 0.5, size - 1.0, size - 1.0), radius, radius)
+        QRectF(0.5, 0.5, width - 1.0, height - 1.0), radius, radius)
 
     renderer = QSvgRenderer(
         str(RESOURCE_DIR / 'static/icon/fileTypes' / f'{spec.family}.svg'))
     if renderer.isValid():
-        bounds = QRectF(
-            size * 0.18, size * 0.07, size * 0.64, size * 0.51)
+        glyphBounds = QRectF(
+            width * 0.16, height * 0.08,
+            width * 0.68, height * 0.48)
         renderer.render(
             painter,
             fitSvgRect(
-                renderer, bounds, GLYPH_SCALE.get(spec.family, 1.0)))
+                renderer, glyphBounds,
+                GLYPH_SCALE.get(spec.family, 1.0)))
 
     font = QFont()
     font.setBold(True)
     font.setPixelSize(
-        max(7, int(size * (0.155 if len(spec.label) <= 4 else 0.13))))
+        max(7, int(height * (0.145 if len(spec.label) <= 4 else 0.12))))
     painter.setFont(font)
     painter.setPen(QColor('#ffffff'))
     painter.drawText(
-        QRectF(size * 0.08, size * 0.61, size * 0.84, size * 0.28),
+        QRectF(width * 0.06, height * 0.62, width * 0.88, height * 0.25),
         Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-        spec.label,
-    )
+        spec.label)
 
     if statusHasErrorBadge(status):
-        badgeSize = size * 0.27
+        badgeSize = min(width, height) * 0.27
         badgeRect = QRectF(
-            size - badgeSize - size * 0.02,
-            size * 0.02,
-            badgeSize,
-            badgeSize,
-        )
-        painter.setPen(Qt.PenStyle.NoPen)
+            width - badgeSize - width * 0.03,
+            height * 0.025,
+            badgeSize, badgeSize)
         painter.setBrush(ERROR_BADGE_COLOR)
         painter.drawEllipse(badgeRect)
         badgeFont = QFont()
@@ -190,11 +185,7 @@ def fileIconPixmap(fileName, isTorrent=False, status='active', size=52):
         badgeFont.setPixelSize(max(8, int(badgeSize * 0.72)))
         painter.setFont(badgeFont)
         painter.setPen(QColor('#ffffff'))
-        painter.drawText(
-            badgeRect,
-            Qt.AlignmentFlag.AlignCenter,
-            '!',
-        )
+        painter.drawText(badgeRect, Qt.AlignmentFlag.AlignCenter, '!')
 
     painter.end()
     return pixmap

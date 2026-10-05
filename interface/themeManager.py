@@ -3,6 +3,8 @@
 from PyQt6.QtCore import QObject, Qt
 from PyQt6.QtGui import QColor, QPalette
 
+from paths import RESOURCE_DIR
+
 THEME_MODES = ('system', 'light', 'dark')
 ACCENT_PRESETS = (
     '#5d795f', '#3f7cac', '#7b5ea7', '#b56576', '#b7791f', '#287271',
@@ -104,6 +106,8 @@ class ThemeManager(QObject):
         accentPressed = QColor(self.accent).darker(118).name()
         accentText = contrastText(self.accent)
         accentSoft = translucent(self.accent, 52 if dark else 34)
+        downArrow = (RESOURCE_DIR / 'static/icon/actions/chevron-down.svg').as_posix()
+        upArrow = (RESOURCE_DIR / 'static/icon/actions/chevron-up.svg').as_posix()
         return f"""
             QMainWindow, QWidget#mainRoot {{
                 background: {token['background']};
@@ -181,8 +185,8 @@ class ThemeManager(QObject):
                 border-top-right-radius: 0px;
                 border-bottom-right-radius: 0px;
                 padding: 0;
-                min-width: 64px;
-                max-width: 64px;
+                min-width: 46px;
+                max-width: 46px;
             }}
             QPushButton[navigationTab="true"]:hover {{
                 background: {token['hover']};
@@ -285,6 +289,11 @@ class ThemeManager(QObject):
                 border-top-right-radius: 7px;
                 border-bottom-right-radius: 7px;
             }}
+            QComboBox::down-arrow {{
+                image: url("{downArrow}");
+                width: 11px;
+                height: 11px;
+            }}
             QSpinBox::up-button, QSpinBox::down-button {{
                 subcontrol-origin: border;
                 width: 24px;
@@ -301,6 +310,49 @@ class ThemeManager(QObject):
             }}
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
                 background: {token['hover']};
+            }}
+            QSpinBox::up-arrow {{
+                image: url("{upArrow}");
+                width: 9px;
+                height: 9px;
+            }}
+            QSpinBox::down-arrow {{
+                image: url("{downArrow}");
+                width: 9px;
+                height: 9px;
+            }}
+            QToolButton[advancedToggle="true"] {{
+                color: {token['text']};
+                background: transparent;
+                border: 1px solid transparent;
+                border-radius: 7px;
+                padding: 5px 7px;
+                font-weight: 600;
+            }}
+            QToolButton[advancedToggle="true"]:hover {{
+                background: {token['hover']};
+                border-color: {token['border']};
+            }}
+            QDialog[newDownloadDialog="true"] QLineEdit,
+            QDialog[newDownloadDialog="true"] QComboBox,
+            QDialog[newDownloadDialog="true"] QSpinBox {{
+                min-height: 28px;
+            }}
+            QLabel[connectionBadge="true"] {{
+                background: transparent;
+                border: none;
+                padding: 1px 2px;
+                font-weight: 500;
+            }}
+            QLabel[connectionState="connected"] {{
+                color: {token['success']};
+            }}
+            QLabel[connectionState="disconnected"] {{
+                color: {token['danger']};
+            }}
+            QLabel[connectionState="connecting"],
+            QLabel[connectionState="neutral"] {{
+                color: {token['muted']};
             }}
             QMenu {{
                 background: {token['surface']};
@@ -363,6 +415,7 @@ class ThemeManager(QObject):
                 'cardHover': '#313339', 'border': '#3f4248', 'borderStrong': '#565a63',
                 'text': '#f1f3f5', 'muted': '#aeb4bc', 'disabled': '#737981',
                 'track': '#41444a', 'scroll': '#666b73', 'scrollHover': '#858b94',
+                'success': '#69ad78', 'danger': '#d46b6b',
             }
         return {
             'background': '#f3f4f6', 'surface': '#ffffff', 'raised': '#f8f9fb',
@@ -370,4 +423,5 @@ class ThemeManager(QObject):
             'cardHover': '#f3f5f7', 'border': '#d7dbe0', 'borderStrong': '#b9c0c8',
             'text': '#1f2328', 'muted': '#626a73', 'disabled': '#9aa1a9',
             'track': '#dfe3e8', 'scroll': '#aab1b8', 'scrollHover': '#858d96',
+            'success': '#2f7d4a', 'danger': '#b84a4a',
         }

@@ -4,11 +4,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication, QSizePolicy
 
 import paths
 from Ashore import StartupController
+from interface.addNewDialog import AddNewDialog
 from interface.section import Section
 from interface.settingPage import SettingPage
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, ThemeManager
@@ -107,7 +109,10 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertFalse(section.moreButton.isHidden())
         self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
         self.assertEqual(section.height(), 116)
+        self.assertEqual(section.CONTENT_MIN_WIDTH, 660)
         self.assertEqual(section.CONTENT_MAX_WIDTH, 820)
+        self.assertEqual(
+            section.actionSlot.layout().contentsMargins().left(), 52)
 
     def test_completed_multifile_task_opens_folder_as_primary_action(self):
         multi = Section(
@@ -129,6 +134,11 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(page.saveBtn.text(), 'Save Settings')
             self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
             self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
+            self.assertLessEqual(
+                page.defaultDownloadDirLabel.maximumWidth(), 150)
+            self.assertEqual(
+                page.showAria2StatusLabel.text(),
+                'Show aria2 status in main window:')
 
     def test_overflow_menu_only_contains_non_quick_actions(self):
         section = Section(
@@ -164,6 +174,38 @@ class SettingsLayoutTests(unittest.TestCase):
             if not action.isSeparator()]
         self.assertEqual(actions.count(section.openFolderAction), 0)
         self.assertEqual(section.primaryActionKind(), 'open-folder')
+
+
+    def test_show_aria2_status_is_a_persistable_boolean_setting(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertIn('show_aria2_status', page.ashoreKeys)
+            self.assertEqual(
+                page.getBoolOption(page.showAria2StatusComboBox), 'true')
+            page.setBoolOption(page.showAria2StatusComboBox, False)
+            self.assertEqual(
+                page.getBoolOption(page.showAria2StatusComboBox), 'false')
+
+    def test_theme_restores_combo_spin_arrows_and_lightweight_states(self):
+        manager = ThemeManager(self.app)
+        manager.apply('dark', '#a51d2d')
+        style = self.app.styleSheet()
+        self.assertIn('QComboBox::down-arrow', style)
+        self.assertIn('QSpinBox::up-arrow', style)
+        self.assertIn('QSpinBox::down-arrow', style)
+        self.assertIn('QLabel[connectionState="connected"]', style)
+        self.assertNotIn('background-color: #2e7d32', style)
+
+    def test_new_download_advanced_control_uses_ashore_chevron(self):
+        dialog = AddNewDialog('/tmp', language='en')
+        self.assertEqual(
+            dialog.advancedToggle.arrowType(),
+            Qt.ArrowType.NoArrow)
+        self.assertFalse(dialog.advancedToggle.icon().isNull())
+        dialog.advancedToggle.setChecked(True)
+        self.assertFalse(dialog.advancedToggle.icon().isNull())
+        self.assertGreaterEqual(dialog.headersEdit.minimumHeight(), 64)
+        dialog.close()
 
 
 

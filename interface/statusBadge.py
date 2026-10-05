@@ -1,13 +1,16 @@
-"""Shared appearance for compact connection-state badges."""
+"""Shared semantic connection-state presentation."""
 
 
-CONNECTED_COLOR = '#2e7d32'
-DISCONNECTED_COLOR = '#c62828'
-
-
-def setConnectionBadge(label, text, connected):
-    color = CONNECTED_COLOR if connected else DISCONNECTED_COLOR
-    label.setText(text)
-    label.setStyleSheet(
-        f'QLabel {{ color: white; background-color: {color}; '
-        'border-radius: 4px; padding: 2px 7px; font-weight: bold; }')
+def setConnectionBadge(label, text, state):
+    """Apply a lightweight state marker; ThemeManager owns its appearance."""
+    if isinstance(state, bool):
+        state = 'connected' if state else 'disconnected'
+    if state not in {'connected', 'disconnected', 'connecting', 'neutral'}:
+        state = 'neutral'
+    label.setText(f'● {text}')
+    label.setProperty('connectionBadge', True)
+    label.setProperty('connectionState', state)
+    style = label.style()
+    style.unpolish(label)
+    style.polish(label)
+    label.update()

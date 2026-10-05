@@ -69,6 +69,7 @@ class Ashore(QMainWindow):
         ashoreConfig = self.pageSetting.loadAshoreConfig()
         self.language = ashoreConfig.get('language', 'zh_CN')
         self.trayIconStyle = ashoreConfig.get('tray_icon_style', 'colorful')
+        self.showAria2Status = bool(ashoreConfig.get('show_aria2_status', True))
         self.aria2Service = aria2Service
         self.aria2Service.quitWithAshore = ashoreConfig['quit_with_aria2']
         self.aria2Client = aria2Service.client
@@ -190,6 +191,7 @@ class Ashore(QMainWindow):
 
         self.refreshNavigationIcons()
 
+
     def refreshNavigationIcons(self):
         if not hasattr(self, 'tabDownloading'):
             return
@@ -204,8 +206,8 @@ class Ashore(QMainWindow):
         )
         for button, iconName in items:
             color = selectedColor if button.isChecked() else normalColor
-            button.setIcon(actionIcon(iconName, color=color, size=26))
-            button.setIconSize(QSize(26, 26))
+            button.setIcon(actionIcon(iconName, color=color, size=32))
+            button.setIconSize(QSize(32, 32))
     def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
         showWindowAction = QAction(self.tr('showMain'), self)
         newAction = QAction(self.tr('new'), self)
@@ -275,39 +277,49 @@ class Ashore(QMainWindow):
         self.pageDownloading.setLanguage(self.language)
         self.pageDownloaded.setLanguage(self.language)
         self.refreshActionIcons()
-    def createStatusBar(self) -> None:   #设置状态栏
-        self.downSpeedIcon = QLabel('upSpeedIcon')
-        self.downSpeedIcon.setFixedSize(20,20)
+
+    def createStatusBar(self) -> None:
+        self.downSpeedIcon = QLabel('downSpeedIcon')
+        self.downSpeedIcon.setFixedSize(20, 20)
         self.downSpeedIcon.setScaledContents(True)
-        self.downSpeedIcon.setPixmap(QPixmap(self.resourcePath + 'static/icon/functionIcons/downloadSpeed.png'))
+        self.downSpeedIcon.setPixmap(QPixmap(
+            self.resourcePath + 'static/icon/functionIcons/downloadSpeed.png'))
         self.downSpeedIcon.setToolTip('下载速度')
         self.downSpeedIcon.setStatusTip('全局实时下载速度')
+
         self.downSpeedLabel = QLabel('下载速度')
         self.downSpeedLabel.setMinimumWidth(80)
         self.downSpeedLabel.setToolTip('下载速度')
         self.downSpeedLabel.setStatusTip('全局实时下载速度')
+
         self.upSpeedIcon = QLabel('upSpeedIcon')
-        self.upSpeedIcon.setFixedSize(20,20)
+        self.upSpeedIcon.setFixedSize(20, 20)
         self.upSpeedIcon.setScaledContents(True)
-        self.upSpeedIcon.setPixmap(QPixmap(self.resourcePath + 'static/icon/functionIcons/uploadSpeed.png'))
+        self.upSpeedIcon.setPixmap(QPixmap(
+            self.resourcePath + 'static/icon/functionIcons/uploadSpeed.png'))
         self.upSpeedIcon.setToolTip('上传速度')
         self.upSpeedIcon.setStatusTip('全局BT、磁链上传速度')
+
         self.upSpeedLabel = QLabel('上传速度')
         self.upSpeedLabel.setMinimumWidth(80)
         self.upSpeedLabel.setToolTip('上传速度')
         self.upSpeedLabel.setStatusTip('全局BT、磁链上传速度')
+
         self.statusBar = QStatusBar()
-        self.statusBar.setContentsMargins(0,1,10,2)
-        self.aria2StateLabel = QLabel('aria2：连接中')
-        setConnectionBadge(self.aria2StateLabel, 'aria2：连接中', False)
+        self.statusBar.setContentsMargins(0, 1, 10, 2)
+        self.aria2StateLabel = QLabel()
+        setConnectionBadge(
+            self.aria2StateLabel,
+            f'aria2 {self.tr("connecting")}',
+            'connecting')
+        self.aria2StateLabel.setVisible(self.showAria2Status)
+
         self.statusBar.addPermanentWidget(self.aria2StateLabel)
         self.statusBar.addPermanentWidget(self.downSpeedIcon)
         self.statusBar.addPermanentWidget(self.downSpeedLabel)
         self.statusBar.addPermanentWidget(self.upSpeedIcon)
         self.statusBar.addPermanentWidget(self.upSpeedLabel)
         self.setStatusBar(self.statusBar)
-
-
 
     def initUI(self) -> None:
         self.createCommandActions()
@@ -345,6 +357,11 @@ class Ashore(QMainWindow):
         commandLayout.addStretch(1)
         commandLayout.addWidget(self.moreBtn)
 
+        commandHost = QWidget()
+        commandHostLayout = QHBoxLayout(commandHost)
+        commandHostLayout.setContentsMargins(12, 0, 12, 0)
+        commandHostLayout.addWidget(self.commandBar)
+
         self.tabDownloading = QPushButton()
         self.tabDownloaded = QPushButton()
         self.tabSetting = QPushButton()
@@ -356,7 +373,7 @@ class Ashore(QMainWindow):
                 self.tabDownloading, self.tabDownloaded, self.tabSetting):
             button.setCheckable(True)
             button.setProperty('navigationTab', True)
-            button.setFixedHeight(54)
+            button.setFixedHeight(108)
             self.navigationTabs.addButton(button)
 
         self.tabDownloading.setChecked(True)
@@ -366,10 +383,10 @@ class Ashore(QMainWindow):
 
         self.navigationRail = QWidget()
         self.navigationRail.setProperty('navigationRail', True)
-        self.navigationRail.setFixedWidth(64)
+        self.navigationRail.setFixedWidth(46)
         navigationLayout = QVBoxLayout(self.navigationRail)
-        navigationLayout.setContentsMargins(0, 14, 0, 14)
-        navigationLayout.setSpacing(5)
+        navigationLayout.setContentsMargins(0, 8, 0, 8)
+        navigationLayout.setSpacing(4)
         navigationLayout.addWidget(self.tabDownloading)
         navigationLayout.addWidget(self.tabDownloaded)
         navigationLayout.addStretch(1)
@@ -386,7 +403,7 @@ class Ashore(QMainWindow):
         bodyWidget = QWidget()
         bodyWidget.setProperty('contentBody', True)
         bodyLayout = QHBoxLayout(bodyWidget)
-        bodyLayout.setContentsMargins(0, 0, 0, 0)
+        bodyLayout.setContentsMargins(0, 0, 12, 0)
         bodyLayout.setSpacing(0)
         bodyLayout.addWidget(self.navigationRail)
         bodyLayout.addWidget(self.pageStack, 1)
@@ -394,9 +411,9 @@ class Ashore(QMainWindow):
         mainWidget = QWidget()
         mainWidget.setObjectName('mainRoot')
         mainLayout = QVBoxLayout(mainWidget)
-        mainLayout.setContentsMargins(12, 10, 12, 8)
+        mainLayout.setContentsMargins(0, 10, 0, 8)
         mainLayout.setSpacing(10)
-        mainLayout.addWidget(self.commandBar)
+        mainLayout.addWidget(commandHost)
         mainLayout.addWidget(bodyWidget, 1)
         self.setCentralWidget(mainWidget)
 
@@ -425,17 +442,23 @@ class Ashore(QMainWindow):
         missions = snapshot['missions']
         globalStatus = snapshot['globalStatus']
         if 'ResultError' in globalStatus:
-            setConnectionBadge(self.aria2StateLabel, 'aria2：未连接', False)
+            setConnectionBadge(
+                self.aria2StateLabel,
+                f'aria2 {self.tr("disconnected")}', 'disconnected')
             self.aria2StateLabel.setToolTip(str(globalStatus['ResultError']))
             self.downSpeedLabel.setText('—')
             self.upSpeedLabel.setText('—')
             self.updateConnection('未连接')
             return
         if 'ResultError' in missions:
-            setConnectionBadge(self.aria2StateLabel, 'aria2：查询失败', False)
+            setConnectionBadge(
+                self.aria2StateLabel,
+                f'aria2 {self.tr("disconnected")}', 'disconnected')
             self.aria2StateLabel.setToolTip(str(missions['ResultError']))
             return
-        setConnectionBadge(self.aria2StateLabel, 'aria2：已连接', True)
+        setConnectionBadge(
+            self.aria2StateLabel,
+            f'aria2 {self.tr("connected")}', 'connected')
         self.aria2Version = snapshot.get('aria2Version') or self.aria2Version
         self.updateConnection('已连接')
         self.pageDownloading.updateSections({status: missions[status] for status in ('active', 'waiting', 'paused')})
@@ -738,25 +761,36 @@ class Ashore(QMainWindow):
                     self.aria2Poller.poll()
         self.aria2ConfigError = result.get('ResultError') if isinstance(result, dict) else str(result)
 
+
     def applyAshoreConfig(self, conf:dict) -> None:
-        # 将setting页面的设置信息更新到运行的ashore程序中
-        if conf['quit_with_aria2'] == 'false':
-            self.aria2Service.quitWithAshore = False
-        elif conf['quit_with_aria2'] == 'true':
-            self.aria2Service.quitWithAshore = True
-        self.aria2Poller.timer.setInterval(max(500, int(conf['update_interval'])))
+        self.aria2Service.quitWithAshore = conf['quit_with_aria2'] == 'true'
+        self.aria2Poller.timer.setInterval(
+            max(500, int(conf['update_interval'])))
+
         if conf.get('language') and conf['language'] != self.language:
             self.language = conf['language']
             self.applyLanguage()
+
         if conf.get('tray_icon_style'):
             self.applyTrayIconStyle(conf['tray_icon_style'])
+
+        if 'show_aria2_status' in conf:
+            value = conf['show_aria2_status']
+            self.showAria2Status = (
+                value if isinstance(value, bool)
+                else str(value).lower() == 'true')
+            self.aria2StateLabel.setVisible(self.showAria2Status)
+
         if conf.get('theme_mode'):
-            self.themeManager.apply(conf['theme_mode'], conf.get('accent_color'))
+            self.themeManager.apply(
+                conf['theme_mode'], conf.get('accent_color'))
+
         if getattr(self, 'aria2ConfigError', None):
-            self.showStatus('配置已保存，但运行中 aria2 未能应用设置：' + str(self.aria2ConfigError))
+            self.showStatus(
+                '配置已保存，但运行中 aria2 未能应用设置：'
+                + str(self.aria2ConfigError))
         else:
             self.showStatus(conf['isSaved'])
-
     def showStatus(self, data, end=None):
         if isinstance(data, int):
             self.statusBar.showMessage(ERROR_MESSAGES[data], 3000)

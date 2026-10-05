@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PyQt6.QtCore import QEvent, Qt, pyqtSignal
+from PyQt6.QtCore import QEvent, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import (
     QDialog, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLabel,
@@ -27,6 +27,7 @@ class AddNewDialog(QDialog):
         self.language = language
         self.parsedInputs = parseDownloadInputs(urlList or [])
         self.setWindowTitle(self.tr('newDownloadTitle'))
+        self.setProperty('newDownloadDialog', True)
         self.setMinimumSize(620, 430)
         self.resize(680, 500)
         self.setAcceptDrops(True)
@@ -71,9 +72,12 @@ class AddNewDialog(QDialog):
         self.advancedToggle = QToolButton()
         self.advancedToggle.setText(self.tr('advancedOptions'))
         self.advancedToggle.setCheckable(True)
-        self.advancedToggle.setArrowType(Qt.ArrowType.RightArrow)
+        self.advancedToggle.setArrowType(Qt.ArrowType.NoArrow)
         self.advancedToggle.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.advancedToggle.setIcon(
+            actionIcon('chevron-right', size=15))
+        self.advancedToggle.setIconSize(QSize(15, 15))
         self.advancedToggle.setProperty('advancedToggle', True)
 
         self.advancedPanel = QFrame()
@@ -95,6 +99,7 @@ class AddNewDialog(QDialog):
         advancedForm.addRow('User-Agent:', self.userAgentEdit)
 
         self.headersEdit = QTextEdit()
+        self.headersEdit.setMinimumHeight(64)
         self.headersEdit.setMaximumHeight(84)
         self.headersEdit.setPlaceholderText(self.tr('headersHint'))
         advancedForm.addRow('HTTP Headers:', self.headersEdit)
@@ -161,8 +166,8 @@ class AddNewDialog(QDialog):
 
     def toggleAdvanced(self, checked):
         self.advancedPanel.setVisible(checked)
-        self.advancedToggle.setArrowType(
-            Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow)
+        self.advancedToggle.setIcon(actionIcon(
+            'chevron-down' if checked else 'chevron-right', size=15))
         if checked:
             self.resize(max(self.width(), 680), max(self.height(), 680))
         self.validate()

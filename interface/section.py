@@ -39,6 +39,7 @@ class Section(QFrame):
     copyUrlRequested = pyqtSignal(str)
     removeRequested = pyqtSignal(tuple)
 
+    CONTENT_MIN_WIDTH = 660
     CONTENT_MAX_WIDTH = 820
 
     def __init__(
@@ -70,7 +71,7 @@ class Section(QFrame):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.iconLabel = QLabel()
-        self.iconLabel.setFixedSize(60, 60)
+        self.iconLabel.setFixedSize(52, 60)
         self.iconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.nameLabel = QLabel(self.fileName)
@@ -95,7 +96,7 @@ class Section(QFrame):
         self.actionSlot = QWidget()
         self.actionSlot.setFixedHeight(30)
         actionLayout = QHBoxLayout(self.actionSlot)
-        actionLayout.setContentsMargins(8, 0, 0, 0)
+        actionLayout.setContentsMargins(52, 0, 0, 0)
         actionLayout.setSpacing(4)
         actionLayout.addWidget(self.actionButton)
         actionLayout.addWidget(self.openFolderButton)
@@ -122,6 +123,7 @@ class Section(QFrame):
         self.contextMenu.aboutToHide.connect(self.menuClosed)
 
         infoPanel = QWidget()
+        infoPanel.setMinimumWidth(self.CONTENT_MIN_WIDTH)
         infoPanel.setMaximumWidth(self.CONTENT_MAX_WIDTH)
         infoPanel.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -252,7 +254,7 @@ class Section(QFrame):
         self.nameLabel.setToolTip(self.fileName)
         self.iconLabel.setPixmap(
             fileIconPixmap(
-                self.fileName, self.isTorrent, status=self.status, size=56))
+                self.fileName, self.isTorrent, status=self.status))
         progress = self.progressPercent()
         self.progressBar.setValue(progress)
         self.rateLabel.setText(

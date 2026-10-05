@@ -5,23 +5,23 @@ os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 from PyQt6.QtWidgets import QApplication, QLabel
 
-from interface.statusBadge import (
-    CONNECTED_COLOR,
-    DISCONNECTED_COLOR,
-    setConnectionBadge,
-)
+from interface.statusBadge import setConnectionBadge
 
 
 class StatusBadgeTests(unittest.TestCase):
-    def test_connected_and_disconnected_colors(self):
+    def test_state_badges_are_semantic_and_not_inline_colored(self):
         self.app = QApplication.instance() or QApplication([])
         label = QLabel()
-        setConnectionBadge(label, '已连接', True)
-        self.assertEqual(label.text(), '已连接')
-        self.assertIn(CONNECTED_COLOR, label.styleSheet())
-        self.assertIn('color: white', label.styleSheet())
-        setConnectionBadge(label, '未连接', False)
-        self.assertIn(DISCONNECTED_COLOR, label.styleSheet())
+
+        setConnectionBadge(label, 'Connected', 'connected')
+        self.assertEqual(label.text(), '● Connected')
+        self.assertEqual(label.property('connectionState'), 'connected')
+        self.assertTrue(label.property('connectionBadge'))
+        self.assertEqual(label.styleSheet(), '')
+
+        setConnectionBadge(label, 'Disconnected', 'disconnected')
+        self.assertEqual(label.text(), '● Disconnected')
+        self.assertEqual(label.property('connectionState'), 'disconnected')
 
 
 if __name__ == '__main__':
