@@ -39,7 +39,9 @@ PROBE_STAGES = (
     ProbeStage('theme', 'ThemeManager and global style sheet'),
     ProbeStage('tasks', 'Page and Section task widgets'),
     ProbeStage('settings', 'SettingPage and local configuration'),
-    ProbeStage('tray', 'QSystemTrayIcon, hide, show and quit actions'),
+    ProbeStage('tray', 'QSystemTrayIcon menu; quit without explicit hiding'),
+    ProbeStage('trayWindowHide', 'hide the main window before tray-menu quit'),
+    ProbeStage('trayIconHide', 'also hide the tray icon before quitting'),
     ProbeStage('singleInstance', 'QLocalServer single-instance channel'),
     ProbeStage('ariaClient', 'Aria2Service and HTTP client configuration'),
     ProbeStage('ariaPoller', 'Background aria2 HTTP polling thread'),
@@ -229,8 +231,10 @@ class ProbeWindow(QMainWindow):
             self.aria2Poller.timer.stop()
         if self.aria2Events is not None:
             self.aria2Events.stop()
-        self.hide()
-        if self.trayIcon is not None:
+        if includes(self.stage, 'trayWindowHide'):
+            self.hide()
+        if (self.trayIcon is not None
+                and includes(self.stage, 'trayIconHide')):
             self.trayIcon.hide()
         if includes(self.stage, 'asyncShutdown') and self.aria2Poller is not None:
             from core.aria2Service import Aria2Shutdown

@@ -8,6 +8,8 @@ class CursorProbeTests(unittest.TestCase):
         names = [stage.name for stage in PROBE_STAGES]
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(stageIndex('base'), 0)
+        self.assertLess(stageIndex('tray'), stageIndex('trayWindowHide'))
+        self.assertLess(stageIndex('trayWindowHide'), stageIndex('trayIconHide'))
         self.assertTrue(includes('startupWindow', 'tray'))
         self.assertFalse(includes('tray', 'startupWindow'))
 
