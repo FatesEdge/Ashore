@@ -1,7 +1,6 @@
 import unittest
 
 from PyQt6.QtCore import QRectF
-from PyQt6.QtSvg import QSvgRenderer
 
 from interface.fileIcons import fileIconSpec, fitSvgRect, iconColorForStatus, statusHasErrorBadge
 
