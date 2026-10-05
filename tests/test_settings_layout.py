@@ -106,6 +106,29 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertFalse(section.copyUrlButton.isHidden())
         self.assertFalse(section.moreButton.isHidden())
         self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
+        self.assertEqual(section.height(), 116)
+        self.assertEqual(section.CONTENT_MAX_WIDTH, 820)
+
+    def test_completed_multifile_task_opens_folder_as_primary_action(self):
+        multi = Section(
+            'gid', 'Example', 'completed', 100, 100, 0,
+            isTorrent=True, files=['a.bin', 'b.bin'])
+        single = Section(
+            'gid2', 'single.iso', 'completed', 100, 100, 0,
+            files=['single.iso'])
+        self.assertEqual(multi.primaryActionKind(), 'open-folder')
+        self.assertEqual(single.primaryActionKind(), 'open-file')
+
+    def test_settings_retranslate_without_recreating_page(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.setLanguage('en')
+            self.assertEqual(
+                page.defaultDownloadDirLabel.text(),
+                'Default download directory:')
+            self.assertEqual(page.saveBtn.text(), 'Save Settings')
+            self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
+            self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
 
 
 if __name__ == '__main__':

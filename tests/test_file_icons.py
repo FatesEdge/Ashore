@@ -1,6 +1,9 @@
 import unittest
 
-from interface.fileIcons import fileIconSpec, iconColorForStatus, statusHasErrorBadge
+from PyQt6.QtCore import QRectF
+from PyQt6.QtSvg import QSvgRenderer
+
+from interface.fileIcons import fileIconSpec, fitSvgRect, iconColorForStatus, statusHasErrorBadge
 
 
 class FileIconTests(unittest.TestCase):
@@ -29,6 +32,18 @@ class FileIconTests(unittest.TestCase):
         self.assertNotEqual(iconColorForStatus(base, 'waiting').name(), base)
         self.assertTrue(statusHasErrorBadge('error'))
         self.assertFalse(statusHasErrorBadge('paused'))
+
+    def test_svg_glyph_fit_preserves_viewbox_aspect_ratio(self):
+        class Renderer:
+            @staticmethod
+            def viewBoxF():
+                return QRectF(0, 0, 40, 20)
+
+        fitted = fitSvgRect(Renderer(), QRectF(0, 0, 30, 30))
+        self.assertAlmostEqual(fitted.width() / fitted.height(), 2.0)
+        self.assertLessEqual(fitted.width(), 30)
+        self.assertLessEqual(fitted.height(), 30)
+
 
 
 if __name__ == '__main__':

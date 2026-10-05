@@ -99,6 +99,23 @@ class Aria2Startup(QThread):
             self.failed.emit(str(exc))
 
 
+class Aria2Removal(QThread):
+    """Run stateful task removal without blocking the GUI thread."""
+
+    resultReady = pyqtSignal(str, dict)
+
+    def __init__(self, client, gid, deleteFiles=False, parent=None):
+        super().__init__(parent)
+        self.client = client
+        self.gid = gid
+        self.deleteFiles = deleteFiles
+
+    def run(self):
+        result = self.client.removeMission(
+            self.gid, delFile=self.deleteFiles)
+        self.resultReady.emit(self.gid, result)
+
+
 class Aria2Shutdown(QThread):
     """Finish pending RPC work and close aria2 without blocking the GUI."""
 

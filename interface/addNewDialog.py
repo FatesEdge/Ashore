@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 
 from core.downloadRequest import DownloadRequest, parseDownloadInputs
 from interface.actionIcons import actionIcon
+from interface.languageManager import translate
 from paths import systemDownloadDirectory
 
 
@@ -20,11 +21,12 @@ class AddNewDialog(QDialog):
 
     def __init__(
             self, downloadPath: str | None = None,
-            urlList: list | None = None, parent=None):
+            urlList: list | None = None, parent=None, language='zh_CN'):
         super().__init__(parent)
         self.downloadPath = downloadPath or str(systemDownloadDirectory())
+        self.language = language
         self.parsedInputs = parseDownloadInputs(urlList or [])
-        self.setWindowTitle('新建下载')
+        self.setWindowTitle(self.tr('newDownloadTitle'))
         self.setMinimumSize(620, 430)
         self.resize(680, 500)
         self.setAcceptDrops(True)
@@ -33,12 +35,13 @@ class AddNewDialog(QDialog):
             self.text.setPlainText('\n'.join(urlList))
         self.validate()
 
+    def tr(self, key):
+        return translate(self.language, key)
+
     def initUI(self):
         self.text = QTextEdit()
         self.text.setAcceptRichText(False)
-        self.text.setPlaceholderText(
-            '粘贴 HTTP / HTTPS / FTP / Magnet 地址，或拖入 .torrent 文件\n'
-            '多个任务每行一个')
+        self.text.setPlaceholderText(self.tr('downloadInputPlaceholder'))
         self.text.setMinimumHeight(150)
 
         self.validationLabel = QLabel()
@@ -48,7 +51,7 @@ class AddNewDialog(QDialog):
         self.errorLabel.setWordWrap(True)
         self.errorLabel.hide()
 
-        self.openTorrentBtn = QPushButton('打开 Torrent…')
+        self.openTorrentBtn = QPushButton(self.tr('openTorrent'))
         self.openTorrentBtn.setIcon(actionIcon('open-file', size=18))
         inputTools = QHBoxLayout()
         inputTools.setContentsMargins(0, 0, 0, 0)
@@ -58,7 +61,7 @@ class AddNewDialog(QDialog):
         self.dirEdit = QLineEdit(self.downloadPath)
         self.dirEdit.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.dirBtn = QPushButton('选择目录')
+        self.dirBtn = QPushButton(self.tr('chooseDirectory'))
         self.dirBtn.setIcon(actionIcon('open-folder', size=18))
         directoryRow = QHBoxLayout()
         directoryRow.setContentsMargins(0, 0, 0, 0)
@@ -66,7 +69,7 @@ class AddNewDialog(QDialog):
         directoryRow.addWidget(self.dirBtn)
 
         self.advancedToggle = QToolButton()
-        self.advancedToggle.setText('高级选项')
+        self.advancedToggle.setText(self.tr('advancedOptions'))
         self.advancedToggle.setCheckable(True)
         self.advancedToggle.setArrowType(Qt.ArrowType.RightArrow)
         self.advancedToggle.setToolButtonStyle(
@@ -80,41 +83,38 @@ class AddNewDialog(QDialog):
         advancedForm.setVerticalSpacing(8)
 
         self.fileNameEdit = QLineEdit()
-        self.fileNameEdit.setPlaceholderText('仅单个普通 HTTP/FTP 文件可用')
-        advancedForm.addRow('文件名:', self.fileNameEdit)
+        self.fileNameEdit.setPlaceholderText(self.tr('fileNameHint'))
+        advancedForm.addRow(self.tr('fileName'), self.fileNameEdit)
 
         self.refererEdit = QLineEdit()
-        self.refererEdit.setPlaceholderText('留空使用默认值')
+        self.refererEdit.setPlaceholderText(self.tr('leaveDefault'))
         advancedForm.addRow('Referer:', self.refererEdit)
 
         self.userAgentEdit = QLineEdit()
-        self.userAgentEdit.setPlaceholderText('留空使用全局 User-Agent')
+        self.userAgentEdit.setPlaceholderText(self.tr('userAgentHint'))
         advancedForm.addRow('User-Agent:', self.userAgentEdit)
 
         self.headersEdit = QTextEdit()
         self.headersEdit.setMaximumHeight(84)
-        self.headersEdit.setPlaceholderText(
-            '每行一个，例如：\nAccept-Language: zh-CN\nX-Token: value')
+        self.headersEdit.setPlaceholderText(self.tr('headersHint'))
         advancedForm.addRow('HTTP Headers:', self.headersEdit)
 
         self.cookieEdit = QLineEdit()
-        self.cookieEdit.setPlaceholderText('例如：session=abc; theme=dark')
+        self.cookieEdit.setPlaceholderText(self.tr('cookieHint'))
         advancedForm.addRow('Cookie:', self.cookieEdit)
 
         self.checksumEdit = QLineEdit()
-        self.checksumEdit.setPlaceholderText('例如：sha-256=0123abcd…')
+        self.checksumEdit.setPlaceholderText(self.tr('checksumHint'))
         advancedForm.addRow('Checksum:', self.checksumEdit)
 
-        advancedHint = QLabel(
-            '高级选项只应用到 HTTP / HTTPS / FTP 请求；'
-            'Magnet 和本地 Torrent 不会收到无关参数。')
+        advancedHint = QLabel(self.tr('advancedDownloadHint'))
         advancedHint.setWordWrap(True)
         advancedHint.setProperty('dialogStatus', True)
         advancedForm.addRow('', advancedHint)
         self.advancedPanel.hide()
 
-        self.cancelBtn = QPushButton('取消')
-        self.confirmBtn = QPushButton('开始下载')
+        self.cancelBtn = QPushButton(self.tr('cancel'))
+        self.confirmBtn = QPushButton(self.tr('startDownload'))
         self.confirmBtn.setProperty('primaryAction', True)
         self.confirmBtn.setIcon(actionIcon(
             'download', color=self.palette().color(
@@ -127,13 +127,13 @@ class AddNewDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 16)
         layout.setSpacing(10)
-        layout.addWidget(QLabel('URL / Magnet / Torrent'))
+        layout.addWidget(QLabel(self.tr('downloadInputLabel')))
         layout.addWidget(self.text)
         layout.addLayout(inputTools)
         layout.addWidget(self.validationLabel)
         layout.addWidget(self.errorLabel)
         layout.addSpacing(4)
-        layout.addWidget(QLabel('保存到'))
+        layout.addWidget(QLabel(self.tr('saveTo')))
         layout.addLayout(directoryRow)
         layout.addWidget(self.advancedToggle)
         layout.addWidget(self.advancedPanel)
@@ -169,14 +169,14 @@ class AddNewDialog(QDialog):
 
     def chooseDirectory(self):
         path = QFileDialog.getExistingDirectory(
-            self, '选择下载目录', self.dirEdit.text(),
+            self, self.tr('chooseDirectory'), self.dirEdit.text(),
             QFileDialog.Option.ShowDirsOnly)
         if path:
             self.dirEdit.setText(path)
 
     def openTorrentFiles(self):
         files, _ = QFileDialog.getOpenFileNames(
-            self, '打开 Torrent', str(Path.home()),
+            self, self.tr('openTorrent'), str(Path.home()),
             'Torrent files (*.torrent)')
         if files:
             self.appendInputs(files)
@@ -212,29 +212,31 @@ class AddNewDialog(QDialog):
             for line in self.headersEdit.toPlainText().splitlines():
                 line = line.strip()
                 if line and ':' not in line:
-                    errors.append(f'无效 HTTP Header：{line}')
+                    errors.append(self.tr('invalidHeader').format(line=line))
             checksum = self.checksumEdit.text().strip()
             if checksum and ('=' not in checksum or checksum.startswith('=')):
-                errors.append('Checksum 应使用“算法=摘要”格式。')
+                errors.append(self.tr('checksumFormat'))
         return errors
 
     def validate(self):
         self.parsedInputs = parseDownloadInputs(self.text.toPlainText())
         valid = self.parsedInputs.validCount
         invalid = len(self.parsedInputs.invalid)
-        self.validationLabel.setText(
-            f'已识别 {valid} 个有效任务'
-            + (f'；{invalid} 个输入无效' if invalid else ''))
+        summary = self.tr('validTaskCount').format(count=valid)
+        if invalid:
+            summary += ' · ' + self.tr('invalidInputCount').format(
+                count=invalid)
+        self.validationLabel.setText(summary)
 
         errors = []
         if self.parsedInputs.invalid:
             preview = '；'.join(self.parsedInputs.invalid[:3])
             if len(self.parsedInputs.invalid) > 3:
                 preview += '；…'
-            errors.append('请修正无效输入：' + preview)
+            errors.append(self.tr('invalidInputPrompt').format(items=preview))
         errors.extend(self.advancedErrors())
         if not self.dirEdit.text().strip():
-            errors.append('请选择下载目录。')
+            errors.append(self.tr('chooseDownloadDir'))
 
         singleRename = (
             len(self.parsedInputs.items) == 1

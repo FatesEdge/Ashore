@@ -51,6 +51,12 @@ FORMAT_LABELS = {
     'tar.gz': 'TGZ', 'tar.bz2': 'TBZ', 'tar.xz': 'TXZ',
     'appimage': 'APP', 'sqlite3': 'SQL',
 }
+GLYPH_SCALE = {
+    'disk': 0.86,
+    'font': 0.88,
+    'code': 0.92,
+    'torrent': 0.90,
+}
 PAUSED_COLOR = QColor('#858585')
 ERROR_COLOR = QColor('#767676')
 ERROR_BADGE_COLOR = QColor('#c42b1c')
@@ -113,6 +119,25 @@ def statusHasErrorBadge(status):
     return status == 'error'
 
 
+def fitSvgRect(renderer, bounds, scale=1.0):
+    viewBox = renderer.viewBoxF()
+    if viewBox.width() <= 0 or viewBox.height() <= 0:
+        return bounds
+    availableWidth = bounds.width() * scale
+    availableHeight = bounds.height() * scale
+    ratio = min(
+        availableWidth / viewBox.width(),
+        availableHeight / viewBox.height())
+    width = viewBox.width() * ratio
+    height = viewBox.height() * ratio
+    return QRectF(
+        bounds.center().x() - width / 2,
+        bounds.center().y() - height / 2,
+        width,
+        height,
+    )
+
+
 def fileIconPixmap(fileName, isTorrent=False, status='active', size=52):
     spec = fileIconSpec(fileName, isTorrent)
     size = max(32, int(size))
@@ -130,8 +155,12 @@ def fileIconPixmap(fileName, isTorrent=False, status='active', size=52):
     renderer = QSvgRenderer(
         str(RESOURCE_DIR / 'static/icon/fileTypes' / f'{spec.family}.svg'))
     if renderer.isValid():
+        bounds = QRectF(
+            size * 0.18, size * 0.07, size * 0.64, size * 0.51)
         renderer.render(
-            painter, QRectF(size * 0.22, size * 0.09, size * 0.56, size * 0.49))
+            painter,
+            fitSvgRect(
+                renderer, bounds, GLYPH_SCALE.get(spec.family, 1.0)))
 
     font = QFont()
     font.setBold(True)

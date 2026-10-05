@@ -244,6 +244,42 @@ class Aria2Tests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, '拒绝删除'):
                 client.deleteTaskFiles({'dir': folder, 'filename': '', 'files': [str(root.parent / 'outside')]})
 
+    def test_running_task_removal_waits_for_removed_status_before_cleanup(self):
+        client = Aria2Client.__new__(Aria2Client)
+        mission = {
+            'status': 'active',
+            'dir': '/tmp',
+            'filename': 'file.bin',
+            'files': ['/tmp/file.bin'],
+        }
+        payloads = []
+
+        def call(data):
+            payload = json.loads(data)
+            payloads.append(payload)
+            method = payload['method']
+            if method == 'aria2.remove':
+                return 'gid'
+            if method == 'aria2.tellStatus':
+                return {'status': 'removed'}
+            if method == 'aria2.removeDownloadResult':
+                return 'OK'
+            self.fail(f'unexpected RPC method: {method}')
+
+        with patch.object(client, 'getMission', return_value=mission), \
+             patch.object(client, 'call', side_effect=call):
+            result = client.removeMission('gid', delFile=False)
+
+        self.assertEqual(result, {})
+        self.assertEqual(
+            [payload['method'] for payload in payloads],
+            [
+                'aria2.remove',
+                'aria2.tellStatus',
+                'aria2.removeDownloadResult',
+            ])
+
+
 
 if __name__ == '__main__':
     unittest.main()

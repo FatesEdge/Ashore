@@ -136,8 +136,8 @@ class ThemeManager(QObject):
                 background: {self.accent};
                 color: {accentText};
                 border: 1px solid {self.accent};
-                min-height: 36px;
-                padding: 0 15px;
+                min-height: 30px;
+                padding: 0 12px;
                 font-weight: 600;
             }}
             QPushButton[commandPrimary="true"]:hover, QPushButton[primaryAction="true"]:hover {{
@@ -149,16 +149,16 @@ class ThemeManager(QObject):
             QPushButton[commandSecondary="true"] {{
                 background: transparent;
                 border-color: transparent;
-                min-height: 36px;
-                padding: 0 12px;
+                min-height: 30px;
+                padding: 0 10px;
                 font-weight: 500;
             }}
             QPushButton[commandSecondary="true"]:hover {{
                 background: {token['hover']}; border-color: {token['border']};
             }}
             QPushButton[overflowButton="true"] {{
-                min-width: 36px; max-width: 36px;
-                min-height: 36px; max-height: 36px;
+                min-width: 30px; max-width: 30px;
+                min-height: 30px; max-height: 30px;
                 padding: 0;
                 background: transparent;
                 border-color: transparent;
@@ -175,23 +175,20 @@ class ThemeManager(QObject):
             QWidget[navigationRail="true"] {{ background: {token['background']}; }}
             QPushButton[navigationTab="true"] {{
                 background: transparent;
-                color: {token['muted']};
                 border: none;
-                border-top-left-radius: 9px;
-                border-bottom-left-radius: 9px;
+                border-top-left-radius: 11px;
+                border-bottom-left-radius: 11px;
                 border-top-right-radius: 0px;
                 border-bottom-right-radius: 0px;
-                padding: 0 14px;
-                text-align: left;
-                font-weight: 500;
+                padding: 0;
+                min-width: 64px;
+                max-width: 64px;
             }}
             QPushButton[navigationTab="true"]:hover {{
-                background: {token['hover']}; color: {token['text']};
+                background: {token['hover']};
             }}
             QPushButton[navigationTab="true"]:checked {{
                 background: {token['surface']};
-                color: {self.accent};
-                font-weight: 600;
             }}
             QStackedWidget[pageSurface="true"],
             QScrollArea[downloadPage="true"],
@@ -243,6 +240,24 @@ class ThemeManager(QObject):
             QProgressBar[cardProgress="true"]::chunk {{
                 background: {self.accent}; border-radius: 2px;
             }}
+            QWidget[settingsPage="true"],
+            QWidget[settingsSurface="true"],
+            QScrollArea[settingsScroll="true"] {{
+                background: {token['surface']};
+                border: none;
+            }}
+            QLabel[settingsSectionTitle="true"] {{
+                color: {token['text']};
+                font-size: 15px;
+                font-weight: 700;
+                padding: 10px 2px 6px 2px;
+            }}
+            QLabel[settingsSubTitle="true"] {{
+                color: {token['text']};
+                font-weight: 600;
+                padding: 6px 2px;
+            }}
+
             QLineEdit, QTextEdit, QComboBox, QSpinBox {{
                 background: {token['field']};
                 color: {token['text']};
@@ -252,8 +267,40 @@ class ThemeManager(QObject):
                 selection-background-color: {self.accent};
                 selection-color: {accentText};
             }}
+            QComboBox, QSpinBox {{
+                padding-right: 28px;
+            }}
             QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus {{
                 border-color: {self.accent};
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: border;
+                subcontrol-position: top right;
+                width: 27px;
+                border: none;
+                background: transparent;
+            }}
+            QComboBox::drop-down:hover {{
+                background: {token['hover']};
+                border-top-right-radius: 7px;
+                border-bottom-right-radius: 7px;
+            }}
+            QSpinBox::up-button, QSpinBox::down-button {{
+                subcontrol-origin: border;
+                width: 24px;
+                border: none;
+                background: transparent;
+            }}
+            QSpinBox::up-button {{
+                subcontrol-position: top right;
+                border-top-right-radius: 7px;
+            }}
+            QSpinBox::down-button {{
+                subcontrol-position: bottom right;
+                border-bottom-right-radius: 7px;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background: {token['hover']};
             }}
             QMenu {{
                 background: {token['surface']};

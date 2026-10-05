@@ -34,7 +34,7 @@ from PyQt6.QtWidgets import (
 from core.applicationInfo import APP_VERSION, configureApplication
 from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
-from core.aria2Service import Aria2Poller, Aria2Shutdown, Aria2Startup
+from core.aria2Service import Aria2Poller, Aria2Removal, Aria2Shutdown, Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
 from core.formatters import formatSpeed
 from core.singleInstance import SingleInstanceCoordinator
@@ -76,6 +76,8 @@ class Ashore(QMainWindow):
             self.aria2Client, int(ashoreConfig['update_interval']), self)
         self.themeManager = themeManager
         self.exitWindow = None
+        self.notificationTarget = None
+        self.removalWorkers = {}
 
         self.initUI()
         self.connectSignals()
@@ -146,14 +148,15 @@ class Ashore(QMainWindow):
         self.moreMenu.addAction(aboutAction)
         self.moreMenu.addAction(quitAction)
 
+
     def refreshActionIcons(self):
-        """Apply one icon language to command, menu, and tray actions."""
+        """Apply one icon language to command, menu, tray, and navigation."""
         primaryColor = self.palette().color(QPalette.ColorRole.HighlightedText)
         buttonIcons = (
-            ('addBtn', 'add', 18, primaryColor),
-            ('unpauseAllBtn', 'play', 17, None),
-            ('pauseAllBtn', 'pause', 17, None),
-            ('moreBtn', 'more', 18, None),
+            ('addBtn', 'add', 16, primaryColor),
+            ('unpauseAllBtn', 'play', 15, None),
+            ('pauseAllBtn', 'pause', 15, None),
+            ('moreBtn', 'more', 16, None),
         )
         for attribute, iconName, size, color in buttonIcons:
             button = getattr(self, attribute, None)
@@ -185,6 +188,24 @@ class Ashore(QMainWindow):
             if action is not None:
                 action.setIcon(actionIcon(iconName, size=18))
 
+        self.refreshNavigationIcons()
+
+    def refreshNavigationIcons(self):
+        if not hasattr(self, 'tabDownloading'):
+            return
+        normalColor = self.palette().color(
+            QPalette.ColorRole.PlaceholderText)
+        selectedColor = self.palette().color(
+            QPalette.ColorRole.Highlight)
+        items = (
+            (self.tabDownloading, 'download'),
+            (self.tabDownloaded, 'completed'),
+            (self.tabSetting, 'settings'),
+        )
+        for button, iconName in items:
+            color = selectedColor if button.isChecked() else normalColor
+            button.setIcon(actionIcon(iconName, color=color, size=26))
+            button.setIconSize(QSize(26, 26))
     def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
         showWindowAction = QAction(self.tr('showMain'), self)
         newAction = QAction(self.tr('new'), self)
@@ -203,6 +224,7 @@ class Ashore(QMainWindow):
         self.trayIcon = QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayMenu)
         self.trayIcon.setToolTip('Ashore')
+        self.trayIcon.messageClicked.connect(self.slotNotificationClicked)
         self.applyTrayIconStyle(self.trayIconStyle)
         self.trayActions = {'showMain': showWindowAction, 'new': newAction,
                             'about': aboutInfoAction, 'trayQuit': quitAction}
@@ -236,6 +258,7 @@ class Ashore(QMainWindow):
         return translate(self.language, key)
 
 
+
     def applyLanguage(self):
         for key, action in self.menuActions.items():
             action.setText(self.tr(key))
@@ -245,12 +268,13 @@ class Ashore(QMainWindow):
         self.unpauseAllBtn.setText(self.tr('startAll'))
         self.pauseAllBtn.setText(self.tr('pauseAll'))
         self.moreBtn.setToolTip(self.tr('more'))
-        self.tabDownloading.setText(self.tr('downloading'))
-        self.tabDownloaded.setText(self.tr('downloaded'))
-        self.tabSetting.setText(self.tr('settings'))
         self.tabDownloading.setToolTip(self.tr('downloading'))
         self.tabDownloaded.setToolTip(self.tr('downloaded'))
         self.tabSetting.setToolTip(self.tr('settings'))
+        self.pageSetting.setLanguage(self.language)
+        self.pageDownloading.setLanguage(self.language)
+        self.pageDownloaded.setLanguage(self.language)
+        self.refreshActionIcons()
     def createStatusBar(self) -> None:   #设置状态栏
         self.downSpeedIcon = QLabel('upSpeedIcon')
         self.downSpeedIcon.setFixedSize(20,20)
@@ -284,24 +308,22 @@ class Ashore(QMainWindow):
         self.setStatusBar(self.statusBar)
 
 
+
     def initUI(self) -> None:
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
-        self.addBtn.setIconSize(QSize(18, 18))
         self.addBtn.setToolTip(self.tr('new'))
         self.addBtn.setStatusTip('新建下载任务')
         self.addBtn.setShortcut('Ctrl+N')
         self.addBtn.setProperty('commandPrimary', True)
 
         self.unpauseAllBtn = QPushButton(self.tr('startAll'))
-        self.unpauseAllBtn.setIconSize(QSize(17, 17))
         self.unpauseAllBtn.setToolTip(self.tr('startAll'))
         self.unpauseAllBtn.setStatusTip('恢复所有暂停的任务')
         self.unpauseAllBtn.setProperty('commandSecondary', True)
 
         self.pauseAllBtn = QPushButton(self.tr('pauseAll'))
-        self.pauseAllBtn.setIconSize(QSize(17, 17))
         self.pauseAllBtn.setToolTip(self.tr('pauseAll'))
         self.pauseAllBtn.setStatusTip('暂停所有下载中的任务')
         self.pauseAllBtn.setProperty('commandSecondary', True)
@@ -313,54 +335,48 @@ class Ashore(QMainWindow):
 
         self.commandBar = QWidget()
         self.commandBar.setProperty('commandBar', True)
-        self.commandBar.setFixedHeight(56)
+        self.commandBar.setFixedHeight(48)
         commandLayout = QHBoxLayout(self.commandBar)
-        commandLayout.setContentsMargins(10, 8, 10, 8)
-        commandLayout.setSpacing(6)
+        commandLayout.setContentsMargins(8, 7, 8, 7)
+        commandLayout.setSpacing(4)
         commandLayout.addWidget(self.addBtn)
         commandLayout.addWidget(self.unpauseAllBtn)
         commandLayout.addWidget(self.pauseAllBtn)
         commandLayout.addStretch(1)
         commandLayout.addWidget(self.moreBtn)
 
-        self.tabDownloading = QPushButton(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/download.png'),
-            self.tr('downloading'))
-        self.tabDownloaded = QPushButton(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/completed.png'),
-            self.tr('downloaded'))
-        self.tabSetting = QPushButton(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/setting.png'),
-            self.tr('settings'))
+        self.tabDownloading = QPushButton()
+        self.tabDownloaded = QPushButton()
+        self.tabSetting = QPushButton()
         self.tabSetting.setShortcut('Ctrl+,')
 
         self.navigationTabs = QButtonGroup(self)
         self.navigationTabs.setExclusive(True)
-        for button in (self.tabDownloading, self.tabDownloaded, self.tabSetting):
+        for button in (
+                self.tabDownloading, self.tabDownloaded, self.tabSetting):
             button.setCheckable(True)
-            button.setIconSize(QSize(20, 20))
             button.setProperty('navigationTab', True)
-            button.setFixedHeight(46)
+            button.setFixedHeight(54)
             self.navigationTabs.addButton(button)
 
         self.tabDownloading.setChecked(True)
-        self.tabDownloading.setStatusTip('显示所有下载、等待、暂停中的任务')
-        self.tabDownloaded.setStatusTip('显示所有已完成、错误的任务')
-        self.tabSetting.setStatusTip('Ashore 及 aria2 相关设置')
+        self.tabDownloading.setToolTip(self.tr('downloading'))
+        self.tabDownloaded.setToolTip(self.tr('downloaded'))
+        self.tabSetting.setToolTip(self.tr('settings'))
 
         self.navigationRail = QWidget()
         self.navigationRail.setProperty('navigationRail', True)
-        self.navigationRail.setFixedWidth(160)
+        self.navigationRail.setFixedWidth(64)
         navigationLayout = QVBoxLayout(self.navigationRail)
         navigationLayout.setContentsMargins(0, 14, 0, 14)
-        navigationLayout.setSpacing(4)
+        navigationLayout.setSpacing(5)
         navigationLayout.addWidget(self.tabDownloading)
         navigationLayout.addWidget(self.tabDownloaded)
         navigationLayout.addStretch(1)
         navigationLayout.addWidget(self.tabSetting)
 
-        self.pageDownloading = Page()
-        self.pageDownloaded = Page()
+        self.pageDownloading = Page(self.language)
+        self.pageDownloaded = Page(self.language)
         self.pageStack = QStackedWidget()
         self.pageStack.setProperty('pageSurface', True)
         self.pageStack.addWidget(self.pageDownloading)
@@ -384,13 +400,13 @@ class Ashore(QMainWindow):
         mainLayout.addWidget(bodyWidget, 1)
         self.setCentralWidget(mainWidget)
 
-        self.setMinimumSize(1000, 520)
+        self.setMinimumSize(920, 520)
         self.setWindowTitle('Ashore')
-        self.setWindowIcon(QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
+        self.setWindowIcon(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
         self.createStatusBar()
         self.createTrayIcon()
         self.refreshActionIcons()
-
     def connectSignals(self) -> None:
         self.addBtn.clicked.connect(self.slotAdd)
         self.unpauseAllBtn.clicked.connect(self.slotUnpauseAll)
@@ -438,7 +454,7 @@ class Ashore(QMainWindow):
                 outcome = 'error' if failed else 'completed' if complete or btComplete else None
                 if outcome and (gid, outcome) not in self.notifiedDownloads:
                     name = missions[status][gid]['filename']
-                    self.notifyDownload(name, outcome)
+                    self.notifyDownload(gid, name, outcome)
                     self.notifiedDownloads.add((gid, outcome))
         self.knownStatuses = current
         self.pendingNotifications.clear()
@@ -476,28 +492,44 @@ class Ashore(QMainWindow):
             f'HTTP：{httpStatus}\nWebSocket：{websocketText}\n{endpoint}')
         self.pageSetting.setConnectionStatus(httpStatus, websocketText, self.aria2Version)
 
-    def notifyDownload(self, name, status):
-        if QSystemTrayIcon.isSystemTrayAvailable() and QSystemTrayIcon.supportsMessages():
+
+    def notifyDownload(self, gid, name, status):
+        self.notificationTarget = gid
+        if (QSystemTrayIcon.isSystemTrayAvailable()
+                and QSystemTrayIcon.supportsMessages()):
             title = '下载完成' if status == 'completed' else '下载失败'
             self.trayIcon.showMessage(title, name)
 
+    def slotNotificationClicked(self):
+        self.slotShowWindow()
+        gid = self.notificationTarget
+        if not gid:
+            return
+        if self.pageDownloaded.focusSection(gid):
+            self.showCompleted()
+        elif self.pageDownloading.focusSection(gid):
+            self.showDownloading()
     def showDownloading(self) -> None:
         self.tabDownloading.setChecked(True)
         self.pageStack.setCurrentIndex(0)
+        self.refreshNavigationIcons()
 
     def showCompleted(self) -> None:
         self.tabDownloaded.setChecked(True)
         self.pageStack.setCurrentIndex(1)
+        self.refreshNavigationIcons()
 
     def showSettings(self) -> None:
         config = self.aria2Client.getGlobalConfig()
         if 'ResultError' in config:
-            self.showStatus('aria2 未连接，设置页显示本地配置：' + str(config['ResultError']))
+            self.showStatus(
+                'aria2 未连接，设置页显示本地配置：'
+                + str(config['ResultError']))
             config = self.pageSetting.readAria2Config()
         self.tabSetting.setChecked(True)
         self.pageSetting.loadSettings(config)
         self.pageStack.setCurrentIndex(2)
-
+        self.refreshNavigationIcons()
     def offerDownloadMigration(self) -> None:
         if self.pageSetting.ashoreConfig.get('legacy_download_path_handled'):
             return
@@ -525,18 +557,18 @@ class Ashore(QMainWindow):
         self.pageSetting.saveAshoreConf({'legacy_download_path_handled': 'true'})
 
 
+
     def addNew(self, urlList: list | None = None) -> None:
         """Open the unified confirmation dialog for manual or external input."""
         config = self.aria2Client.getGlobalConfig()
         if 'ResultError' in config:
             self.showStatus(config['ResultError'])
             return
-
-        form = AddNewDialog(config['dir'], urlList, self)
+        form = AddNewDialog(
+            config['dir'], urlList, self, language=self.language)
         form.submitted.connect(self.addUrls)
         form.exec()
         self.aria2Poller.poll()
-
     def addUrls(self, request):
         result = self.aria2Client.addUrls(request)
         if 'ResultError' in result:
@@ -582,11 +614,14 @@ class Ashore(QMainWindow):
         self.aboutInfo.setLayout(aboutInfoLayout)
         self.aboutInfo.show()
 
+
     def slotShowWindow(self):
-        self.show()
+        if self.isMinimized():
+            self.showNormal()
+        else:
+            self.show()
         self.raise_()
         self.activateWindow()
-
     def requestTrayQuit(self):
         if self.quitting or self.exitWindow is not None:
             return
@@ -627,24 +662,24 @@ class Ashore(QMainWindow):
             self.aria2Poller.timer.start()
             self.aria2Poller.poll()
 
-    def slotTaskAction(self, data:tuple) -> None:
-        gid = data[0]
-        status = data[1]
-        #根据section状态判定双击的作用是开始或暂停
-        if status == 'active' or status == 'waiting' :
+
+    def slotTaskAction(self, gid:str, action:str) -> None:
+        if action == 'pause':
             self.aria2Client.pause(gid)
-        elif status == 'paused':
+        elif action == 'unpause':
             self.aria2Client.unpause(gid)
-        elif status == 'completed':
-            filePathResult = self.aria2Client.getFilePath(gid)
-            if 'ResultError' in filePathResult:
-                self.showStatus(filePathResult['ResultError'])
+        elif action == 'open-file':
+            result = self.aria2Client.getFilePath(gid)
+            if 'ResultError' in result:
+                self.showStatus(result['ResultError'])
             else:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(filePathResult['filePath']))
-        elif status == 'error':
+                QDesktopServices.openUrl(
+                    QUrl.fromLocalFile(result['filePath']))
+        elif action == 'open-folder':
+            self.slotOpenFolder(gid)
+        elif action == 'retry':
             self.aria2Client.retry(gid)
         self.aria2Poller.poll()
-
     def slotOpenFolder(self, gid:str) -> None:
         openResult = self.aria2Client.openFileDir(gid)
         if 'ResultError' in openResult:
@@ -662,16 +697,25 @@ class Ashore(QMainWindow):
             clipboard.setText(urlResult['url'])
             self.showStatus('已复制到剪贴板')
 
+
     def slotRemoveTask(self, data:tuple) -> None:
-        gid = data[0]
-        delFile = data[1]
-        result = self.aria2Client.removeMission(gid=gid, delFile=delFile)
+        gid, deleteFiles = data
+        if gid in self.removalWorkers:
+            return
+        worker = Aria2Removal(
+            self.aria2Client, gid, deleteFiles, self)
+        self.removalWorkers[gid] = worker
+        worker.resultReady.connect(self.finishRemoveTask)
+        worker.finished.connect(
+            lambda gid=gid: self.removalWorkers.pop(gid, None))
+        worker.start()
+
+    def finishRemoveTask(self, gid, result):
         if 'ResultError' in result:
-            self.showStatus(result['ResultError'])
+            self.showStatus(str(result['ResultError']))
         else:
             self.showStatus('删除成功')
         self.aria2Poller.poll()
-
     def applyAria2Config(self, conf:dict) -> None:
         # 将setting页面的设置信息更新到运行的aria2程序中
         if 'ResultError' in conf:

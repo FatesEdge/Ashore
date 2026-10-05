@@ -28,6 +28,7 @@ RPC_METHODS = {
     'pauseAll': 'aria2.pauseAll',
     'unpauseAll': 'aria2.unpauseAll',
     'tellActive': 'aria2.tellActive',
+    'tellStatus': 'aria2.tellStatus',
     'tellWaiting': 'aria2.tellWaiting',
     'tellStopped': 'aria2.tellStopped',
     'getVersion': 'aria2.getVersion',
@@ -332,40 +333,47 @@ class Aria2Client:
         else:
             return {'url' : mission['url']}
 
+
+    def waitForStopped(self, gid:str, timeout:float=5.0) -> dict:
+        """Wait until aria2 confirms the removed task reached a stopped state."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            result = self.call(data=self.makeRequest(
+                RPC_METHODS['tellStatus'], [gid, ['status']]))
+            if isinstance(result, dict) and 'ResultError' in result:
+                return result
+            status = result.get('status') if isinstance(result, dict) else None
+            if status in ('removed', 'complete', 'error'):
+                return {'status': status}
+            time.sleep(0.05)
+        return {'ResultError': '等待 aria2 停止任务超时'}
+
     def removeMission(self, gid:str, delFile:bool=False) -> dict:
-        """从任务列表中移除任务&彻底删除任务(包括下载文件)两个功能
-        :param gid: str类型任务gid
-        :param delFile: bool类型标志符:False列表中移除任务不删文件,True彻底删除
-        :returns: 成功返回{}空字典,失败返回异常{'ResultError' : int}
-        """
+        """Remove a task cleanly, waiting for aria2 state before result cleanup."""
         mission = self.getMission(gid)
         if 'ResultError' in mission:
-            #若未找到所给gid的任务，返回含错误代码字典{'ResultError' : -4}
             return mission
-        else:
-            #找到任务开始处理
-            if mission['status'] == 'active' or mission['status'] == 'waiting' or mission['status'] == 'paused':
-                #若任务进行中，则先用方法使任务进入remove列表掉再删除
-                jsonData = self.makeRequest(method = RPC_METHODS['remove'], params=[gid])
-                result = self.call(data=jsonData)   #执行添加操作得到返回结果
-                if 'ResultError' in result:
-                    return result       #若报错直接返回错误
-                # 这段有点迷惑 elif mission['status'] == 'completed' or mission['status'] == 'error' or mission['status'] == 'removed':这段有点迷惑
-            time.sleep(0.1)
 
-            # 具体删除任务removes a completed/error/removed download
-            jsonData = self.makeRequest(method = RPC_METHODS['removeResult'], params=[gid])
-            result = self.call(data=jsonData)   #执行添加操作得到返回结果
-            if 'ResultError' in result:
-                return result       #若报错直接返回错误
+        if mission['status'] in ('active', 'waiting', 'paused'):
+            result = self.call(data=self.makeRequest(
+                RPC_METHODS['remove'], [gid]))
+            if isinstance(result, dict) and 'ResultError' in result:
+                return result
+            stopped = self.waitForStopped(gid)
+            if 'ResultError' in stopped:
+                return stopped
 
-            if delFile:
-                try:
-                    self.deleteTaskFiles(mission)
-                except (OSError, ValueError) as exc:
-                    return {'ResultError': str(exc)}
-            return {}
+        result = self.call(data=self.makeRequest(
+            RPC_METHODS['removeResult'], [gid]))
+        if isinstance(result, dict) and 'ResultError' in result:
+            return result
 
+        if delFile:
+            try:
+                self.deleteTaskFiles(mission)
+            except (OSError, ValueError) as exc:
+                return {'ResultError': str(exc)}
+        return {}
     def deleteTaskFiles(self, mission):
         root = Path(mission['dir']).resolve()
         if not root.is_dir():
@@ -418,15 +426,20 @@ class Aria2Client:
             subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return {} #返回空字典表示0成功
 
+
     def getFilePath(self, gid:str) -> dict:
         mission = self.getMission(gid)
         if 'ResultError' in mission:
-            #若未找到任务，返回含错误代码-4的字典
             return mission
-        else:
-            #若存在返回目录+文件名
-            return {'filePath' : mission['dir'] + '/' + mission['filename']}
-
+        files = [path for path in mission.get('files', []) if path]
+        if len(files) == 1:
+            path = Path(files[0])
+            if not path.is_absolute():
+                path = Path(mission['dir']) / path
+            return {'filePath': str(path)}
+        return {
+            'filePath': str(Path(mission['dir']) / mission['filename'])
+        }
     def getGlobalConfig(self) -> dict:
         jsonData = self.makeRequest(method = RPC_METHODS['getGlobalOption'])
         result = self.call(data=jsonData)   #执行添加操作得到返回结果

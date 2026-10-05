@@ -80,7 +80,11 @@ class StartupFlowTests(unittest.TestCase):
         self.assertTrue(window.commandBar.property('commandBar'))
         self.assertTrue(window.pageStack.property('pageSurface'))
         self.assertIs(window.moreBtn.menu(), window.moreMenu)
-        self.assertEqual(window.tabDownloading.text(), window.tr('downloading'))
+        self.assertEqual(window.tabDownloading.text(), '')
+        self.assertEqual(window.tabDownloaded.text(), '')
+        self.assertEqual(window.tabSetting.text(), '')
+        self.assertEqual(window.navigationRail.width(), 64)
+        self.assertEqual(window.commandBar.height(), 48)
         window.aria2Poller.timer.stop()
         window.close()
 
