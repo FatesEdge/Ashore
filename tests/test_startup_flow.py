@@ -6,7 +6,7 @@ from PyQt6.QtCore import QCoreApplication
 from PyQt6.QtWidgets import QApplication
 
 from Ashore import Ashore, AshoreApplication, StartupController, configureApplication
-from interface.startupWindow import StartupWindow
+from interface.startupWindow import ExitWindow, StartupWindow
 from paths import RESOURCE_DIR
 
 
@@ -69,29 +69,53 @@ class StartupFlowTests(unittest.TestCase):
         window.trayMenu.close.assert_called_once_with()
         singleShot.assert_called_once_with(0, callback)
 
-    def test_tray_quit_waits_for_activation_and_paint(self):
+    def test_lifecycle_window_ready_requires_activation_and_paint(self):
+        window = ExitWindow(
+            RESOURCE_DIR / 'static/icon/functionIcons/icon0.png', 'Exiting')
+        ready = Mock()
+        window.ready.connect(ready)
+
+        window.hasActivated = True
+        window.checkReady()
+        self.app.processEvents()
+        ready.assert_not_called()
+
+        window.hasPainted = True
+        window.checkReady()
+        self.app.processEvents()
+        ready.assert_called_once_with()
+        window.close()
+
+    def test_tray_quit_uses_exit_window(self):
         window = Mock()
         window.quitting = False
-        window.trayQuitPending = False
-        window.isActiveWindow.return_value = False
+        window.exitWindow = None
+        window.resourcePath = str(RESOURCE_DIR) + '/'
+        window.tr.return_value = 'Exiting'
+        exitWindow = Mock()
 
-        Ashore.requestTrayQuit(window)
+        with patch('Ashore.ExitWindow', return_value=exitWindow) as factory:
+            Ashore.requestTrayQuit(window)
 
-        self.assertTrue(window.trayQuitPending)
-        self.assertFalse(window.trayQuitActivated)
-        self.assertFalse(window.trayQuitPainted)
-        window.slotShowWindow.assert_called_once_with()
-        window.update.assert_called_once_with()
+        factory.assert_called_once_with(
+            str(RESOURCE_DIR) + '/static/icon/functionIcons/icon0.png', 'Exiting')
+        exitWindow.ready.connect.assert_called_once_with(window.slotQuit)
+        exitWindow.showActive.assert_called_once_with()
+        self.assertIs(window.exitWindow, exitWindow)
 
-        with patch('Ashore.QTimer.singleShot') as singleShot:
-            window.trayQuitActivated = True
-            Ashore.finishTrayQuit(window)
-            singleShot.assert_not_called()
+    def test_startup_ready_handoff_waits_for_both_events(self):
+        controller = StartupController(self.app, ['Ashore.py'])
+        controller.waitForMainReady = True
+        controller.splash = Mock()
+        controller.splash.isVisible.return_value = True
 
-            window.trayQuitPainted = True
-            Ashore.finishTrayQuit(window)
-            singleShot.assert_called_once_with(0, window.slotQuit)
-            self.assertFalse(window.trayQuitPending)
+        controller.mainActivated = True
+        controller.finishHandoff()
+        controller.splash.close.assert_not_called()
+
+        controller.mainPaintedReady = True
+        controller.finishHandoff()
+        controller.splash.close.assert_called_once_with()
 
 if __name__ == '__main__':
     unittest.main()

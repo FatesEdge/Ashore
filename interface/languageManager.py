@@ -14,7 +14,7 @@ TEXT = {
         'new': '新建下载', 'saveSession': '保存会话', 'restart': '重启 Aria2',
         'quit': '退出程序', 'startAll': '开始全部', 'pauseAll': '暂停全部',
         'show': '显示窗口', 'hide': '关闭窗口', 'about': '关于 Ashore',
-        'showMain': '显示主窗口', 'trayQuit': '退出',
+        'showMain': '显示主窗口', 'trayQuit': '退出', 'exiting': '正在退出…',
         'downloading': '下载中', 'downloaded': '已完成', 'settings': '设置',
     },
     'zh_TW': {
@@ -22,7 +22,7 @@ TEXT = {
         'new': '新增下載', 'saveSession': '儲存工作階段', 'restart': '重新啟動 Aria2',
         'quit': '結束程式', 'startAll': '全部開始', 'pauseAll': '全部暫停',
         'show': '顯示視窗', 'hide': '關閉視窗', 'about': '關於 Ashore',
-        'showMain': '顯示主視窗', 'trayQuit': '結束',
+        'showMain': '顯示主視窗', 'trayQuit': '結束', 'exiting': '正在結束…',
         'downloading': '下載中', 'downloaded': '已完成', 'settings': '設定',
     },
     'en': {
@@ -30,7 +30,7 @@ TEXT = {
         'new': 'New Download', 'saveSession': 'Save Session', 'restart': 'Restart Aria2',
         'quit': 'Quit Ashore', 'startAll': 'Start All', 'pauseAll': 'Pause All',
         'show': 'Show Window', 'hide': 'Hide Window', 'about': 'About Ashore',
-        'showMain': 'Show Main Window', 'trayQuit': 'Quit',
+        'showMain': 'Show Main Window', 'trayQuit': 'Quit', 'exiting': 'Exiting…',
         'downloading': 'Downloading', 'downloaded': 'Completed', 'settings': 'Settings',
     },
 }

@@ -67,3 +67,17 @@ The stages are cumulative. Start with `base`, `tray`, and `startupWindow`. If tw
 adjacent observations differ, use the stages between them to find the first
 component that changes cursor behavior. Confirm the boundary in both directions:
 the lower stage must remain clean and the first failing stage must reproduce.
+
+## Startup handoff comparison
+
+Run the normal startup path first, then compare it with a handoff that keeps
+the startup window visible until the main window is activated and painted:
+
+```bash
+ASHORE_STARTUP_TRACE=1 python Ashore.py
+ASHORE_STARTUP_TRACE=1 ASHORE_STARTUP_HANDOFF=windowReady python Ashore.py
+```
+
+`ASHORE_STARTUP_HANDOFF` is a temporary diagnostic switch. It does not change
+the default startup path and should be removed after the Wayland comparison is
+complete.
