@@ -150,6 +150,230 @@ class StartupProbeWindow(QMainWindow):
             self.setStatusBar(status)
 
 
+class ConstructionProbeWindow(QMainWindow):
+    """Temporary third-round constructor probe. Remove after diagnosis."""
+
+    VALID_MODES = {
+        'settingsOnly',
+        'settingsConfig',
+        'poller',
+        'actionsOnly',
+        'commandBar',
+        'navigation',
+        'realStatusBar',
+    }
+
+    def __init__(self, mode, aria2Service, language='zh_CN'):
+        super().__init__()
+        if mode not in self.VALID_MODES:
+            raise ValueError(f'Unknown construction probe mode: {mode}')
+
+        self.mode = mode
+        self.language = language
+        self.resourcePath = str(RESOURCE_DIR) + '/'
+        self.setWindowTitle(f'Ashore construction probe · {mode}')
+        self.setMinimumSize(920, 520)
+
+        self.pageSetting = SettingPage()
+        if mode == 'settingsOnly':
+            self.setCentralWidget(self._placeholder('SettingPage constructed'))
+            return
+
+        self.ashoreConfig = self.pageSetting.loadAshoreConfig()
+        self.language = self.ashoreConfig.get('language', language)
+        if mode == 'settingsConfig':
+            self.setCentralWidget(self._placeholder('Settings config loaded'))
+            return
+
+        self.aria2Service = aria2Service
+        self.aria2Client = aria2Service.client
+        self.aria2Poller = Aria2Poller(
+            self.aria2Client,
+            int(self.ashoreConfig['update_interval']),
+            self)
+        if mode == 'poller':
+            self.setCentralWidget(self._placeholder('Aria2Poller created'))
+            return
+
+        self._createActions()
+        if mode == 'actionsOnly':
+            self.setCentralWidget(self._placeholder('Actions created'))
+            return
+
+        commandHost = self._createCommandBar()
+        if mode == 'commandBar':
+            root = QWidget()
+            layout = QVBoxLayout(root)
+            layout.setContentsMargins(0, 10, 0, 8)
+            layout.addWidget(commandHost)
+            layout.addStretch(1)
+            self.setCentralWidget(root)
+            return
+
+        body = self._createNavigation()
+        root = QWidget()
+        root.setObjectName('mainRoot')
+        layout = QVBoxLayout(root)
+        layout.setContentsMargins(0, 10, 0, 8)
+        layout.setSpacing(10)
+        layout.addWidget(commandHost)
+        layout.addWidget(body, 1)
+        self.setCentralWidget(root)
+
+        if mode == 'navigation':
+            return
+
+        self._createRealStatusBar()
+
+    @staticmethod
+    def _placeholder(text):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        label = QLabel(text)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+        return widget
+
+    def _createActions(self):
+        self.menuActions = {}
+        specs = (
+            ('saveSession', 'Ctrl+S'),
+            ('restart', None),
+            ('show', 'Ctrl+R'),
+            ('hide', 'Ctrl+W'),
+            ('about', None),
+            ('quit', 'Ctrl+Q'),
+        )
+        for key, shortcut in specs:
+            action = QAction(translate(self.language, key), self)
+            if shortcut:
+                action.setShortcut(shortcut)
+            self.menuActions[key] = action
+
+        self.moreMenu = QMenu(self)
+        for key in ('saveSession', 'restart'):
+            self.moreMenu.addAction(self.menuActions[key])
+        self.moreMenu.addSeparator()
+        for key in ('show', 'hide'):
+            self.moreMenu.addAction(self.menuActions[key])
+        self.moreMenu.addSeparator()
+        for key in ('about', 'quit'):
+            self.moreMenu.addAction(self.menuActions[key])
+
+    def _createCommandBar(self):
+        self.addBtn = QPushButton(translate(self.language, 'new'))
+        self.addBtn.setShortcut('Ctrl+N')
+        self.addBtn.setProperty('commandPrimary', True)
+
+        self.unpauseAllBtn = QPushButton(
+            translate(self.language, 'startAll'))
+        self.unpauseAllBtn.setProperty('commandSecondary', True)
+
+        self.pauseAllBtn = QPushButton(
+            translate(self.language, 'pauseAll'))
+        self.pauseAllBtn.setProperty('commandSecondary', True)
+
+        self.moreBtn = QPushButton()
+        self.moreBtn.setProperty('overflowButton', True)
+        self.moreBtn.setMenu(self.moreMenu)
+
+        bar = QWidget()
+        bar.setProperty('commandBar', True)
+        bar.setFixedHeight(48)
+        barLayout = QHBoxLayout(bar)
+        barLayout.setContentsMargins(8, 7, 8, 7)
+        barLayout.setSpacing(4)
+        barLayout.addWidget(self.addBtn)
+        barLayout.addWidget(self.unpauseAllBtn)
+        barLayout.addWidget(self.pauseAllBtn)
+        barLayout.addStretch(1)
+        barLayout.addWidget(self.moreBtn)
+
+        host = QWidget()
+        hostLayout = QHBoxLayout(host)
+        hostLayout.setContentsMargins(12, 0, 12, 0)
+        hostLayout.addWidget(bar)
+        return host
+
+    def _createNavigation(self):
+        rail = QWidget()
+        rail.setProperty('navigationRail', True)
+        rail.setFixedWidth(46)
+        railLayout = QVBoxLayout(rail)
+        railLayout.setContentsMargins(4, 0, 4, 0)
+        railLayout.setSpacing(4)
+
+        buttons = []
+        for iconName in ('download', 'completed', 'settings'):
+            button = QPushButton()
+            button.setCheckable(True)
+            button.setProperty('navigationTab', True)
+            button.setFixedHeight(52)
+            button.setIcon(actionIcon(iconName, size=32))
+            button.setIconSize(QSize(32, 32))
+            buttons.append(button)
+        buttons[0].setChecked(True)
+        railLayout.addWidget(buttons[0])
+        railLayout.addWidget(buttons[1])
+        railLayout.addStretch(1)
+        railLayout.addWidget(buttons[2])
+
+        self.pageDownloading = Page(self.language)
+        self.pageDownloaded = Page(self.language)
+        self.pageStack = QStackedWidget()
+        self.pageStack.setProperty('pageSurface', True)
+        self.pageStack.addWidget(self.pageDownloading)
+        self.pageStack.addWidget(self.pageDownloaded)
+        self.pageStack.addWidget(self.pageSetting)
+
+        body = QWidget()
+        bodyLayout = QHBoxLayout(body)
+        bodyLayout.setContentsMargins(0, 0, 12, 0)
+        bodyLayout.setSpacing(0)
+        bodyLayout.addWidget(rail)
+        bodyLayout.addWidget(self.pageStack, 1)
+        return body
+
+    def _createRealStatusBar(self):
+        status = QStatusBar()
+        status.setContentsMargins(0, 1, 10, 2)
+
+        aria2StateDot = QLabel('●')
+        aria2StateText = QLabel(
+            f'aria2 {translate(self.language, "connecting")}')
+        aria2Widget = QWidget()
+        aria2Layout = QHBoxLayout(aria2Widget)
+        aria2Layout.setContentsMargins(0, 0, 2, 0)
+        aria2Layout.setSpacing(4)
+        aria2Layout.addWidget(aria2StateDot)
+        aria2Layout.addWidget(aria2StateText)
+
+        downIcon = QLabel()
+        downIcon.setFixedSize(20, 20)
+        downIcon.setScaledContents(True)
+        downIcon.setPixmap(QPixmap(
+            self.resourcePath
+            + 'static/icon/functionIcons/downloadSpeed.png'))
+        downLabel = QLabel('0B/s')
+        downLabel.setMinimumWidth(80)
+
+        upIcon = QLabel()
+        upIcon.setFixedSize(20, 20)
+        upIcon.setScaledContents(True)
+        upIcon.setPixmap(QPixmap(
+            self.resourcePath
+            + 'static/icon/functionIcons/uploadSpeed.png'))
+        upLabel = QLabel('0B/s')
+        upLabel.setMinimumWidth(80)
+
+        status.addPermanentWidget(aria2Widget)
+        status.addPermanentWidget(downIcon)
+        status.addPermanentWidget(downLabel)
+        status.addPermanentWidget(upIcon)
+        status.addPermanentWidget(upLabel)
+        self.setStatusBar(status)
+
+
 class Ashore(QMainWindow):
     firstPainted = pyqtSignal()
 
@@ -1073,6 +1297,23 @@ class StartupController(QObject):
             'controls', 'icons', 'trayCreated', 'signals',
             'events', 'runtime', 'trayShown',
         }
+        constructionProbes = {
+            'settingsOnly', 'settingsConfig', 'poller',
+            'actionsOnly', 'commandBar', 'navigation',
+            'realStatusBar',
+        }
+        if probeMode in constructionProbes:
+            try:
+                self.window = ConstructionProbeWindow(
+                    probeMode,
+                    service,
+                    self.settings.get('language', 'zh_CN'))
+            except (RuntimeError, OSError, ValueError) as exc:
+                self.fail(str(exc))
+                return
+            self.splash.finish(self.window)
+            return
+
         if probeMode in structuralProbes:
             try:
                 self.window = StartupProbeWindow(
