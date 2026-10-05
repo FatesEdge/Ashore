@@ -647,8 +647,6 @@ class Ashore(QMainWindow):
         self.upSpeedIcon.setScaledContents(True)
         self.upSpeedIcon.setPixmap(QPixmap(
             self.resourcePath + 'static/icon/functionIcons/uploadSpeed.png'))
-        self.upSpeedIcon.setToolTip('上传速度')
-        self.upSpeedIcon.setStatusTip('全局BT、磁链上传速度')
 
         self.upSpeedLabel = QLabel('上传速度')
         self.upSpeedLabel.setMinimumWidth(80)
