@@ -161,22 +161,35 @@ class Ashore(QMainWindow):
         self.setMenuBar(menuBar)
 
     def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
-        showWindowAction = QAction(self.tr('showMain'), self, triggered=self.slotShowWindow)
-        newAction = QAction(self.tr('new'),self, triggered=self.slotAdd)
-        aboutInfoAction = QAction(self.tr('about'), self, triggered=self.slotAbout)
-        quitAction = QAction(self.tr('trayQuit'), self, triggered=self.slotQuit)
-        trayMenu = QMenu()
-        trayMenu.addAction(showWindowAction)
-        trayMenu.addAction(newAction)
-        trayMenu.addSeparator()
-        trayMenu.addAction(aboutInfoAction)
-        trayMenu.addAction(quitAction)
+        showWindowAction = QAction(self.tr('showMain'), self)
+        newAction = QAction(self.tr('new'), self)
+        aboutInfoAction = QAction(self.tr('about'), self)
+        quitAction = QAction(self.tr('trayQuit'), self)
+        self.trayMenu = QMenu()
+        self.trayMenu.addAction(showWindowAction)
+        self.trayMenu.addAction(newAction)
+        self.trayMenu.addSeparator()
+        self.trayMenu.addAction(aboutInfoAction)
+        self.trayMenu.addAction(quitAction)
+        self.connectTrayAction(showWindowAction, self.slotShowWindow)
+        self.connectTrayAction(newAction, self.slotAdd)
+        self.connectTrayAction(aboutInfoAction, self.slotAbout)
+        self.connectTrayAction(quitAction, self.slotQuit)
         self.trayIcon = QSystemTrayIcon(self)
-        self.trayIcon.setContextMenu(trayMenu)
+        self.trayIcon.setContextMenu(self.trayMenu)
         self.trayIcon.setToolTip('Ashore')
         self.applyTrayIconStyle(self.trayIconStyle)
         self.trayActions = {'showMain': showWindowAction, 'new': newAction,
                             'about': aboutInfoAction, 'trayQuit': quitAction}
+
+    def connectTrayAction(self, action, callback):
+        action.triggered.connect(
+            lambda _checked=False, callback=callback: self.deferTrayAction(callback))
+
+    def deferTrayAction(self, callback):
+        """Run tray actions after its popup has released the pointer grab."""
+        self.trayMenu.close()
+        QTimer.singleShot(0, callback)
 
     def applyTrayIconStyle(self, style):
         source = QPixmap(self.resourcePath + 'static/icon/functionIcons/trayIcon.png')

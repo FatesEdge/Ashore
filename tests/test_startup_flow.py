@@ -1,11 +1,11 @@
 import os
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from PyQt6.QtCore import QCoreApplication
 from PyQt6.QtWidgets import QApplication
 
-from Ashore import AshoreApplication, StartupController, configureApplication
+from Ashore import Ashore, AshoreApplication, StartupController, configureApplication
 from interface.startupWindow import StartupWindow
 from paths import RESOURCE_DIR
 
@@ -58,6 +58,16 @@ class StartupFlowTests(unittest.TestCase):
         self.app.processEvents()
 
         controller.window.showTray.assert_called_once_with()
+
+    def test_tray_action_runs_after_popup_closes(self):
+        window = Mock()
+        callback = Mock()
+
+        with patch('Ashore.QTimer.singleShot') as singleShot:
+            Ashore.deferTrayAction(window, callback)
+
+        window.trayMenu.close.assert_called_once_with()
+        singleShot.assert_called_once_with(0, callback)
 
 
 if __name__ == '__main__':
