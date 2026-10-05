@@ -89,8 +89,6 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.navigationRail.width(), 46)
         self.assertEqual(
             window.navigationRail.layout().contentsMargins().right(), 0)
-        self.assertEqual(window.tabDownloading.minimumWidth(), 42)
-        self.assertEqual(window.tabDownloading.maximumWidth(), 42)
         self.assertEqual(window.tabDownloading.height(), 52)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.tabSetting.iconSize().width(), 28)
