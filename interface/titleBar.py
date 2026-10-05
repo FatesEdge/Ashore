@@ -17,22 +17,28 @@ class WindowFrame(QWidget):
 
     def edgeAt(self, position):
         if self.window.isMaximized():
-            return Qt.Edge(0)
+            return None
         margin = self.RESIZE_MARGIN
         rect = self.rect()
-        edges = Qt.Edge(0)
+        edges = None
+
+        def addEdge(current, edge):
+            return edge if current is None else current | edge
+
         if position.x() <= margin:
-            edges |= Qt.Edge.LeftEdge
+            edges = addEdge(edges, Qt.Edge.LeftEdge)
         elif position.x() >= rect.width() - margin:
-            edges |= Qt.Edge.RightEdge
+            edges = addEdge(edges, Qt.Edge.RightEdge)
         if position.y() <= margin:
-            edges |= Qt.Edge.TopEdge
+            edges = addEdge(edges, Qt.Edge.TopEdge)
         elif position.y() >= rect.height() - margin:
-            edges |= Qt.Edge.BottomEdge
+            edges = addEdge(edges, Qt.Edge.BottomEdge)
         return edges
 
     @staticmethod
     def cursorForEdges(edges):
+        if edges is None:
+            return Qt.CursorShape.ArrowCursor
         horizontal = bool(edges & (Qt.Edge.LeftEdge | Qt.Edge.RightEdge))
         vertical = bool(edges & (Qt.Edge.TopEdge | Qt.Edge.BottomEdge))
         if horizontal and vertical:
