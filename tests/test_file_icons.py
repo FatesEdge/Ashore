@@ -57,7 +57,7 @@ class FileIconTests(unittest.TestCase):
         pixmap = fileIconPixmap('ubuntu.iso', status='paused')
         self.assertEqual(pixmap.width(), TILE_WIDTH)
         self.assertEqual(pixmap.height(), TILE_HEIGHT)
-        self.assertEqual((TILE_WIDTH, TILE_HEIGHT), (44, 56))
+        self.assertEqual((TILE_WIDTH, TILE_HEIGHT), (40, 50))
 
 
 

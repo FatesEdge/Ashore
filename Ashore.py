@@ -217,14 +217,14 @@ class Ashore(QMainWindow):
         selectedColor = self.palette().color(
             QPalette.ColorRole.Highlight)
         items = (
-            (self.tabDownloading, 'download'),
-            (self.tabDownloaded, 'completed'),
-            (self.tabSetting, 'settings'),
+            (self.tabDownloading, 'download', 32),
+            (self.tabDownloaded, 'completed', 32),
+            (self.tabSetting, 'settings', 28),
         )
-        for button, iconName in items:
+        for button, iconName, size in items:
             color = selectedColor if button.isChecked() else normalColor
-            button.setIcon(actionIcon(iconName, color=color, size=32))
-            button.setIconSize(QSize(32, 32))
+            button.setIcon(actionIcon(iconName, color=color, size=size))
+            button.setIconSize(QSize(size, size))
     def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
         showWindowAction = QAction(self.tr('showMain'), self)
         newAction = QAction(self.tr('new'), self)
@@ -309,7 +309,7 @@ class Ashore(QMainWindow):
         self.aria2StateDot = QLabel('●')
         self.aria2StateDot.setProperty('mainConnectionDot', True)
         self.aria2StateText = QLabel()
-        self.aria2StateText.setProperty('mainConnectionText', True)
+        self.aria2StateText.setProperty('statusMetricText', True)
 
         self.aria2StateWidget = QWidget(self.statusStrip)
         aria2Layout = QHBoxLayout(self.aria2StateWidget)
@@ -328,6 +328,7 @@ class Ashore(QMainWindow):
         self.downSpeedIcon.setToolTip('下载速度')
 
         self.downSpeedLabel = QLabel('0B/s')
+        self.downSpeedLabel.setProperty('statusMetricText', True)
         self.downSpeedLabel.setMinimumWidth(80)
         self.downSpeedLabel.setToolTip('全局实时下载速度')
 
@@ -340,6 +341,7 @@ class Ashore(QMainWindow):
         self.upSpeedIcon.setToolTip('上传速度')
 
         self.upSpeedLabel = QLabel('0B/s')
+        self.upSpeedLabel.setProperty('statusMetricText', True)
         self.upSpeedLabel.setMinimumWidth(80)
         self.upSpeedLabel.setToolTip('全局 BT / Magnet 上传速度')
 
@@ -478,6 +480,7 @@ class Ashore(QMainWindow):
         mainLayout.setSpacing(0)
         mainLayout.addWidget(commandHost)
         mainLayout.addWidget(bodyWidget, 1)
+        mainLayout.addSpacing(8)
         mainLayout.addWidget(self.statusStrip)
         self.setCentralWidget(mainWidget)
 

@@ -86,6 +86,8 @@ class SettingsLayoutTests(unittest.TestCase):
         style = self.app.styleSheet()
         self.assertIn('QPushButton[commandPrimary="true"]', style)
         self.assertIn('QPushButton[navigationTab="true"]:checked', style)
+        self.assertIn('QPushButton[navigationTab="true"]:hover', style)
+        self.assertIn('QLabel[statusMetricText="true"]', style)
         self.assertIn('QFrame[downloadCard="true"]', style)
         self.assertIn('QScrollBar:vertical', style)
 
@@ -108,7 +110,7 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertFalse(section.copyUrlButton.isHidden())
         self.assertFalse(section.moreButton.isHidden())
         self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
-        self.assertEqual(section.height(), 116)
+        self.assertEqual(section.height(), 102)
         self.assertEqual(section.CONTENT_MIN_WIDTH, 660)
         self.assertEqual(section.CONTENT_MAX_WIDTH, 820)
         self.assertEqual(

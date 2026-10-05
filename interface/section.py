@@ -66,12 +66,12 @@ class Section(QFrame):
         self.setObjectName('Section')
         self.setProperty('downloadCard', True)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-        self.setFixedHeight(116)
+        self.setFixedHeight(102)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.iconLabel = QLabel()
-        self.iconLabel.setFixedSize(52, 60)
+        self.iconLabel.setFixedSize(44, 52)
         self.iconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.nameLabel = QLabel(self.fileName)
@@ -91,10 +91,10 @@ class Section(QFrame):
         self.copyUrlButton = self.makeActionButton()
         self.moreButton = HoverMenuButton()
         self.moreButton.setProperty('cardAction', True)
-        self.moreButton.setIconSize(QSize(18, 18))
+        self.moreButton.setIconSize(QSize(16, 16))
 
         self.actionSlot = QWidget()
-        self.actionSlot.setFixedHeight(30)
+        self.actionSlot.setFixedHeight(26)
         actionLayout = QHBoxLayout(self.actionSlot)
         actionLayout.setContentsMargins(30, 0, 0, 0)
         actionLayout.setSpacing(4)
@@ -130,7 +130,7 @@ class Section(QFrame):
         infoLayout = QGridLayout(infoPanel)
         infoLayout.setContentsMargins(0, 0, 0, 0)
         infoLayout.setHorizontalSpacing(8)
-        infoLayout.setVerticalSpacing(1)
+        infoLayout.setVerticalSpacing(0)
         infoLayout.addWidget(self.nameLabel, 0, 0, 1, 2)
         infoLayout.addWidget(self.actionSlot, 1, 0)
         infoLayout.addWidget(self.rateLabel, 1, 1)
@@ -139,7 +139,7 @@ class Section(QFrame):
 
         bodyLayout = QHBoxLayout()
         bodyLayout.setContentsMargins(0, 0, 0, 0)
-        bodyLayout.setSpacing(11)
+        bodyLayout.setSpacing(9)
         bodyLayout.addWidget(
             self.iconLabel, 0, Qt.AlignmentFlag.AlignTop)
         bodyLayout.addWidget(infoPanel, 1, Qt.AlignmentFlag.AlignTop)
@@ -152,8 +152,8 @@ class Section(QFrame):
         self.progressBar.setFixedHeight(4)
 
         mainLayout = QVBoxLayout(self)
-        mainLayout.setContentsMargins(12, 9, 12, 8)
-        mainLayout.setSpacing(4)
+        mainLayout.setContentsMargins(10, 7, 10, 6)
+        mainLayout.setSpacing(2)
         mainLayout.addLayout(bodyLayout, 1)
         mainLayout.addWidget(self.progressBar)
 
@@ -164,7 +164,7 @@ class Section(QFrame):
     def makeActionButton():
         button = QPushButton()
         button.setProperty('cardAction', True)
-        button.setIconSize(QSize(18, 18))
+        button.setIconSize(QSize(16, 16))
         return button
 
     def connectSignals(self):
@@ -304,17 +304,17 @@ class Section(QFrame):
             'open-folder': 'open-folder',
             'retry': 'retry',
         }.get(kind, 'more')
-        icon = actionIcon(iconName, size=18)
+        icon = actionIcon(iconName, size=16)
         self.actionButton.setIcon(icon)
         self.primaryAction.setIcon(icon)
-        self.openFolderButton.setIcon(actionIcon('open-folder', size=18))
-        self.copyUrlButton.setIcon(actionIcon('copy', size=18))
-        self.moreButton.setIcon(actionIcon('more', size=18))
-        self.openFolderAction.setIcon(actionIcon('open-folder', size=18))
-        self.copyUrlAction.setIcon(actionIcon('copy', size=18))
-        self.removeAction.setIcon(actionIcon('remove', size=18))
+        self.openFolderButton.setIcon(actionIcon('open-folder', size=16))
+        self.copyUrlButton.setIcon(actionIcon('copy', size=16))
+        self.moreButton.setIcon(actionIcon('more', size=16))
+        self.openFolderAction.setIcon(actionIcon('open-folder', size=16))
+        self.copyUrlAction.setIcon(actionIcon('copy', size=16))
+        self.removeAction.setIcon(actionIcon('remove', size=16))
         self.deleteAction.setIcon(
-            actionIcon('delete', color=DANGER_COLOR, size=18))
+            actionIcon('delete', color=DANGER_COLOR, size=16))
 
     def progressPercent(self):
         if self.status == 'completed':

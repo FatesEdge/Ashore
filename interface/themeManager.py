@@ -185,6 +185,8 @@ class ThemeManager(QObject):
             }}
             QPushButton[navigationTab="true"]:hover {{
                 background: {token['hover']};
+                border-top-right-radius: 0;
+                border-bottom-right-radius: 0;
             }}
             QPushButton[navigationTab="true"]:checked {{
                 background: {token['surface']};
@@ -221,8 +223,8 @@ class ThemeManager(QObject):
                 color: {token['text']}; font-size: 16px; font-weight: 600;
             }}
             QPushButton[cardAction="true"] {{
-                min-width: 30px; max-width: 30px;
-                min-height: 30px; max-height: 30px;
+                min-width: 26px; max-width: 26px;
+                min-height: 26px; max-height: 26px;
                 padding: 0;
                 background: transparent;
                 border-color: transparent;
@@ -295,12 +297,13 @@ class ThemeManager(QObject):
                 padding: 0;
                 font-weight: 700;
             }}
-            QLabel[mainConnectionText="true"] {{
+            QLabel[statusMetricText="true"] {{
                 background: transparent;
                 color: {token['muted']};
                 border: none;
                 padding: 0;
-                font-weight: 500;
+                font-size: 12px;
+                font-weight: 400;
             }}
             QWidget[recoveryPage="true"] {{
                 background: {token['background']};
