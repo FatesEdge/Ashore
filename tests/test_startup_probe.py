@@ -17,7 +17,11 @@ class StartupProbeTests(unittest.TestCase):
         self.assertLess(stageIndex('windowBase'), stageIndex('windowFrame'))
         self.assertLess(stageIndex('windowFrame'), stageIndex('windowControlsPlain'))
         self.assertLess(
-            stageIndex('windowControlsPlain'), stageIndex('windowNavigationIcons'))
+            stageIndex('windowControlsPlain'), stageIndex('windowDownloadIcon'))
+        self.assertLess(
+            stageIndex('windowDownloadIcon'), stageIndex('windowFirstTwoIcons'))
+        self.assertLess(
+            stageIndex('windowFirstTwoIcons'), stageIndex('windowNavigationIcons'))
         self.assertLess(stageIndex('windowNavigationIcons'), stageIndex('windowControls'))
         self.assertLess(stageIndex('windowControls'), stageIndex('windowContent'))
         self.assertLess(stageIndex('windowContent'), stageIndex('windowMenus'))
