@@ -15,7 +15,7 @@ from core.downloadRequest import (
     ITEM_LOCAL_TORRENT,
     classifyInput,
 )
-from core.fileOperations import deleteTaskFiles
+from core.fileOperations import deleteTaskFiles, deleteTaskSidecars
 from core.missionNames import MissionNames
 from paths import ensureConfig
 
@@ -294,22 +294,8 @@ class Aria2Client:
             return {'url' : mission['url']}
 
 
-    def waitForStopped(self, gid: str, timeout: float = 5.0) -> dict:
-        """Wait until aria2 confirms the removed task reached a stopped state."""
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            result = self.call(data=self.makeRequest(
-                RPC_METHODS['tellStatus'], [gid, ['status']]))
-            if isinstance(result, dict) and 'ResultError' in result:
-                return result
-            status = result.get('status') if isinstance(result, dict) else None
-            if status in ('removed', 'complete', 'error'):
-                return {'status': status}
-            time.sleep(0.05)
-        return {'ResultError': 'Timed out waiting for aria2 to stop the task'}
-
     def removeMission(self, gid: str, delFile: bool = False) -> dict:
-        """Remove a task cleanly, waiting for aria2 state before result cleanup."""
+        """Remove a task from aria2, then clean its control/payload files."""
         mission = self.getMission(gid)
         if 'ResultError' in mission:
             return mission
@@ -319,20 +305,24 @@ class Aria2Client:
                 RPC_METHODS['remove'], [gid]))
             if isinstance(result, dict) and 'ResultError' in result:
                 return result
-            stopped = self.waitForStopped(gid)
-            if 'ResultError' in stopped:
-                return stopped
 
+        # aria2.remove() already transitions an in-progress task to "removed".
+        # Querying tellStatus() in between is racy: some aria2 builds may no
+        # longer expose the GID by the time that follow-up request arrives.
         result = self.call(data=self.makeRequest(
             RPC_METHODS['removeResult'], [gid]))
         if isinstance(result, dict) and 'ResultError' in result:
-            return result
+            message = str(result['ResultError'])
+            if 'is not found' not in message:
+                return result
 
-        if delFile:
-            try:
+        try:
+            if delFile:
                 deleteTaskFiles(mission)
-            except (OSError, ValueError) as exc:
-                return {'ResultError': str(exc)}
+            else:
+                deleteTaskSidecars(mission)
+        except (OSError, ValueError) as exc:
+            return {'ResultError': str(exc)}
         return {}
     def getFilePath(self, gid: str) -> dict:
         mission = self.getMission(gid)
