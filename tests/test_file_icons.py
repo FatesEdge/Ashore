@@ -63,6 +63,16 @@ class FileIconTests(unittest.TestCase):
         self.assertEqual(pixmap.height(), TILE_HEIGHT)
         self.assertEqual((TILE_WIDTH, TILE_HEIGHT), (44, 56))
 
+    def test_file_tile_renders_at_retina_resolution_without_changing_layout_size(self):
+        pixmap = fileIconPixmap(
+            'Movie.MKV', devicePixelRatio=2.0)
+        self.assertEqual(pixmap.devicePixelRatio(), 2.0)
+        self.assertEqual(pixmap.width(), TILE_WIDTH * 2)
+        self.assertEqual(pixmap.height(), TILE_HEIGHT * 2)
+        self.assertAlmostEqual(
+            pixmap.deviceIndependentSize().width(), TILE_WIDTH)
+        self.assertAlmostEqual(
+            pixmap.deviceIndependentSize().height(), TILE_HEIGHT)
 
 
 if __name__ == '__main__':
