@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import QCoreApplication, QLockFile, QObject, QStandardPaths, QThread, pyqtSignal
+from PyQt6.QtCore import QLockFile, QObject, QStandardPaths, QThread, pyqtSignal
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 
 
@@ -59,19 +59,13 @@ class SingleInstanceCoordinator(QObject):
         self.server.newConnection.connect(self.receiveConnection)
 
     def forward(self, payload, attempts=1):
-        """Forward one payload while allowing Qt IPC events to keep flowing."""
+        """Forward one payload to the primary process."""
         payload = list(payload or [])
-        connectedState = QLocalSocket.LocalSocketState.ConnectedState
         for attempt in range(max(1, attempts)):
             socket = QLocalSocket()
             try:
                 socket.connectToServer(self.serverName)
-                for _ in range(24):
-                    if socket.state() == connectedState:
-                        break
-                    QCoreApplication.processEvents()
-                    QThread.msleep(5)
-                if socket.state() == connectedState:
+                if socket.waitForConnected(120):
                     socket.write(json.dumps(payload).encode('utf-8'))
                     if socket.waitForBytesWritten(1000):
                         socket.disconnectFromServer()
@@ -81,7 +75,6 @@ class SingleInstanceCoordinator(QObject):
                 socket.close()
             if attempt + 1 < attempts:
                 QThread.msleep(50)
-                QCoreApplication.processEvents()
         return False
 
     def receiveConnection(self):
