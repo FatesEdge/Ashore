@@ -417,23 +417,6 @@ class Ashore(QMainWindow):
         self.moreBtn.setProperty('overflowButton', True)
         self.moreBtn.setMenu(self.moreMenu)
 
-        self.commandBar = QWidget()
-        self.commandBar.setProperty('commandBar', True)
-        self.commandBar.setFixedHeight(48)
-        commandLayout = QHBoxLayout(self.commandBar)
-        commandLayout.setContentsMargins(8, 7, 8, 7)
-        commandLayout.setSpacing(4)
-        commandLayout.addWidget(self.addBtn)
-        commandLayout.addWidget(self.unpauseAllBtn)
-        commandLayout.addWidget(self.pauseAllBtn)
-        commandLayout.addStretch(1)
-        commandLayout.addWidget(self.moreBtn)
-
-        commandHost = QWidget()
-        commandHostLayout = QHBoxLayout(commandHost)
-        commandHostLayout.setContentsMargins(12, 0, 12, 10)
-        commandHostLayout.addWidget(self.commandBar)
-
         self.tabDownloading = QPushButton()
         self.tabDownloaded = QPushButton()
         self.tabSetting = QPushButton()
@@ -486,14 +469,19 @@ class Ashore(QMainWindow):
         mainWidget = WindowFrame(self)
         mainWidget.setObjectName('mainRoot')
         self.windowFrame = mainWidget
-        self.titleBar = AshoreTitleBar(self)
+        self.titleBar = AshoreTitleBar(
+            self,
+            self.addBtn,
+            self.unpauseAllBtn,
+            self.pauseAllBtn,
+            self.moreBtn)
+        self.commandBar = self.titleBar
 
         contentWidget = QWidget()
         contentWidget.setProperty('windowContent', True)
         contentLayout = QVBoxLayout(contentWidget)
         contentLayout.setContentsMargins(0, 10, 0, 0)
         contentLayout.setSpacing(0)
-        contentLayout.addWidget(commandHost)
         contentLayout.addWidget(bodyWidget, 1)
         contentLayout.addSpacing(8)
         contentLayout.addWidget(self.statusStrip)

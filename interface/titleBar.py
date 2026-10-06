@@ -1,9 +1,7 @@
-"""Frameless Ashore window chrome with native system move/resize gestures."""
+"""Ashore integrated command bar and frameless window chrome."""
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QHBoxLayout, QLabel, QSizePolicy, QToolButton, QWidget,
-)
+from PyQt6.QtWidgets import QHBoxLayout, QToolButton, QWidget
 
 
 class WindowFrame(QWidget):
@@ -71,41 +69,32 @@ class WindowFrame(QWidget):
 
 
 class AshoreTitleBar(QWidget):
-    def __init__(self, window):
+    """One top row for commands, dragging, overflow, and window controls."""
+
+    def __init__(
+            self, window, addButton, startButton, pauseButton, moreButton):
         super().__init__(window)
         self.window = window
         self.setProperty('customTitleBar', True)
-        self.setFixedHeight(40)
-
-        self.titleLabel = QLabel(window.windowTitle() or 'Ashore')
-        self.titleLabel.setProperty('windowTitleText', True)
-        self.titleLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.titleLabel.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-
-        self.leftSpacer = QWidget()
-        self.controls = QWidget()
-        controlsLayout = QHBoxLayout(self.controls)
-        controlsLayout.setContentsMargins(0, 0, 0, 0)
-        controlsLayout.setSpacing(4)
+        self.setProperty('commandBar', True)
+        self.setFixedHeight(48)
 
         self.minimizeButton = self.makeButton('−', 'minimize')
         self.maximizeButton = self.makeButton('□', 'maximize')
         self.closeButton = self.makeButton('×', 'close')
-        controlsLayout.addWidget(self.minimizeButton)
-        controlsLayout.addWidget(self.maximizeButton)
-        controlsLayout.addWidget(self.closeButton)
-
-        self.leftSpacer.setFixedWidth(self.controls.sizeHint().width())
-        self.leftSpacer.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 8, 0)
-        layout.setSpacing(0)
-        layout.addWidget(self.leftSpacer)
-        layout.addWidget(self.titleLabel, 1)
-        layout.addWidget(self.controls)
+        layout.setContentsMargins(8, 7, 8, 7)
+        layout.setSpacing(4)
+        layout.addWidget(addButton)
+        layout.addWidget(startButton)
+        layout.addWidget(pauseButton)
+        layout.addStretch(1)
+        layout.addWidget(moreButton)
+        layout.addSpacing(4)
+        layout.addWidget(self.minimizeButton)
+        layout.addWidget(self.maximizeButton)
+        layout.addWidget(self.closeButton)
 
         self.minimizeButton.clicked.connect(window.showMinimized)
         self.maximizeButton.clicked.connect(self.toggleMaximized)
@@ -116,7 +105,7 @@ class AshoreTitleBar(QWidget):
         button.setText(text)
         button.setProperty('windowControl', True)
         button.setProperty('windowControlRole', role)
-        button.setFixedSize(28, 28)
+        button.setFixedSize(26, 26)
         return button
 
     def toggleMaximized(self):
@@ -127,7 +116,7 @@ class AshoreTitleBar(QWidget):
         self.syncState()
 
     def syncState(self):
-        self.maximizeButton.setText('❐' if self.window.isMaximized() else '□')
+        self.maximizeButton.setText('▣' if self.window.isMaximized() else '□')
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

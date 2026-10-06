@@ -80,6 +80,7 @@ class StartupFlowTests(unittest.TestCase):
 
         self.assertIsInstance(window.pageStack, QStackedWidget)
         self.assertEqual(window.pageStack.count(), 3)
+        self.assertIs(window.commandBar, window.titleBar)
         self.assertTrue(window.commandBar.property('commandBar'))
         self.assertTrue(
             window.windowFlags() & Qt.WindowType.FramelessWindowHint)

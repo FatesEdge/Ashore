@@ -120,25 +120,17 @@ class ThemeManager(QObject):
                 border: none;
             }}
             QWidget[customTitleBar="true"] {{
-                background: {token['raised']};
-                border: none;
-                border-bottom: 1px solid {token['border']};
-                border-top-left-radius: 10px;
-                border-top-right-radius: 10px;
-            }}
-            QLabel[windowTitleText="true"] {{
-                color: {token['text']};
-                background: transparent;
-                border: none;
-                font-weight: 600;
+                background: {token['surface']};
+                border: 1px solid {token['border']};
+                border-radius: 12px;
             }}
             QToolButton[windowControl="true"] {{
-                background: transparent;
+                background: {token['raised']};
                 color: {token['muted']};
                 border: none;
-                border-radius: 14px;
+                border-radius: 13px;
                 padding: 0;
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: 500;
             }}
             QToolButton[windowControl="true"]:hover {{
@@ -263,8 +255,8 @@ class ThemeManager(QObject):
                 color: {token['text']}; font-size: 16px; font-weight: 600;
             }}
             QPushButton[cardAction="true"] {{
-                min-width: 26px; max-width: 26px;
-                min-height: 26px; max-height: 26px;
+                min-width: 22px; max-width: 22px;
+                min-height: 22px; max-height: 22px;
                 padding: 0;
                 background: transparent;
                 border-color: transparent;

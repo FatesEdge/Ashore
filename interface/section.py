@@ -15,6 +15,7 @@ from interface.languageManager import translate
 
 class HoverMenuButton(QPushButton):
     menuRequested = pyqtSignal()
+    hoverLeft = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,6 +31,31 @@ class HoverMenuButton(QPushButton):
 
     def leaveEvent(self, event):
         self.hoverTimer.stop()
+        self.hoverLeft.emit()
+        super().leaveEvent(event)
+
+
+class HoverDismissMenu(QMenu):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.dismissTimer = QTimer(self)
+        self.dismissTimer.setSingleShot(True)
+        self.dismissTimer.setInterval(450)
+        self.dismissTimer.timeout.connect(self.close)
+
+    def scheduleDismiss(self):
+        if self.isVisible():
+            self.dismissTimer.start()
+
+    def cancelDismiss(self):
+        self.dismissTimer.stop()
+
+    def enterEvent(self, event):
+        self.cancelDismiss()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.scheduleDismiss()
         super().leaveEvent(event)
 
 
@@ -91,13 +117,13 @@ class Section(QFrame):
         self.copyUrlButton = self.makeActionButton()
         self.moreButton = HoverMenuButton()
         self.moreButton.setProperty('cardAction', True)
-        self.moreButton.setIconSize(QSize(16, 16))
+        self.moreButton.setIconSize(QSize(18, 18))
 
         self.actionSlot = QWidget()
-        self.actionSlot.setFixedHeight(26)
+        self.actionSlot.setFixedHeight(22)
         actionLayout = QHBoxLayout(self.actionSlot)
         actionLayout.setContentsMargins(30, 0, 0, 0)
-        actionLayout.setSpacing(4)
+        actionLayout.setSpacing(3)
         actionLayout.addWidget(self.actionButton)
         actionLayout.addWidget(self.openFolderButton)
         actionLayout.addWidget(self.copyUrlButton)
@@ -113,7 +139,7 @@ class Section(QFrame):
         self.removeAction = QAction(self)
         self.deleteAction = QAction(self)
 
-        self.overflowMenu = QMenu(self)
+        self.overflowMenu = HoverDismissMenu(self)
         self.overflowMenu.addAction(self.removeAction)
         self.overflowMenu.addSeparator()
         self.overflowMenu.addAction(self.deleteAction)
@@ -164,7 +190,7 @@ class Section(QFrame):
     def makeActionButton():
         button = QPushButton()
         button.setProperty('cardAction', True)
-        button.setIconSize(QSize(16, 16))
+        button.setIconSize(QSize(18, 18))
         return button
 
     def connectSignals(self):
@@ -172,6 +198,8 @@ class Section(QFrame):
         self.openFolderButton.clicked.connect(self.slotOpenFolder)
         self.copyUrlButton.clicked.connect(self.slotCopyUrl)
         self.moreButton.menuRequested.connect(self.showOverflowMenu)
+        self.moreButton.hoverLeft.connect(
+            self.overflowMenu.scheduleDismiss)
 
         self.primaryAction.triggered.connect(self.slotPrimaryAction)
         self.openFolderAction.triggered.connect(self.slotOpenFolder)
@@ -208,6 +236,7 @@ class Section(QFrame):
             return
         self.setQuickActionsVisible(True)
         self.refreshActionIcons()
+        self.overflowMenu.cancelDismiss()
         position = self.moreButton.mapToGlobal(
             QPoint(0, self.moreButton.height()))
         self.overflowMenu.popup(position)
@@ -304,17 +333,17 @@ class Section(QFrame):
             'open-folder': 'open-folder',
             'retry': 'retry',
         }.get(kind, 'more')
-        icon = actionIcon(iconName, size=16)
+        icon = actionIcon(iconName, size=18)
         self.actionButton.setIcon(icon)
         self.primaryAction.setIcon(icon)
-        self.openFolderButton.setIcon(actionIcon('open-folder', size=16))
-        self.copyUrlButton.setIcon(actionIcon('copy', size=16))
-        self.moreButton.setIcon(actionIcon('more', size=16))
-        self.openFolderAction.setIcon(actionIcon('open-folder', size=16))
-        self.copyUrlAction.setIcon(actionIcon('copy', size=16))
-        self.removeAction.setIcon(actionIcon('remove', size=16))
+        self.openFolderButton.setIcon(actionIcon('open-folder', size=18))
+        self.copyUrlButton.setIcon(actionIcon('copy', size=18))
+        self.moreButton.setIcon(actionIcon('more', size=18))
+        self.openFolderAction.setIcon(actionIcon('open-folder', size=18))
+        self.copyUrlAction.setIcon(actionIcon('copy', size=18))
+        self.removeAction.setIcon(actionIcon('remove', size=18))
         self.deleteAction.setIcon(
-            actionIcon('delete', color=DANGER_COLOR, size=16))
+            actionIcon('delete', color=DANGER_COLOR, size=18))
 
     def progressPercent(self):
         if self.status == 'completed':
