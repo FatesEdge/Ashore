@@ -46,6 +46,10 @@ def _drawChevron(widget, painter, rect, direction):
 class AshoreComboBox(QComboBox):
     """Native combo behaviour with an Ashore accent chevron."""
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
     def hasWheelFocus(self):
         editor = self.lineEdit()
         return self.hasFocus() or (editor is not None and editor.hasFocus())
@@ -71,6 +75,10 @@ class AshoreComboBox(QComboBox):
 
 class AshoreSpinBox(QSpinBox):
     """Native spin behaviour with Ashore accent chevrons."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     def hasWheelFocus(self):
         editor = self.lineEdit()

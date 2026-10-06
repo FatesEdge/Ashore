@@ -59,6 +59,12 @@ class SettingsLayoutTests(unittest.TestCase):
             page = self.makePage(folder)
             self.assertIsInstance(page.languageComboBox, AshoreComboBox)
             self.assertIsInstance(page.updateIntervalSpin, AshoreSpinBox)
+            self.assertEqual(
+                page.languageComboBox.focusPolicy(),
+                Qt.FocusPolicy.StrongFocus)
+            self.assertEqual(
+                page.updateIntervalSpin.focusPolicy(),
+                Qt.FocusPolicy.StrongFocus)
             self.assertTrue(
                 page.defaultDownloadDirLabel.property('settingsFormLabel'))
 

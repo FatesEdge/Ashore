@@ -110,10 +110,9 @@ class ThemeManager(QObject):
                 color: {token['text']};
             }}
             QWidget#mainRoot, QWidget[windowFrame="true"] {{
-                background: {token['background']};
+                background: transparent;
                 color: {token['text']};
-                border: 1px solid {token['border']};
-                border-radius: 10px;
+                border: none;
             }}
             QWidget[windowContent="true"] {{
                 background: {token['background']};
