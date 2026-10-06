@@ -2,9 +2,10 @@
 
 import sys
 
-from PyQt6.QtCore import QRect, Qt
+from PyQt6.QtCore import QEvent, QRect, Qt
+from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QStyle, QStyleOptionTitleBar, QToolButton, QWidget,
+    QApplication, QHBoxLayout, QStyle, QStyleOptionTitleBar, QToolButton, QWidget,
 )
 
 
@@ -16,6 +17,9 @@ class WindowFrame(QWidget):
         self.window = window
         self.setProperty('windowFrame', True)
         self.setMouseTracking(True)
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
 
     def edgeAt(self, position):
         if self.window.isMaximized():
@@ -54,22 +58,38 @@ class WindowFrame(QWidget):
             return Qt.CursorShape.SizeVerCursor
         return Qt.CursorShape.ArrowCursor
 
-    def mouseMoveEvent(self, event):
-        self.setCursor(self.cursorForEdges(self.edgeAt(event.position())))
-        super().mouseMoveEvent(event)
+    def belongsToWindow(self, watched):
+        return (
+            isinstance(watched, QWidget)
+            and watched.window() is self.window)
 
-    def leaveEvent(self, event):
-        self.unsetCursor()
-        super().leaveEvent(event)
+    def updateResizeCursor(self):
+        position = self.mapFromGlobal(QCursor.pos())
+        edges = self.edgeAt(position)
+        if edges is None:
+            self.unsetCursor()
+        else:
+            self.setCursor(self.cursorForEdges(edges))
+        return edges
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            edges = self.edgeAt(event.position())
-            handle = self.window.windowHandle()
-            if edges and handle is not None and handle.startSystemResize(edges):
-                event.accept()
-                return
-        super().mousePressEvent(event)
+    def eventFilter(self, watched, event):
+        if self.belongsToWindow(watched):
+            if event.type() in (
+                    QEvent.Type.Enter,
+                    QEvent.Type.MouseMove,
+                    QEvent.Type.HoverMove):
+                self.updateResizeCursor()
+            elif event.type() == QEvent.Type.MouseButtonPress:
+                edges = self.updateResizeCursor()
+                if (edges is not None
+                        and event.button() == Qt.MouseButton.LeftButton):
+                    handle = self.window.windowHandle()
+                    if (handle is not None
+                            and handle.startSystemResize(edges)):
+                        return True
+            elif event.type() == QEvent.Type.Leave and watched is self.window:
+                self.unsetCursor()
+        return super().eventFilter(watched, event)
 
 
 class AshoreTitleBar(QWidget):
@@ -81,7 +101,7 @@ class AshoreTitleBar(QWidget):
         self.window = window
         self.setProperty('customTitleBar', True)
         self.setProperty('commandBar', True)
-        self.setFixedHeight(48)
+        self.setFixedHeight(40)
 
         self.minimizeButton = self.makeButton('−', 'minimize')
         self.maximizeButton = self.makeButton('□', 'maximize')
@@ -93,7 +113,7 @@ class AshoreTitleBar(QWidget):
         }
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 7, 8, 7)
+        layout.setContentsMargins(8, 4, 8, 4)
         layout.setSpacing(4)
 
         controlsLeft, controlOrder = self.nativeControlLayout()
@@ -155,7 +175,7 @@ class AshoreTitleBar(QWidget):
         button.setText(text)
         button.setProperty('windowControl', True)
         button.setProperty('windowControlRole', role)
-        button.setFixedSize(26, 26)
+        button.setFixedSize(24, 24)
         return button
 
     def toggleMaximized(self):

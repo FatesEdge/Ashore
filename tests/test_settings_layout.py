@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPalette
-from PyQt6.QtWidgets import QApplication, QSizePolicy
+from PyQt6.QtWidgets import QApplication, QFormLayout, QSizePolicy
 
 import paths
 from Ashore import StartupController
@@ -152,10 +152,9 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
             self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
             self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
-            self.assertGreaterEqual(
-                page.defaultDownloadDirLabel.minimumWidth(), 190)
-            self.assertLessEqual(
-                page.defaultDownloadDirLabel.maximumWidth(), 220)
+            self.assertEqual(
+                page.formLayout.rowWrapPolicy(),
+                QFormLayout.RowWrapPolicy.WrapAllRows)
             self.assertEqual(
                 page.formLayout.labelAlignment(),
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -239,9 +238,9 @@ class SettingsLayoutTests(unittest.TestCase):
             page = self.makePage(folder)
             page.setLanguage('zh_CN')
             self.assertFalse(page.defaultDownloadDirLabel.wordWrap())
-            self.assertEqual(page.defaultDownloadDirLabel.minimumWidth(), 0)
-            self.assertGreater(
-                page.defaultDownloadDirLabel.maximumWidth(), 10000)
+            self.assertEqual(
+                page.formLayout.rowWrapPolicy(),
+                QFormLayout.RowWrapPolicy.DontWrapRows)
             self.assertFalse(page.showAria2StatusLabel.wordWrap())
 
 

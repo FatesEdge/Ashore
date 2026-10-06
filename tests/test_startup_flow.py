@@ -98,7 +98,7 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloading.height(), 52)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.tabSetting.iconSize().width(), 28)
-        self.assertEqual(window.commandBar.height(), 48)
+        self.assertEqual(window.commandBar.height(), 40)
         self.assertTrue(window.statusStrip.property('statusStrip'))
         self.assertEqual(window.statusStrip.height(), 30)
         self.assertTrue(window.aria2StateText.property('statusMetricText'))
