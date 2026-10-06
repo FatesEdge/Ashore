@@ -1,6 +1,7 @@
 """Small, atomic helpers for Ashore and aria2 configuration files."""
 
 import configparser
+import io
 import os
 import tempfile
 from pathlib import Path
@@ -61,18 +62,15 @@ def writeAshore(path, values):
     if not parser.has_section('global'):
         parser.add_section('global')
     for key, value in values.items():
-        parser.set('global', str(key), boolText(value) if isinstance(value, bool) else str(value))
+        parser.set(
+            'global', str(key),
+            boolText(value) if isinstance(value, bool) else str(value))
+
+    buffer = io.StringIO()
+    parser.write(buffer)
     try:
-        with tempfile.NamedTemporaryFile(
-                'w', encoding='utf-8', dir=path.parent, delete=False) as file:
-            parser.write(file)
-            temporary = Path(file.name)
-        temporary.replace(path)
+        atomicWrite(path, buffer.getvalue())
     except OSError:
-        try:
-            temporary.unlink(missing_ok=True)
-        except (OSError, UnboundLocalError):
-            pass
         return False
     return True
 
@@ -80,11 +78,21 @@ def writeAshore(path, values):
 def atomicWrite(path, content):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-            'w', encoding='utf-8', dir=path.parent, delete=False) as file:
-        file.write(content)
-        temporary = Path(file.name)
-    temporary.replace(path)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+                'w', encoding='utf-8', dir=path.parent,
+                delete=False) as file:
+            file.write(content)
+            temporary = Path(file.name)
+        temporary.replace(path)
+    except OSError:
+        if temporary is not None:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
 
 
 def boolValue(value, default=False):
