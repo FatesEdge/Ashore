@@ -128,14 +128,11 @@ class Aria2Client:
     def unpauseAll(self) -> dict:
         return self.taskCommand('unpauseAll', 'OK')
 
-    def retry(self, gid:str) -> None:
-        """重试就是先删除，再新建
-        :param gid: 类型的下载任务gid
-        :returns: 返回str类型下载任务url,或返回异常{'ResultError' : int}
-        """
-        missionResult = self.getMission(gid)#获取任务
+    def retry(self, gid: str) -> dict:
+        """Remove and recreate one task from its normalized source URL."""
+        missionResult = self.getMission(gid)
         if 'ResultError' in missionResult:
-            return missionResult    #任务不存在
+            return missionResult
         else:
             url = missionResult['url']
             targetDir = missionResult['dir']
@@ -149,8 +146,8 @@ class Aria2Client:
                 return self.addUrl(item, targetDir)
 
     def getGlobalStatus(self) -> dict:
-        jsonData = self.makeRequest(method = RPC_METHODS['getGlobalStat'])
-        globalResult = self.call(data=jsonData)   #执行添加操作得到返回结果
+        jsonData = self.makeRequest(method=RPC_METHODS['getGlobalStat'])
+        globalResult = self.call(data=jsonData)
         if 'ResultError' in globalResult:
             return globalResult
         else:
@@ -162,9 +159,8 @@ class Aria2Client:
         self.lastPollGlobalStatus = statusResult
         if 'ResultError' in statusResult:
             return statusResult
-        #对active队列进行处理
-        activeData = self.makeRequest(method = RPC_METHODS['tellActive'])
-        activeResult = self.call(data = activeData)   #执行添加操作得到返回结果
+        activeData = self.makeRequest(method=RPC_METHODS['tellActive'])
+        activeResult = self.call(data=activeData)
         if 'ResultError' in activeResult:
             return activeResult
         else:
@@ -172,11 +168,10 @@ class Aria2Client:
             for item in activeResult:
                 gid = item['gid']
                 activeGids.append(gid)
-                self.updateMission(item, gid, 'active') # 添加或修正mission字典中的任务信息
-            self.trimMissions(newGids = activeGids, status = 'active')     #删除多余任务
-        #对waiting队列进行处理,分别进入waiting等待队列和paused暂停队列
-        waitingData = self.makeRequest(method = RPC_METHODS['tellWaiting'],params=[0, 2000])
-        waitingResult = self.call(data = waitingData)   #执行添加操作得到返回结果
+                self.updateMission(item, gid, 'active')
+            self.trimMissions(newGids=activeGids, status='active')
+        waitingData = self.makeRequest(method=RPC_METHODS['tellWaiting'], params=[0, 2000])
+        waitingResult = self.call(data=waitingData)
         if 'ResultError' in waitingResult:
             return waitingResult
         else:
@@ -189,12 +184,11 @@ class Aria2Client:
                     self.updateMission(item, gid, 'waiting')
                 elif item['status'] == 'paused':
                     pausedGids.append(gid)
-                    self.updateMission(item, gid, 'paused')  # 添加或修正mission字典中的任务信息
-            self.trimMissions(newGids = waitingGids, status = 'waiting')     #删除多余任务
-            self.trimMissions(newGids = pausedGids, status = 'paused')     #删除多余任务
-        #对stopped队列进行处理
-        stoppedData = self.makeRequest(method = RPC_METHODS['tellStopped'],params=[0, 2000])
-        stoppedResult = self.call(data = stoppedData)   #执行添加操作得到返回结果
+                    self.updateMission(item, gid, 'paused')
+            self.trimMissions(newGids=waitingGids, status='waiting')
+            self.trimMissions(newGids=pausedGids, status='paused')
+        stoppedData = self.makeRequest(method=RPC_METHODS['tellStopped'], params=[0, 2000])
+        stoppedResult = self.call(data=stoppedData)
         if 'ResultError' in stoppedResult:
             return stoppedResult
         else:
@@ -202,15 +196,14 @@ class Aria2Client:
             errorGids = []
             for item in stoppedResult:
                 gid = item['gid']
-                #这里原作写错了吧，并没有加complete过去式的ed
                 if item['status'] == 'complete':
                     completedGids.append(gid)
                     self.updateMission(item, gid, 'completed')
                 elif item['status'] == 'error':
                     errorGids.append(gid)
-                    self.updateMission(item, gid, 'error')   # 添加或修正mission字典中的任务信息
-            self.trimMissions(newGids = completedGids, status = 'completed')     #删除多余任务
-            self.trimMissions(newGids = errorGids, status = 'error')     #删除多余任务
+                    self.updateMission(item, gid, 'error')
+            self.trimMissions(newGids=completedGids, status='completed')
+            self.trimMissions(newGids=errorGids, status='error')
         self.mergeFollowedTasks()
         self.missionNames.sync(gid for group in self.missions.values() for gid in group)
         return self.missions
@@ -231,12 +224,9 @@ class Aria2Client:
             if task.get('followedBy'):
                 self.missions[status].pop(gid, None)
 
-    def getMission(self, gid:str) -> dict:
-        """获取该任务信息,包括 filename、url、dir、isTorrent、totalLength、completedLength、downloadSpeed、uploadSpeed
-        :param gid: 类型的下载任务gid
-        :returns: 返回dict类型下载任务信息字典,或返回异常{'ResultError' : int}
-        """
-        for status,missionList in self.missions.items():
+    def getMission(self, gid: str) -> dict:
+        """Return one normalized mission, including its current status."""
+        for status, missionList in self.missions.items():
             mission = missionList.get(gid)
             if mission is not None:
                 return {**mission, 'status': status}
@@ -246,7 +236,7 @@ class Aria2Client:
         result = self.call(data=self.makeRequest(RPC_METHODS['getVersion']))
         return result.get('version', '未知') if isinstance(result, dict) else '未知'
 
-    def seekFileName(self, item:dict, bittorrent:bool) -> tuple[str, bool]:
+    def seekFileName(self, item: dict, bittorrent: bool) -> tuple[str, bool]:
         """Return the best current name and whether it is worth retaining."""
         files = item.get('files') or []
         first = files[0] if files else {}
@@ -268,13 +258,12 @@ class Aria2Client:
         return urllib.parse.unquote(name) or '正在获取文件名', False
 
     def urlName(self, url:str) -> str:
-        #从url中提取文件名
         string = url.split('?', 1)[0]
         string = string.split('/')[-1]
         string = string.split('[METADATA]')[-1]
         return string
 
-    def updateMission(self, item:dict, gid:str, status:str) -> None: # 添加或修正mission字典中的任务信息
+    def updateMission(self, item: dict, gid: str, status: str) -> None:
         first = (item.get('files') or [{}])[0]
         uris = first.get('uris') or []
         sourceUrl = uris[0].get('uri', '') if uris else ''
@@ -282,7 +271,6 @@ class Aria2Client:
         url = ('magnet:?xt=urn:btih:' + item['infoHash']) if item.get('infoHash') else sourceUrl
         filename, retain = self.seekFileName(item, isTorrent)
         filename = self.missionNames.resolve(gid, filename, retain)
-        # 设置进任务mission字典
         self.missions[status][gid] = {
             'totalLength'       : int(item.get('totalLength', 0)),
             'completedLength'   : int(item.get('completedLength', 0)),
@@ -298,24 +286,20 @@ class Aria2Client:
             }
 
     def trimMissions(self, newGids:set, status:str) -> None:
-        #比较新gid列表中已经删除、完成的任务，但原始列表仍存在的，进行删除
         removeGids = set(self.missions[status].keys()).difference(set(newGids))
         for gid in removeGids:
             del self.missions[status][gid]
 
-    def getUrl(self, gid:str) -> dict:
-        """通过任务gid获取下载地址url
-        :returns: 返回str类型下载任务url,或返回异常{'ResultError' : int}
-        """
+    def getUrl(self, gid: str) -> dict:
+        """Return the normalized source URL for one mission."""
         mission = self.getMission(gid)
         if 'ResultError' in mission:
-            #若未找到所给gid的任务，返回含错误代码字典{'ResultError' : -4}
             return mission
         else:
             return {'url' : mission['url']}
 
 
-    def waitForStopped(self, gid:str, timeout:float=5.0) -> dict:
+    def waitForStopped(self, gid: str, timeout: float = 5.0) -> dict:
         """Wait until aria2 confirms the removed task reached a stopped state."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -329,7 +313,7 @@ class Aria2Client:
             time.sleep(0.05)
         return {'ResultError': '等待 aria2 停止任务超时'}
 
-    def removeMission(self, gid:str, delFile:bool=False) -> dict:
+    def removeMission(self, gid: str, delFile: bool = False) -> dict:
         """Remove a task cleanly, waiting for aria2 state before result cleanup."""
         mission = self.getMission(gid)
         if 'ResultError' in mission:
@@ -355,7 +339,7 @@ class Aria2Client:
             except (OSError, ValueError) as exc:
                 return {'ResultError': str(exc)}
         return {}
-    def getFilePath(self, gid:str) -> dict:
+    def getFilePath(self, gid: str) -> dict:
         mission = self.getMission(gid)
         if 'ResultError' in mission:
             return mission
@@ -369,24 +353,26 @@ class Aria2Client:
             'filePath': str(Path(mission['dir']) / mission['filename'])
         }
     def getGlobalConfig(self) -> dict:
-        jsonData = self.makeRequest(method = RPC_METHODS['getGlobalOption'])
-        result = self.call(data=jsonData)   #执行添加操作得到返回结果
+        jsonData = self.makeRequest(method=RPC_METHODS['getGlobalOption'])
+        result = self.call(data=jsonData)
         return result
 
     def setGlobalConfig(self, conf: dict | None = None) -> dict:
-        jsonData = self.makeRequest(method = RPC_METHODS['changeGlobalOption'], params = [conf])
-        result = self.call(data=jsonData)   #执行添加操作得到返回结果
-        if result == 'OK':
-            return {}       #设置成功返回空字典表示0
-        else:
-            return result   #设置失败返回带错误字典
+        jsonData = self.makeRequest(
+            method=RPC_METHODS['changeGlobalOption'], params=[conf])
+        result = self.call(data=jsonData)
+        return {} if result == 'OK' else result   #设置失败返回带错误字典
 
     def makeRequest(self, method: str, params: list | None = None) -> str:
-        #生成json格式数据
-        data = json.dumps({'jsonrpc' : '2.0', 'id' : 'qwer', 'method' : method, 'params' : params or []})
+        data = json.dumps({
+            'jsonrpc': '2.0',
+            'id': 'ashore',
+            'method': method,
+            'params': params or [],
+        })
         return data
 
-    def call(self, data:str='{}') -> dict:
+    def call(self, data: str = '{}') -> dict:
         payload = json.loads(data)
         if self.rpcSecret:
             payload['params'].insert(0, 'token:' + self.rpcSecret)
@@ -406,9 +392,6 @@ class Aria2Client:
         return 'ResultError' not in self.getGlobalStatus()
 
     def saveSession(self):
-        jsonData = self.makeRequest(method = RPC_METHODS['saveSession'])
-        saveResult = self.call(data=jsonData)   #执行添加操作得到返回结果
-        if saveResult == 'OK':
-            return {}       #设置成功返回空字典表示0
-        else:
-            return saveResult   #设置失败返回带错误字典
+        jsonData = self.makeRequest(method=RPC_METHODS['saveSession'])
+        saveResult = self.call(data=jsonData)
+        return {} if saveResult == 'OK' else saveResult   #设置失败返回带错误字典
