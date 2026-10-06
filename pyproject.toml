@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ashore-download-manager"
-version = "0.7.89"
+version = "1.0.0"
 description = "A cross-platform aria2 desktop download manager."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = {text = "MPL-2.0"}
 authors = [{name = "PanZK"}]
 dependencies = [
-    "PyQt6>=6.7,<7",
+    "PyQt6==6.8.1",
+    "PyQt6-Qt6==6.8.2",
 ]
 
 [project.optional-dependencies]

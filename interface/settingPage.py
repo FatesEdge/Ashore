@@ -48,6 +48,8 @@ from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig, systemDownloadDirector
 
 class SettingPage(QWidget):
 
+    COMPACT_NUMBER_WIDTH = 120
+
     aria2ConfigChanged = pyqtSignal(dict)
     ashoreConfigChanged = pyqtSignal(dict)
     trackerRuntimeChanged = pyqtSignal(dict)
@@ -122,13 +124,13 @@ class SettingPage(QWidget):
 
         self.maxDownloadsSpin = AshoreSpinBox()
         self.maxDownloadsSpin.setRange(1, 100)
-        self.maxDownloadsSpin.setMaximumWidth(100)
+        self.maxDownloadsSpin.setFixedWidth(self.COMPACT_NUMBER_WIDTH)
         self.maxDownloadsLabel = QLabel()
         self.addSettingItem(settingsLayout, self.maxDownloadsLabel, self.maxDownloadsSpin)
 
         self.maxConnectionSpin = AshoreSpinBox()
         self.maxConnectionSpin.setRange(1, 16)
-        self.maxConnectionSpin.setMaximumWidth(100)
+        self.maxConnectionSpin.setFixedWidth(self.COMPACT_NUMBER_WIDTH)
         self.maxConnectionsLabel = QLabel()
         self.addSettingItem(settingsLayout, self.maxConnectionsLabel, self.maxConnectionSpin)
 
@@ -332,7 +334,7 @@ class SettingPage(QWidget):
         self.updateIntervalSpin = AshoreSpinBox()
         self.updateIntervalSpin.setRange(500, 10000)
         self.updateIntervalSpin.setSingleStep(100)
-        self.updateIntervalSpin.setMaximumWidth(110)
+        self.updateIntervalSpin.setFixedWidth(self.COMPACT_NUMBER_WIDTH)
         self.updateIntervalUnitLabel = QLabel()
         updateIntervalLayout = QHBoxLayout()
         updateIntervalLayout.addWidget(self.updateIntervalSpin)

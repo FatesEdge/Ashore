@@ -74,6 +74,10 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(
                 page.updateIntervalSpin.focusPolicy(),
                 Qt.FocusPolicy.StrongFocus)
+            self.assertEqual(page.COMPACT_NUMBER_WIDTH, 120)
+            self.assertEqual(page.maxDownloadsSpin.width(), 120)
+            self.assertEqual(page.maxConnectionSpin.width(), 120)
+            self.assertEqual(page.updateIntervalSpin.width(), 120)
             self.assertTrue(page.settingItems)
             self.assertTrue(all(
                 isinstance(item, SettingItem)
@@ -184,16 +188,33 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertFalse(section.moreButton.isHidden())
         self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
         self.assertEqual(section.overflowMenu.dismissTimer.interval(), 450)
-        self.assertEqual(section.height(), 84)
+        self.assertEqual(section.height(), 78)
+        self.assertEqual(section.iconLabel.height(), 56)
+        self.assertEqual(section.rateLabel.width(), 54)
         self.assertEqual(section.CONTENT_MIN_WIDTH, 660)
-        self.assertEqual(section.CONTENT_MAX_WIDTH, 820)
+        self.assertEqual(section.DETAILS_MAX_WIDTH, 720)
+        self.assertEqual(
+            section.infoPanel.sizePolicy().horizontalPolicy(),
+            QSizePolicy.Policy.Expanding)
+        self.assertEqual(section.detailsPanel.maximumWidth(), 720)
+        self.assertEqual(section.bodyLayout.count(), 2)
         self.assertEqual(
             section.actionSlot.layout().contentsMargins().left(), 30)
-        layout = section.rateLabel.parentWidget().layout()
-        namePosition = layout.getItemPosition(layout.indexOf(section.nameLabel))
-        ratePosition = layout.getItemPosition(layout.indexOf(section.rateLabel))
-        self.assertEqual(namePosition[:2], (0, 0))
-        self.assertEqual(ratePosition[:2], (1, 1))
+        detailsLayout = section.detailsPanel.layout()
+        ratePosition = detailsLayout.getItemPosition(
+            detailsLayout.indexOf(section.rateLabel))
+        self.assertEqual(ratePosition[:2], (0, 1))
+        self.assertIs(section.nameLabel.parentWidget(), section.infoPanel)
+        self.assertIs(section.detailsPanel.parentWidget(), section.infoPanel)
+
+        longName = 'very-long-file-name-' * 20 + '.mkv'
+        section.updateInfo(
+            'completed', 100, 100, 0, fileName=longName)
+        section.nameLabel.resize(120, section.nameLabel.height())
+        section.nameLabel.refreshElision()
+        self.assertEqual(section.nameLabel.toolTip(), longName)
+        self.assertNotEqual(section.nameLabel.text(), longName)
+        self.assertTrue(section.nameLabel.text().endswith('…'))
 
     def test_completed_multifile_task_opens_folder_as_primary_action(self):
         multi = Section(
@@ -244,6 +265,8 @@ class SettingsLayoutTests(unittest.TestCase):
             if not action.isSeparator()]
         self.assertEqual(
             overflow, [section.removeAction, section.deleteAction])
+        self.assertTrue(section.removeAction.isIconVisibleInMenu())
+        self.assertTrue(section.deleteAction.isIconVisibleInMenu())
 
         section.prepareContextMenu()
         context = [

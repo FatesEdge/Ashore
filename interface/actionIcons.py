@@ -19,8 +19,17 @@ ACTION_NAMES = {
 DANGER_COLOR = '#c42b1c'
 
 
-def actionIcon(name, color=None, size=20):
-    """Return a consistently sized monochrome SVG icon tinted for the current palette."""
+def displayDevicePixelRatio():
+    """Return the current desktop scale for crisp rasterized SVG actions."""
+    app = QApplication.instance()
+    screen = app.primaryScreen() if app is not None else None
+    if screen is None:
+        return 1.0
+    return max(1.0, float(screen.devicePixelRatio()))
+
+
+def actionIcon(name, color=None, size=20, devicePixelRatio=None):
+    """Return a palette-tinted SVG icon rendered at native display density."""
     if name not in ACTION_NAMES:
         raise ValueError(f'Unknown action icon: {name}')
 
@@ -30,7 +39,15 @@ def actionIcon(name, color=None, size=20):
         return QIcon()
 
     size = max(12, int(size))
-    pixmap = QPixmap(size, size)
+    ratio = (
+        displayDevicePixelRatio()
+        if devicePixelRatio is None
+        else max(1.0, float(devicePixelRatio))
+    )
+    pixmap = QPixmap(
+        max(1, round(size * ratio)),
+        max(1, round(size * ratio)))
+    pixmap.setDevicePixelRatio(ratio)
     pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)

@@ -4,6 +4,8 @@ The application paints its own top bar, while move/resize operations are still
 delegated to the platform window manager through QWindow.
 """
 
+import sys
+
 from PyQt6 import sip
 from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtGui import QCursor
@@ -18,10 +20,19 @@ class WindowChrome(QObject):
     def __init__(self, window):
         super().__init__(window)
         self.window = window
+        self.nativeChrome = sys.platform == 'darwin'
         self._installed = False
 
     def install(self):
         if self._installed or self.window is None or sip.isdeleted(self.window):
+            return
+
+        if self.nativeChrome:
+            flags = self.window.windowFlags() & ~Qt.WindowType.FramelessWindowHint
+            self.window.setWindowFlags(flags)
+            self.window.setAttribute(
+                Qt.WidgetAttribute.WA_TranslucentBackground, False)
+            self._installed = True
             return
 
         flags = self.window.windowFlags() | Qt.WindowType.FramelessWindowHint
@@ -33,7 +44,8 @@ class WindowChrome(QObject):
         self._installed = True
 
     def uninstall(self):
-        if (self._installed and self.window is not None
+        if (self._installed and not self.nativeChrome
+                and self.window is not None
                 and not sip.isdeleted(self.window)):
             self._removeFromSubtree(self.window)
         self._installed = False

@@ -23,6 +23,10 @@ class FileIconTests(unittest.TestCase):
     def test_known_torrent_payload_keeps_its_file_family(self):
         self.assertEqual(fileIconSpec('Movie.MKV', True).family, 'video')
 
+    def test_video_and_torrent_use_requested_release_colors(self):
+        self.assertEqual(fileIconSpec('Movie.MKV').color, '#8b5cf6')
+        self.assertEqual(fileIconSpec('download.torrent').color, '#38a9e8')
+
     def test_unknown_and_torrent_have_stable_fallbacks(self):
         generic = fileIconSpec('unknown.zzz')
         self.assertEqual((generic.family, generic.label), ('generic', 'ZZZ'))
@@ -59,6 +63,16 @@ class FileIconTests(unittest.TestCase):
         self.assertEqual(pixmap.height(), TILE_HEIGHT)
         self.assertEqual((TILE_WIDTH, TILE_HEIGHT), (44, 56))
 
+    def test_file_tile_renders_at_retina_resolution_without_changing_layout_size(self):
+        pixmap = fileIconPixmap(
+            'Movie.MKV', devicePixelRatio=2.0)
+        self.assertEqual(pixmap.devicePixelRatio(), 2.0)
+        self.assertEqual(pixmap.width(), TILE_WIDTH * 2)
+        self.assertEqual(pixmap.height(), TILE_HEIGHT * 2)
+        self.assertAlmostEqual(
+            pixmap.deviceIndependentSize().width(), TILE_WIDTH)
+        self.assertAlmostEqual(
+            pixmap.deviceIndependentSize().height(), TILE_HEIGHT)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 """Ashore application identity."""
 
-APP_VERSION = '0.7.89'
+APP_VERSION = '1.0.0'
 APP_AUTHOR = 'PanZK'
 PROJECT_URL = 'https://github.com/Kai-x64/Ashore'
 

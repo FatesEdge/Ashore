@@ -89,6 +89,40 @@ class PackagingTests(unittest.TestCase):
         self.assertIn('strip=True', onefile)
         self.assertIn('strip=True', onedir)
 
+    def test_directory_size_does_not_follow_symlinks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payload = root / 'payload.bin'
+            payload.write_bytes(b'x' * 4096)
+            alias = root / 'alias.bin'
+            alias.symlink_to(payload.name)
+
+            size = make.directorySize(root)
+
+            self.assertGreaterEqual(size, payload.stat().st_size)
+            self.assertLess(size, payload.stat().st_size * 2)
+
+    def test_macos_bundle_copy_preserves_symlinks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'Source.app'
+            destination = root / 'Destination.app'
+            resources = source / 'Contents' / 'Resources'
+            frameworks = source / 'Contents' / 'Frameworks'
+            resources.mkdir(parents=True)
+            frameworks.mkdir(parents=True)
+            target = resources / 'payload.dat'
+            target.write_text('payload')
+            linkPath = frameworks / 'payload.dat'
+            linkPath.symlink_to(Path('../Resources/payload.dat'))
+
+            make.copyMacAppBundle(source, destination)
+
+            copiedLink = destination / 'Contents' / 'Frameworks' / 'payload.dat'
+            self.assertTrue(copiedLink.is_symlink())
+            self.assertEqual(
+                copiedLink.readlink(), Path('../Resources/payload.dat'))
+
     def test_macos_bundle_identifier_matches_repository_identity(self):
         import plistlib
 
@@ -105,6 +139,32 @@ class PackagingTests(unittest.TestCase):
             command = make.pyinstallerCommand(
                 'Darwin', 'app', Path(directory))
         self.assertNotIn('--strip', command)
+
+    def test_windows_onefile_command_and_package_shape(self):
+        with tempfile.TemporaryDirectory() as directory:
+            staging = Path(directory)
+            command = make.pyinstallerCommand(
+                'Windows', 'onefile', staging)
+
+        self.assertIn('--onefile', command)
+        self.assertNotIn('--onedir', command)
+        self.assertNotIn('--strip', command)
+
+        with tempfile.TemporaryDirectory() as directory:
+            dist = Path(directory)
+
+            def completed(command, **kwargs):
+                destination = Path(command[command.index('--distpath') + 1])
+                (destination / 'Ashore.exe').write_text('windows')
+
+            with patch.object(make, 'DIST', dist), patch.object(
+                    make.platform, 'system', return_value='Windows'):
+                with patch.object(make.subprocess, 'run', side_effect=completed):
+                    make.build('onefile')
+
+            package = dist / 'Ashore.Windows.onefile'
+            self.assertTrue((package / 'Ashore.exe').is_file())
+            self.assertTrue((package / 'icon.png').is_file())
 
 
 if __name__ == '__main__':

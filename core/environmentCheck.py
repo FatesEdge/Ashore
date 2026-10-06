@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import platform
 from pathlib import Path
+import os
 import shutil
 
 
@@ -43,6 +44,49 @@ def currentSystem():
         release = platform.release()
         return f'Windows {release}'.strip()
     return system or 'Unknown system'
+
+
+def aria2ExecutableCandidates():
+    """Return common aria2 executable locations outside the process PATH."""
+    system = platform.system()
+    home = Path.home()
+    if system == 'Darwin':
+        return (
+            Path('/usr/local/bin/aria2c'),
+            Path('/opt/homebrew/bin/aria2c'),
+            Path('/opt/local/bin/aria2c'),
+            home / '.local/bin/aria2c',
+        )
+    if system == 'Windows':
+        localAppData = Path(os.environ.get('LOCALAPPDATA', home / 'AppData/Local'))
+        programData = Path(os.environ.get('PROGRAMDATA', 'C:/ProgramData'))
+        return (
+            localAppData / 'Microsoft/WinGet/Links/aria2c.exe',
+            home / 'scoop/shims/aria2c.exe',
+            programData / 'chocolatey/bin/aria2c.exe',
+        )
+    if system == 'Linux':
+        return (
+            Path('/usr/local/bin/aria2c'),
+            Path('/usr/bin/aria2c'),
+            home / '.local/bin/aria2c',
+            Path('/snap/bin/aria2c'),
+        )
+    return ()
+
+
+def findAria2Executable():
+    """Resolve aria2 from PATH first, then well-known desktop install locations."""
+    executable = shutil.which('aria2c')
+    if executable:
+        return executable
+    for candidate in aria2ExecutableCandidates():
+        try:
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+        except OSError:
+            continue
+    return None
 
 
 def recommendedAria2Install():

@@ -1,0 +1,114 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - codex/release-v1.0.0
+    paths:
+      - core/applicationInfo.py
+      - pyproject.toml
+      - make.py
+      - .github/workflows/release-build.yml
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aria2 xvfb libegl1 libopengl0 libx11-xcb1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render0 libxcb-render-util0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1
+          python -m pip install -e ".[dev]"
+      - name: Build Linux package
+        run: python make.py onefile
+      - name: Smoke test packaged GUI
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/ashore-release-config
+        run: |
+          set +e
+          xvfb-run -a env QT_QPA_PLATFORM=xcb \
+            timeout --signal=INT --kill-after=5s 12s dist/Ashore.Linux.onefile/Ashore
+          result=$?
+          set -e
+          if [ "$result" -ne 124 ]; then
+            echo "Ashore exited before the smoke test ended (status: $result)" >&2
+            exit 1
+          fi
+      - name: Create release archive
+        run: |
+          tar -C dist/Ashore.Linux.onefile -czf Ashore-v1.0.0-Linux-X64.tar.gz .
+          sha256sum Ashore-v1.0.0-Linux-X64.tar.gz > Ashore-v1.0.0-Linux-X64.tar.gz.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ashore-v1.0.0-Linux-X64
+          path: |
+            Ashore-v1.0.0-Linux-X64.tar.gz
+            Ashore-v1.0.0-Linux-X64.tar.gz.sha256
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Build macOS DMG
+        run: python make.py dmg
+      - name: Smoke test packaged application
+        run: python tests/smoke_application.py dist/Ashore.Darwin.dmg/Ashore.app/Contents/MacOS/Ashore
+      - name: Create release asset
+        run: |
+          cp dist/Ashore.Darwin.dmg/Ashore.dmg Ashore-v1.0.0-macOS-${{ runner.arch }}.dmg
+          shasum -a 256 Ashore-v1.0.0-macOS-${{ runner.arch }}.dmg > Ashore-v1.0.0-macOS-${{ runner.arch }}.dmg.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ashore-v1.0.0-macOS-${{ runner.arch }}
+          path: |
+            Ashore-v1.0.0-macOS-${{ runner.arch }}.dmg
+            Ashore-v1.0.0-macOS-${{ runner.arch }}.dmg.sha256
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Build Windows portable package
+        run: python make.py onefile
+      - name: Smoke test packaged application
+        run: python tests/smoke_application.py dist/Ashore.Windows.onefile/Ashore.exe
+      - name: Create release archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/Ashore.Windows.onefile/* -DestinationPath Ashore-v1.0.0-Windows-X64.zip -Force
+          (Get-FileHash Ashore-v1.0.0-Windows-X64.zip -Algorithm SHA256).Hash.ToLower() + "  Ashore-v1.0.0-Windows-X64.zip" | Out-File -Encoding ascii Ashore-v1.0.0-Windows-X64.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ashore-v1.0.0-Windows-X64
+          path: |
+            Ashore-v1.0.0-Windows-X64.zip
+            Ashore-v1.0.0-Windows-X64.zip.sha256
+          if-no-files-found: error
