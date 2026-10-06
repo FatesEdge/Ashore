@@ -26,7 +26,7 @@
 - 启动准备工作在后台执行，开屏窗口显示当前阶段；Tracker 超时不会阻止进入主界面
 - 支持跟随系统、浅色、深色主题以及统一的主题颜色
 - BT Tracker 首次运行自动获取，之后可选择在启动时按24小时周期自动更新
-- 设置页提供 Tracker 摘要与独立管理窗口，可手动维护列表并并发检测 Tracker 可达性与延迟
+- 设置页支持选择多个 Tracker 列表来源并合并去重；Tracker 管理区可就地展开，手动维护列表并并发检测可达性与延迟
 
 ## Platforms
 
@@ -104,7 +104,7 @@ User Agent 使用可编辑下拉框：预设是 `ashore.conf` 中的完整 UA �
 - `core/aria2Service.py`：aria2 进程生命周期、异步启动和轮询
 - `core/aria2Events.py`：WebSocket 事件及重连；不可用时仍按间隔查询
 - `core/trackerManager.py`、`core/trackerSources.py`：Tracker 更新策略、持久化、来源与格式校验
-- `core/trackerHealth.py`、`interface/trackerManagerDialog.py`：Tracker 健康检测与管理界面
+- `core/trackerHealth.py`、`interface/trackerManagerPanel.py`：Tracker 健康检测与设置页内联管理
 - `core/configStore.py`：配置读取与原子写入
 - `core/fileOperations.py`：本地任务文件安全删除与系统文件管理器集成
 - `interface/startupWindow.py`、`interface/themeManager.py`：启动反馈与统一主题
