@@ -235,18 +235,18 @@ class SettingsLayoutTests(unittest.TestCase):
         dialog.close()
 
 
-    def test_chinese_settings_labels_remain_single_line(self):
+    def test_chinese_settings_uses_same_stacked_form_layout(self):
         with tempfile.TemporaryDirectory() as folder:
             page = self.makePage(folder)
             page.setLanguage('zh_CN')
             self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
+            self.assertTrue(page.showAria2StatusLabel.wordWrap())
             self.assertEqual(
                 page.formLayout.rowWrapPolicy(),
                 QFormLayout.RowWrapPolicy.WrapAllRows)
             self.assertEqual(
                 page.formLayout.labelAlignment(),
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            self.assertFalse(page.showAria2StatusLabel.wordWrap())
 
 
 
