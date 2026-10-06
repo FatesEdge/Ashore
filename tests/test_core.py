@@ -74,7 +74,8 @@ class Aria2Tests(unittest.TestCase):
                 first = conf.read_text(encoding='utf-8')
                 self.assertIn('rpc-listen-all=false', first)
                 self.assertNotIn('\nrpc-secret=', first)
-                self.assertEqual(conf.stat().st_mode & 0o777, 0o600)
+                if os.name != 'nt':
+                    self.assertEqual(conf.stat().st_mode & 0o777, 0o600)
                 self.assertEqual(paths.ensureConfig('aria2.conf').read_text(encoding='utf-8'), first)
 
     def test_external_rpc_token_is_generated_readonly_and_removable(self):
