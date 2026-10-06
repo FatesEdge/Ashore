@@ -2,6 +2,11 @@ name: Release Build
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing GitHub Release tag to upload build assets to
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -117,7 +122,7 @@ jobs:
 
 
   publish-release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs:
       - linux
       - macos
@@ -136,16 +141,17 @@ jobs:
       - name: Attach CI builds to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5 6; do
-            if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
               break
             fi
             if [ "${attempt}" -eq 6 ]; then
-              echo "Release ${GITHUB_REF_NAME} was not found." >&2
+              echo "Release ${RELEASE_TAG} was not found." >&2
               exit 1
             fi
             sleep 5
           done
-          gh release upload "${GITHUB_REF_NAME}" release-assets/* --clobber
+          gh release upload "${RELEASE_TAG}" release-assets/* --repo "${GITHUB_REPOSITORY}" --clobber
