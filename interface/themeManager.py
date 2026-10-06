@@ -178,8 +178,9 @@ class ThemeManager(QObject):
                 color: {token['text']};
                 border: 1px solid {token['border']};
                 border-radius: 8px;
-                min-height: 30px;
-                padding: 4px 11px;
+                min-height: 28px;
+                max-height: 28px;
+                padding: 0 11px;
             }}
             QPushButton:hover {{
                 background: {token['hover']};
@@ -205,7 +206,8 @@ class ThemeManager(QObject):
                 background: {self.accent};
                 color: {accentText};
                 border: 1px solid {self.accent};
-                min-height: 30px;
+                min-height: 28px;
+                max-height: 28px;
                 padding: 0 12px;
                 font-weight: 600;
             }}
@@ -356,7 +358,7 @@ class ThemeManager(QObject):
                 border-radius: 7px;
                 min-height: 28px;
                 max-height: 28px;
-                padding: 2px 28px 2px 7px;
+                padding: 0 28px 0 7px;
                 selection-background-color: {self.accent};
                 selection-color: {accentText};
             }}
@@ -390,7 +392,7 @@ class ThemeManager(QObject):
             QSpinBox::up-button, QSpinBox::down-button {{
                 subcontrol-origin: border;
                 width: 22px;
-                height: 14px;
+                height: 13px;
                 background: transparent;
                 border-left: 1px solid {token['border']};
             }}
@@ -433,8 +435,15 @@ class ThemeManager(QObject):
                 color: {token['muted']};
                 border: none;
                 border-bottom: 1px solid {token['border']};
-                padding: 6px 8px;
+                padding: 2px 7px;
+                min-height: 22px;
+                max-height: 22px;
                 font-weight: 500;
+            }}
+            QLineEdit {{
+                min-height: 28px;
+                max-height: 28px;
+                padding: 0 7px;
             }}
             QLineEdit, QTextEdit {{
                 background: {token['field']};
@@ -453,9 +462,26 @@ class ThemeManager(QObject):
                 background: transparent;
                 border: 1px solid transparent;
                 border-radius: 7px;
-                padding: 5px 7px;
+                padding: 3px 6px;
                 font-weight: 600;
             }}
+            QToolButton[trackerToggle="true"] {{
+                color: {token['text']};
+                background: {token['raised']};
+                border: 1px solid {token['border']};
+                border-radius: 7px;
+                min-height: 26px;
+                max-height: 26px;
+                padding: 0 8px;
+                font-weight: 500;
+            }}
+            QToolButton[trackerToggle="true"]:hover {{
+                background: {token['hover']};
+                border-color: {token['borderStrong']};
+            }}
+            QLabel[trackerStatus="healthy"] {{ color: {token['success']}; }}
+            QLabel[trackerStatus="failed"] {{ color: {token['danger']}; }}
+            QLabel[trackerStatus="pending"] {{ color: {token['muted']}; }}
             QToolButton[advancedToggle="true"]:hover {{
                 background: {token['hover']};
                 border-color: {token['border']};
