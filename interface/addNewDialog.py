@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
 
 from core.downloadRequest import DownloadRequest, parseDownloadInputs
 from interface.actionIcons import actionIcon
-from interface.languageManager import translate
+from interface.languageManager import resolveLanguage, translate
 from paths import systemDownloadDirectory
 
 
@@ -21,10 +21,10 @@ class AddNewDialog(QDialog):
 
     def __init__(
             self, downloadPath: str | None = None,
-            urlList: list | None = None, parent=None, language='zh_CN'):
+            urlList: list | None = None, parent=None, language=None):
         super().__init__(parent)
         self.downloadPath = downloadPath or str(systemDownloadDirectory())
-        self.language = language
+        self.language = resolveLanguage(language)
         self.parsedInputs = parseDownloadInputs(urlList or [])
         self.setWindowTitle(self.tr('newDownloadTitle'))
         self.setProperty('newDownloadDialog', True)
