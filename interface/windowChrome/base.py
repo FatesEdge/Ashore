@@ -18,11 +18,12 @@ class WindowChrome(QObject):
         super().__init__(window)
         self.window = window
         self._installed = False
+        self.window.destroyed.connect(self._hostDestroyed)
 
     def install(self):
         flags = self.window.windowFlags() | Qt.WindowType.FramelessWindowHint
         self.window.setWindowFlags(flags)
-        self.window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        self.window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         QApplication.instance().installEventFilter(self)
         self._installed = True
 
@@ -32,7 +33,13 @@ class WindowChrome(QObject):
             app.removeEventFilter(self)
         self._installed = False
 
+    def _hostDestroyed(self):
+        self.uninstall()
+        self.window = None
+
     def eventFilter(self, watched, event):
+        if self.window is None:
+            return False
         if not isinstance(watched, QWidget):
             return False
         if watched is not self.window and not self.window.isAncestorOf(watched):
