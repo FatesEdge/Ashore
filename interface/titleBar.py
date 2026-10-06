@@ -62,7 +62,7 @@ class TitleBar(QWidget):
 
         layout.addSpacing(8)
         commandLayout = QHBoxLayout()
-        commandLayout.setContentsMargins(0, 2, 0, 0)
+        commandLayout.setContentsMargins(0, 1, 0, 0)
         commandLayout.setSpacing(4)
         for widget in self.commandWidgets:
             commandLayout.addWidget(widget)
