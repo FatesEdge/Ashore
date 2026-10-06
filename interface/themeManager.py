@@ -303,7 +303,7 @@ class ThemeManager(QObject):
                 color: {token['muted']}; font-size: 12px;
             }}
             QLabel[cardPercent="true"] {{
-                color: {token['text']}; font-size: 16px; font-weight: 600;
+                color: {token['text']}; font-size: 14px; font-weight: 600;
             }}
             QPushButton[cardAction="true"] {{
                 min-width: 22px; max-width: 22px;
