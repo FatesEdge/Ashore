@@ -87,6 +87,9 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertIn(page.accentComboBox.currentText(), ACCENT_PRESETS)
             self.assertEqual(page.getBoolOption(page.autoTrackerComboBox), 'true')
             self.assertEqual(StartupController.TRACKER_GRACE_MS, 1000)
+            self.assertEqual(set(page.selectedTrackerSourceKeys()), {'ngosang', 'xiu2'})
+            self.assertIn('tracker_source_keys', page.ashoreKeys)
+            self.assertIn('tracker_custom_sources', page.ashoreKeys)
 
     def test_theme_manager_applies_each_mode(self):
         manager = ThemeManager(self.app)
@@ -118,7 +121,10 @@ class SettingsLayoutTests(unittest.TestCase):
     def test_tracker_and_download_progress_use_dense_row_card_layout(self):
         with tempfile.TemporaryDirectory() as folder:
             page = self.makePage(folder)
-            self.assertTrue(page.trackerManageBtn.text())
+            self.assertTrue(page.trackerToggle.text())
+            self.assertFalse(page.trackerPanel.isVisible())
+            page.trackerToggle.setChecked(True)
+            self.assertTrue(page.trackerPanel.isVisible())
             self.assertTrue(page.saveBtn.property('primaryAction'))
         section = Section('gid', 'example.bin', 'completed', 100, 100, 0)
         self.assertEqual(section.progressBar.height(), 4)
