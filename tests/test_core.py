@@ -13,6 +13,7 @@ from core.aria2Client import Aria2Client
 from core.downloadRequest import DownloadItem, DownloadRequest, ITEM_LOCAL_TORRENT, ITEM_MAGNET, ITEM_NETWORK
 from core.aria2Service import Aria2Poller, Aria2Service, Aria2Shutdown
 from core.trackerSources import parseTrackers
+from core.userAgents import defaultUserAgent
 from interface.settingPage import SettingPage
 
 
@@ -41,6 +42,11 @@ class Aria2Tests(unittest.TestCase):
                 with patch.object(page, 'loadAria2'):
                     page.loadSettings({})
                 self.assertIn('2026.09.26 16:55', page.trackerInfo.text())
+
+    def test_default_user_agent_matches_desktop_platform(self):
+        self.assertIn('X11; Linux', defaultUserAgent('Linux'))
+        self.assertIn('Windows NT', defaultUserAgent('Windows'))
+        self.assertIn('Macintosh', defaultUserAgent('Darwin'))
 
     def test_user_agent_presets_are_full_and_custom_value_is_allowed(self):
         os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
