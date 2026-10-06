@@ -43,7 +43,7 @@ def parseTime(value):
 
 def displayTime(value):
     parsed = parseTime(value)
-    return parsed.astimezone().strftime('%Y.%m.%d %H:%M') if parsed else '尚未更新'
+    return parsed.astimezone().strftime('%Y.%m.%d %H:%M') if parsed else ''
 
 
 def updateDue(lastSuccess, now=None):
@@ -105,13 +105,13 @@ class TrackerManager(QObject):
         if self.worker and self.worker.isRunning():
             return False
         if not self.shouldUpdate(force):
-            self.statusChanged.emit('BT Tracker 已是最新')
+            self.statusChanged.emit('trackerUpToDate')
             return False
         selectedSources = list(sources if sources is not None else self.configuredSources())
         if not selectedSources:
-            self.failed.emit('没有启用 Tracker 来源')
+            self.failed.emit('noTrackerSources')
             return False
-        self.statusChanged.emit('正在更新 BT Tracker')
+        self.statusChanged.emit('trackerUpdatingStatus')
         self.worker = TrackerWorker(selectedSources, self)
         self.worker.completed.connect(self.finish)
         self.worker.finished.connect(self.clearWorker)
@@ -126,7 +126,7 @@ class TrackerManager(QObject):
 
     def finish(self, trackers, sourceResult):
         if not trackers:
-            self.statusChanged.emit('BT Tracker 更新失败，继续使用现有列表')
+            self.statusChanged.emit('trackerUpdateFailedKeeping')
             self.failed.emit(str(sourceResult))
             return
         successfulSources = list(sourceResult)
@@ -142,11 +142,11 @@ class TrackerManager(QObject):
         if not aria2Saved or not ashoreSaved:
             writeOptions(self.aria2Path, {'bt-tracker': oldTracker})
             writeAshore(self.ashorePath, {
-                LAST_SUCCESS_KEY: oldSettings.get(LAST_SUCCESS_KEY, '尚未更新'),
+                LAST_SUCCESS_KEY: oldSettings.get(LAST_SUCCESS_KEY, ''),
                 SOURCE_KEY: oldSettings.get(SOURCE_KEY, ''),
             })
-            self.statusChanged.emit('BT Tracker 保存失败，继续使用现有列表')
-            self.failed.emit('无法写入配置目录')
+            self.statusChanged.emit('trackerSaveFailedKeeping')
+            self.failed.emit('trackerConfigWriteFailed')
             return
-        self.statusChanged.emit('BT Tracker 更新完成')
+        self.statusChanged.emit('trackerUpdateComplete')
         self.updated.emit(trackers, successfulSources, timestamp)
