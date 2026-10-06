@@ -10,8 +10,12 @@ LANGUAGES = {
 
 
 def systemLanguage(localeName=None):
-    """Return the supported Ashore language closest to the system locale."""
-    name = str(localeName or QLocale.system().name()).replace('-', '_')
+    """Return the supported Ashore language closest to the system UI language."""
+    if localeName is None:
+        locale = QLocale.system()
+        uiLanguages = locale.uiLanguages()
+        localeName = uiLanguages[0] if uiLanguages else locale.name()
+    name = str(localeName).replace('-', '_')
     if name in LANGUAGES:
         return name
 
