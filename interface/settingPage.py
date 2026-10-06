@@ -875,7 +875,7 @@ class SettingPage(QWidget):
                 rpcChanged = True
             self.aria2ConfigChanged.emit({'runtime': runningOptions, 'rpcChanged': rpcChanged})
         else:
-            self.trackerStatus.setText('aria2 配置未能保存，请检查配置目录权限。')
+            self.trackerInfo.setText('aria2 配置未能保存，请检查配置目录权限。')
             self.aria2ConfigChanged.emit({'ResultError': 'aria2 配置写入失败'})
         if self.saveAshoreConf(ashoreValues) == 0:
             if aria2Saved:
