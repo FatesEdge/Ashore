@@ -15,9 +15,11 @@ class SettingItem(QWidget):
         self.label.setWordWrap(True)
         self.label.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 0, 0, 10)
         layout.setSpacing(4)
         layout.addWidget(self.label)
 

@@ -251,9 +251,9 @@ class ThemeManager(QObject):
             }}
             QLabel[settingsSectionTitle="true"] {{
                 color: {token['text']};
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: 700;
-                padding: 10px 2px 6px 2px;
+                padding: 16px 0 8px 0;
             }}
             QWidget[settingItem="true"],
             QWidget[settingFieldHost="true"] {{
@@ -261,7 +261,7 @@ class ThemeManager(QObject):
                 border: none;
             }}
             QLabel[settingsFormLabel="true"] {{
-                color: {token['muted']};
+                color: {token['text']};
                 background: transparent;
                 border: none;
                 padding: 0;
@@ -270,7 +270,7 @@ class ThemeManager(QObject):
             QLabel[settingsSubTitle="true"] {{
                 color: {token['text']};
                 font-weight: 600;
-                padding: 6px 2px;
+                padding: 8px 0 4px 0;
             }}
 
             QComboBox, QSpinBox {{

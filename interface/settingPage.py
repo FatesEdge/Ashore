@@ -78,7 +78,7 @@ class SettingPage(QWidget):
 
         settingsLayout = QVBoxLayout()
         settingsLayout.setContentsMargins(18, 0, 18, 18)
-        settingsLayout.setSpacing(12)
+        settingsLayout.setSpacing(4)
         self.settingItems = []
 
         self.aria2SettingLabel = QLabel()

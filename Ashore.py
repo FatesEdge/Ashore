@@ -44,7 +44,7 @@ from interface.page import Page
 from interface.settingPage import SettingPage
 from interface.startupWindow import ExitWindow, RecoveryWindow, StartupWindow
 from interface.windowChrome import createWindowChrome
-from interface.notifications import createNotificationBackend
+from interface.notificationManager import NotificationManager
 from interface.themeManager import TRAY_GRAY, ThemeManager
 from paths import (
     CONFIG_DIR,
@@ -248,11 +248,9 @@ class Ashore(QMainWindow):
         self.trayIcon.setContextMenu(self.trayMenu)
         self.trayIcon.setToolTip('Ashore')
         self.applyTrayIconStyle(self.trayIconStyle)
-        self.notificationBackend = createNotificationBackend(
-            self.trayIcon,
-            self.resourcePath + 'static/icon/functionIcons/icon0.png',
-            self)
-        self.notificationBackend.activated.connect(
+        self.notificationManager = NotificationManager(
+            self.trayIcon, self)
+        self.notificationManager.activated.connect(
             self.slotNotificationClicked)
         self.trayActions = {'showMain': showWindowAction, 'new': newAction,
                             'about': aboutInfoAction, 'trayQuit': quitAction}
@@ -600,10 +598,8 @@ class Ashore(QMainWindow):
     def notifyDownload(self, gid, name, status):
         self.notificationTarget = gid
         title = '下载完成' if status == 'completed' else '下载失败'
-        try:
-            self.notificationBackend.show(gid, title, name)
-        except RuntimeError as exc:
-            self.showStatus(f'{title}：{name}（通知失败：{exc}）')
+        if not self.notificationManager.show(gid, title, name):
+            self.showStatus(f'{title}：{name}')
 
     def slotNotificationClicked(self, gid=None):
         self.slotShowWindow()

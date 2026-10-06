@@ -72,6 +72,10 @@ class SettingsLayoutTests(unittest.TestCase):
                 for item in page.settingItems))
             self.assertTrue(
                 page.defaultDownloadDirLabel.property('settingsFormLabel'))
+            firstItem = page.settingItems[0]
+            self.assertEqual(
+                firstItem.layout().contentsMargins().bottom(), 10)
+            self.assertEqual(firstItem.layout().spacing(), 4)
 
     def test_theme_and_tracker_controls_have_persistable_values(self):
         with tempfile.TemporaryDirectory() as folder:
