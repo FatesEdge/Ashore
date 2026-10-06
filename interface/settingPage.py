@@ -891,15 +891,16 @@ class SettingPage(QWidget):
                 rpcChanged = True
             self.aria2ConfigChanged.emit({'runtime': runningOptions, 'rpcChanged': rpcChanged})
         else:
-            self.trackerInfo.setText('aria2 配置未能保存，请检查配置目录权限。')
-            self.aria2ConfigChanged.emit({'ResultError': 'aria2 配置写入失败'})
+            message = self.tr('aria2ConfigSaveFailed')
+            self.trackerInfo.setText(message)
+            self.aria2ConfigChanged.emit({'ResultError': message})
         if self.saveAshoreConf(ashoreValues) == 0:
             if aria2Saved:
                 self.showTrackerStatus()
-            ashoreValues.update({'isSaved': '保存成功'})
+            ashoreValues.update({'isSaved': self.tr('saved')})
             self.ashoreConfigChanged.emit(ashoreValues)
         else:
-            ashoreValues.update({'isSaved': '保存失败'})
+            ashoreValues.update({'isSaved': self.tr('saveFailed')})
             self.ashoreConfigChanged.emit(ashoreValues)
 
     def saveAria2Conf(self, aria2Values: dict, removeKeys=None) -> int:
@@ -950,33 +951,30 @@ class SettingPage(QWidget):
 
 
     def setConnectionStatus(
-            self, httpStatus: str, websocketStatus: str,
+            self, httpState: str, websocketState: str,
             aria2Version: str = '') -> None:
-        statusKeys = {
-            '已连接': 'connected', 'Connected': 'connected',
-            '未连接': 'disconnected', 'Disconnected': 'disconnected',
-            '连接中': 'connecting', 'Connecting': 'connecting',
-            '等待检测': 'waitingCheck',
+        knownStates = {
+            'connected', 'disconnected', 'connecting', 'waitingCheck',
+            'unavailable', 'retrying', 'stopped', 'unknown',
         }
-        httpKey = statusKeys.get(httpStatus)
-        websocketKey = statusKeys.get(websocketStatus)
-        httpText = self.tr(httpKey) if httpKey else httpStatus
-        websocketText = (
-            self.tr(websocketKey) if websocketKey else websocketStatus)
+        httpKey = httpState if httpState in knownStates else 'unknown'
+        websocketKey = (
+            'retrying' if websocketState == 'disconnected'
+            else websocketState if websocketState in knownStates
+            else 'unknown')
 
-        httpState = (
-            'connected' if httpKey == 'connected'
-            else 'connecting' if httpKey in ('connecting', 'waitingCheck')
-            else 'disconnected')
-        websocketState = (
-            'connected' if websocketKey == 'connected'
-            else 'connecting' if websocketKey in ('connecting', 'waitingCheck')
-            else 'disconnected')
+        def badgeState(state):
+            if state == 'connected':
+                return 'connected'
+            if state in ('connecting', 'waitingCheck'):
+                return 'connecting'
+            return 'disconnected'
 
         setConnectionBadge(
-            self.httpStatusLabel, httpText, httpState)
+            self.httpStatusLabel, self.tr(httpKey), badgeState(httpKey))
         setConnectionBadge(
-            self.websocketStatusLabel, websocketText, websocketState)
+            self.websocketStatusLabel,
+            self.tr(websocketKey), badgeState(websocketKey))
         self.aria2VersionLabel.setText(aria2Version or '—')
     def saveAshoreConf(self, ashoreValues: dict) -> int:
         cleanValues = {key: value for key, value in ashoreValues.items()
