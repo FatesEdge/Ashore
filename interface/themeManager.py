@@ -106,13 +106,27 @@ class ThemeManager(QObject):
         accentSoft = translucent(self.accent, 52 if dark else 34)
         return f"""
             QMainWindow, QWidget#mainRoot {{
-                background: {token['background']};
+                background: transparent;
                 color: {token['text']};
+            }}
+            QWidget[windowSurface="true"] {{
+                background: {token['background']};
+                border: none;
+                border-radius: 12px;
+            }}
+            QWidget[windowSurface="true"][windowMaximized="true"] {{
+                border-radius: 0;
             }}
             QWidget[titleBar="true"] {{
                 background: {token['surface']};
                 border: none;
                 border-bottom: 1px solid {token['border']};
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+            }}
+            QWidget[titleBar="true"][windowMaximized="true"] {{
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
             }}
             QLabel[windowIcon="true"] {{
                 background: transparent;
@@ -130,22 +144,22 @@ class ThemeManager(QObject):
                 background: {token['raised']};
                 color: {token['text']};
                 border: 1px solid {token['border']};
-                border-radius: 12px;
-                min-width: 24px;
-                max-width: 24px;
-                min-height: 24px;
-                max-height: 24px;
+                border-radius: 11px;
+                min-width: 22px;
+                max-width: 22px;
+                min-height: 22px;
+                max-height: 22px;
                 padding: 0;
                 font-weight: 400;
             }}
             QPushButton[windowControlRole="minimize"] {{
-                font-size: 12px;
+                font-size: 11px;
             }}
             QPushButton[windowControlRole="maximize"] {{
-                font-size: 10px;
+                font-size: 9px;
             }}
             QPushButton[windowControlRole="close"] {{
-                font-size: 12px;
+                font-size: 11px;
             }}
             QPushButton[windowControl="true"]:hover {{
                 background: {token['hover']};
@@ -505,6 +519,12 @@ class ThemeManager(QObject):
                 background: {token['background']};
                 color: {token['muted']};
                 border-top: 1px solid {token['border']};
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
+            }}
+            QWidget[statusStrip="true"][windowMaximized="true"] {{
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
             }}
             QLabel[statusMessage="true"] {{
                 color: {token['muted']};
