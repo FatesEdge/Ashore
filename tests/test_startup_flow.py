@@ -175,7 +175,7 @@ class StartupFlowTests(unittest.TestCase):
         window.notificationTarget = 'gid'
         window.pageDownloaded.focusSection.return_value = True
 
-        Ashore.slotNotificationClicked(window)
+        Ashore.slotNotificationClicked(window, 'gid')
 
         window.slotShowWindow.assert_called_once_with()
         window.pageDownloaded.focusSection.assert_called_once_with('gid')
