@@ -130,14 +130,22 @@ class ThemeManager(QObject):
                 background: {token['raised']};
                 color: {token['text']};
                 border: 1px solid {token['border']};
-                border-radius: 13px;
-                min-width: 26px;
-                max-width: 26px;
-                min-height: 26px;
-                max-height: 26px;
+                border-radius: 12px;
+                min-width: 24px;
+                max-width: 24px;
+                min-height: 24px;
+                max-height: 24px;
                 padding: 0;
-                font-size: 14px;
-                font-weight: 500;
+                font-weight: 400;
+            }}
+            QPushButton[windowControlRole="minimize"] {{
+                font-size: 12px;
+            }}
+            QPushButton[windowControlRole="maximize"] {{
+                font-size: 10px;
+            }}
+            QPushButton[windowControlRole="close"] {{
+                font-size: 12px;
             }}
             QPushButton[windowControl="true"]:hover {{
                 background: {token['hover']};
@@ -169,7 +177,17 @@ class ThemeManager(QObject):
                 color: {token['disabled']};
                 border-color: {token['border']};
             }}
-            QPushButton[commandPrimary="true"], QPushButton[primaryAction="true"] {{
+            QPushButton[commandPrimary="true"] {{
+                background: {self.accent};
+                color: {accentText};
+                border: 1px solid {self.accent};
+                min-height: 28px;
+                max-height: 28px;
+                padding: 0 10px;
+                font-size: 13px;
+                font-weight: 400;
+            }}
+            QPushButton[primaryAction="true"] {{
                 background: {self.accent};
                 color: {accentText};
                 border: 1px solid {self.accent};
@@ -177,18 +195,22 @@ class ThemeManager(QObject):
                 padding: 0 12px;
                 font-weight: 600;
             }}
-            QPushButton[commandPrimary="true"]:hover, QPushButton[primaryAction="true"]:hover {{
+            QPushButton[commandPrimary="true"]:hover,
+            QPushButton[primaryAction="true"]:hover {{
                 background: {accentHover}; border-color: {accentHover};
             }}
-            QPushButton[commandPrimary="true"]:pressed, QPushButton[primaryAction="true"]:pressed {{
+            QPushButton[commandPrimary="true"]:pressed,
+            QPushButton[primaryAction="true"]:pressed {{
                 background: {accentPressed}; border-color: {accentPressed};
             }}
             QPushButton[commandSecondary="true"] {{
                 background: transparent;
                 border-color: transparent;
-                min-height: 30px;
-                padding: 0 10px;
-                font-weight: 500;
+                min-height: 28px;
+                max-height: 28px;
+                padding: 0 8px;
+                font-size: 13px;
+                font-weight: 400;
             }}
             QPushButton[commandSecondary="true"]:hover {{
                 background: {token['hover']}; border-color: {token['border']};
