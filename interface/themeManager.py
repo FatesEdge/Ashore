@@ -463,7 +463,7 @@ class ThemeManager(QObject):
                 border: none;
                 border-radius: 0;
                 min-height: 0;
-                max-height: none;
+                max-height: 16777215px;
                 padding: 0;
             }}
             QLineEdit[joinedLeft="true"] {{
