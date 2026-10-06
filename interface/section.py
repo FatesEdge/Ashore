@@ -101,6 +101,7 @@ class Section(QFrame):
     removeRequested = pyqtSignal(tuple)
 
     CONTENT_MIN_WIDTH = 660
+    DETAILS_MAX_WIDTH = 820
 
     def __init__(
             self, gid: str, fileName: str, status: str, fileSize: int,
@@ -182,19 +183,29 @@ class Section(QFrame):
         self.contextMenu = QMenu(self)
         self.contextMenu.aboutToHide.connect(self.menuClosed)
 
+        self.detailsPanel = QWidget()
+        self.detailsPanel.setMinimumWidth(self.CONTENT_MIN_WIDTH)
+        self.detailsPanel.setMaximumWidth(self.DETAILS_MAX_WIDTH)
+        self.detailsPanel.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        detailsLayout = QGridLayout(self.detailsPanel)
+        detailsLayout.setContentsMargins(0, 0, 0, 0)
+        detailsLayout.setHorizontalSpacing(8)
+        detailsLayout.setVerticalSpacing(0)
+        detailsLayout.addWidget(self.actionSlot, 0, 0)
+        detailsLayout.addWidget(self.rateLabel, 0, 1)
+        detailsLayout.addWidget(self.metaLabel, 1, 0, 1, 2)
+        detailsLayout.setColumnStretch(0, 1)
+
         self.infoPanel = QWidget()
         self.infoPanel.setMinimumWidth(self.CONTENT_MIN_WIDTH)
         self.infoPanel.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        infoLayout = QGridLayout(self.infoPanel)
+        infoLayout = QVBoxLayout(self.infoPanel)
         infoLayout.setContentsMargins(0, 0, 0, 0)
-        infoLayout.setHorizontalSpacing(8)
-        infoLayout.setVerticalSpacing(0)
-        infoLayout.addWidget(self.nameLabel, 0, 0, 1, 2)
-        infoLayout.addWidget(self.actionSlot, 1, 0)
-        infoLayout.addWidget(self.rateLabel, 1, 1)
-        infoLayout.addWidget(self.metaLabel, 2, 0, 1, 2)
-        infoLayout.setColumnStretch(0, 1)
+        infoLayout.setSpacing(0)
+        infoLayout.addWidget(self.nameLabel)
+        infoLayout.addWidget(self.detailsPanel)
 
         self.bodyLayout = QHBoxLayout()
         self.bodyLayout.setContentsMargins(0, 0, 0, 0)
@@ -376,6 +387,10 @@ class Section(QFrame):
         self.removeAction.setIcon(actionIcon('remove', size=18))
         self.deleteAction.setIcon(
             actionIcon('delete', color=DANGER_COLOR, size=18))
+        for action in (
+                self.primaryAction, self.openFolderAction,
+                self.copyUrlAction, self.removeAction, self.deleteAction):
+            action.setIconVisibleInMenu(True)
 
     def progressPercent(self):
         if self.status == 'completed':
