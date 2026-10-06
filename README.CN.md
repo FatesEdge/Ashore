@@ -46,7 +46,7 @@ Ashore 使用 aria2 JSON-RPC 作为任务状态的权威来源，并使用 WebSo
 | macOS | 代码与打包支持已具备，可生成 App/DMG |
 | Windows | 已覆盖代码与 CI，正式发布前仍希望增加实体机验收 |
 
-从源码运行需要 **Python 3.12+**，并要求系统中存在可用的 **aria2**。
+从源码运行需要 **Python 3.12+**，下载功能需要系统中存在可用的 **aria2**。发布版 Ashore 可以先于 aria2 安装；若启动时未检测到 aria2，Ashore 会显示当前系统对应的安装提示。
 
 ## 安装
 
@@ -54,13 +54,15 @@ Ashore 使用 aria2 JSON-RPC 作为任务状态的权威来源，并使用 WebSo
 
 ### Linux
 
-先安装 aria2，解压 Ashore Linux 发布包，然后执行：
+解压 Ashore Linux 发布包，然后执行：
 
 ```bash
 sudo ./install.sh
 ```
 
 安装程序会将 Ashore 放到 `/opt/Ashore`，桌面入口放到 `/usr/local/share/applications/ashore.desktop`。用户配置继续保存在 `~/.config/ashore/`；若设置了 `XDG_CONFIG_HOME`，则使用对应目录。
+
+如果启动 Ashore 时系统尚未安装 aria2，程序会显示缺失依赖状态和当前系统推荐的安装命令。安装 aria2 后，可使用“重新检测”继续进入主界面。
 
 ### macOS
 
