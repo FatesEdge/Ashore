@@ -13,6 +13,41 @@ from interface.fileIcons import fileIconPixmap
 from interface.languageManager import resolveLanguage, translate
 
 
+class ElidingLabel(QLabel):
+    """Keep the full value while eliding only at the label's real right edge."""
+
+    def __init__(self, text='', parent=None):
+        super().__init__(parent)
+        self.fullText = ''
+        self.setFullText(text)
+
+    def setFullText(self, text):
+        self.fullText = str(text or '')
+        self.setToolTip(self.fullText)
+        self.refreshElision()
+
+    def refreshElision(self):
+        available = max(0, self.contentsRect().width())
+        if available <= 0:
+            QLabel.setText(self, self.fullText)
+            return
+        QLabel.setText(
+            self,
+            self.fontMetrics().elidedText(
+                self.fullText,
+                Qt.TextElideMode.ElideRight,
+                available))
+
+    def resizeEvent(self, event):
+        self.refreshElision()
+        super().resizeEvent(event)
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.FontChange:
+            self.refreshElision()
+
+
 class HoverMenuButton(QPushButton):
     menuRequested = pyqtSignal()
     hoverLeft = pyqtSignal()
@@ -66,7 +101,7 @@ class Section(QFrame):
     removeRequested = pyqtSignal(tuple)
 
     CONTENT_MIN_WIDTH = 660
-    CONTENT_MAX_WIDTH = 820
+    DETAILS_MAX_WIDTH = 820
 
     def __init__(
             self, gid: str, fileName: str, status: str, fileSize: int,
@@ -100,7 +135,7 @@ class Section(QFrame):
         self.iconLabel.setFixedSize(50, 60)
         self.iconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.nameLabel = QLabel(self.fileName)
+        self.nameLabel = ElidingLabel(self.fileName)
         self.nameLabel.setProperty('cardTitle', True)
         self.nameLabel.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
@@ -148,28 +183,37 @@ class Section(QFrame):
         self.contextMenu = QMenu(self)
         self.contextMenu.aboutToHide.connect(self.menuClosed)
 
-        infoPanel = QWidget()
-        infoPanel.setMinimumWidth(self.CONTENT_MIN_WIDTH)
-        infoPanel.setMaximumWidth(self.CONTENT_MAX_WIDTH)
-        infoPanel.setSizePolicy(
+        self.detailsPanel = QWidget()
+        self.detailsPanel.setMinimumWidth(self.CONTENT_MIN_WIDTH)
+        self.detailsPanel.setMaximumWidth(self.DETAILS_MAX_WIDTH)
+        self.detailsPanel.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        infoLayout = QGridLayout(infoPanel)
-        infoLayout.setContentsMargins(0, 0, 0, 0)
-        infoLayout.setHorizontalSpacing(8)
-        infoLayout.setVerticalSpacing(0)
-        infoLayout.addWidget(self.nameLabel, 0, 0, 1, 2)
-        infoLayout.addWidget(self.actionSlot, 1, 0)
-        infoLayout.addWidget(self.rateLabel, 1, 1)
-        infoLayout.addWidget(self.metaLabel, 2, 0, 1, 2)
-        infoLayout.setColumnStretch(0, 1)
+        detailsLayout = QGridLayout(self.detailsPanel)
+        detailsLayout.setContentsMargins(0, 0, 0, 0)
+        detailsLayout.setHorizontalSpacing(8)
+        detailsLayout.setVerticalSpacing(0)
+        detailsLayout.addWidget(self.actionSlot, 0, 0)
+        detailsLayout.addWidget(self.rateLabel, 0, 1)
+        detailsLayout.addWidget(self.metaLabel, 1, 0, 1, 2)
+        detailsLayout.setColumnStretch(0, 1)
 
-        bodyLayout = QHBoxLayout()
-        bodyLayout.setContentsMargins(0, 0, 0, 0)
-        bodyLayout.setSpacing(14)
-        bodyLayout.addWidget(
+        self.infoPanel = QWidget()
+        self.infoPanel.setMinimumWidth(self.CONTENT_MIN_WIDTH)
+        self.infoPanel.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        infoLayout = QVBoxLayout(self.infoPanel)
+        infoLayout.setContentsMargins(0, 0, 0, 0)
+        infoLayout.setSpacing(0)
+        infoLayout.addWidget(self.nameLabel)
+        infoLayout.addWidget(self.detailsPanel)
+
+        self.bodyLayout = QHBoxLayout()
+        self.bodyLayout.setContentsMargins(0, 0, 0, 0)
+        self.bodyLayout.setSpacing(14)
+        self.bodyLayout.addWidget(
             self.iconLabel, 0, Qt.AlignmentFlag.AlignVCenter)
-        bodyLayout.addWidget(infoPanel, 1, Qt.AlignmentFlag.AlignTop)
-        bodyLayout.addStretch(1)
+        self.bodyLayout.addWidget(
+            self.infoPanel, 1, Qt.AlignmentFlag.AlignTop)
 
         self.progressBar = QProgressBar()
         self.progressBar.setProperty('cardProgress', True)
@@ -180,7 +224,7 @@ class Section(QFrame):
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(14, 6, 10, 5)
         mainLayout.setSpacing(3)
-        mainLayout.addLayout(bodyLayout)
+        mainLayout.addLayout(self.bodyLayout)
         mainLayout.addWidget(self.progressBar)
 
         self.refresh()
@@ -279,8 +323,7 @@ class Section(QFrame):
         self.refresh()
 
     def refresh(self):
-        self.nameLabel.setText(self.fileName)
-        self.nameLabel.setToolTip(self.fileName)
+        self.nameLabel.setFullText(self.fileName)
         self.iconLabel.setPixmap(
             fileIconPixmap(
                 self.fileName, self.isTorrent, status=self.status))
@@ -344,6 +387,10 @@ class Section(QFrame):
         self.removeAction.setIcon(actionIcon('remove', size=18))
         self.deleteAction.setIcon(
             actionIcon('delete', color=DANGER_COLOR, size=18))
+        for action in (
+                self.primaryAction, self.openFolderAction,
+                self.copyUrlAction, self.removeAction, self.deleteAction):
+            action.setIconVisibleInMenu(True)
 
     def progressPercent(self):
         if self.status == 'completed':

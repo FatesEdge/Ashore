@@ -114,8 +114,14 @@ class ThemeManager(QObject):
                 border: none;
                 border-radius: 12px;
             }}
-            QWidget[windowSurface="true"][windowMaximized="true"] {{
+            QWidget[windowSurface="true"][windowMaximized="true"],
+            QWidget[windowSurface="true"][nativeChrome="true"] {{
                 border-radius: 0;
+            }}
+            QWidget[commandBar="true"] {{
+                background: {token['surface']};
+                border: none;
+                border-bottom: 1px solid {token['border']};
             }}
             QWidget[titleBar="true"] {{
                 background: {token['surface']};

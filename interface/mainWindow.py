@@ -223,6 +223,7 @@ class Ashore(QMainWindow):
             action = getattr(self, 'menuActions', {}).get(key)
             if action is not None:
                 action.setIcon(actionIcon(iconName, size=18))
+                action.setIconVisibleInMenu(True)
 
         trayIcons = {
             'showMain': 'show',
@@ -234,6 +235,7 @@ class Ashore(QMainWindow):
             action = getattr(self, 'trayActions', {}).get(key)
             if action is not None:
                 action.setIcon(actionIcon(iconName, size=18))
+                action.setIconVisibleInMenu(True)
 
         self.refreshNavigationIcons()
 
@@ -431,8 +433,9 @@ class Ashore(QMainWindow):
 
     def initUI(self) -> None:
         self.setWindowTitle('Ashore')
+        iconName = 'appIcon.icns' if sys.platform == 'darwin' else 'appIcon.png'
         self.setWindowIcon(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/appIcon.png'))
+            QIcon(self.resourcePath + 'static/icon/functionIcons/' + iconName))
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
@@ -522,6 +525,8 @@ class Ashore(QMainWindow):
 
         self.windowSurface = QWidget()
         self.windowSurface.setProperty('windowSurface', True)
+        self.windowSurface.setProperty(
+            'nativeChrome', self.windowChrome.nativeChrome)
         surfaceLayout = QVBoxLayout(self.windowSurface)
         surfaceLayout.setContentsMargins(0, 0, 0, 0)
         surfaceLayout.setSpacing(0)

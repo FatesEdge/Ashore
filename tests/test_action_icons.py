@@ -17,6 +17,12 @@ class ActionIconTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertFalse(actionIcon(name).isNull())
 
+    def test_action_icons_render_at_retina_density(self):
+        icon = actionIcon('download', size=32, devicePixelRatio=2.0)
+        pixmap = icon.pixmap(64, 64)
+        self.assertFalse(pixmap.isNull())
+        self.assertGreaterEqual(pixmap.width(), 32)
+
 
 if __name__ == '__main__':
     unittest.main()

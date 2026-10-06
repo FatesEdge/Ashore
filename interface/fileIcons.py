@@ -6,6 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QColor, QFont, QPainter, QPixmap
 from PyQt6.QtSvg import QSvgRenderer
+from PyQt6.QtWidgets import QApplication
 
 from paths import RESOURCE_DIR
 
@@ -18,12 +19,12 @@ class FileIconSpec:
 
 
 FAMILY_COLORS = {
-    'video': '#b65d63', 'audio': '#7b63b3', 'image': '#4f8a72',
+    'video': '#8b5cf6', 'audio': '#7b63b3', 'image': '#4f8a72',
     'vector': '#c77845', 'archive': '#9b7048', 'document': '#5a7fab',
     'pdf': '#c95e5e', 'spreadsheet': '#4f8a63', 'presentation': '#c77949',
     'code': '#60708a', 'data': '#4f7f88', 'package': '#8069a0',
     'disk': '#687786', 'font': '#a06f8d', 'subtitle': '#567e8d',
-    'executable': '#596675', 'torrent': '#3f7cac', 'generic': '#747b84',
+    'executable': '#596675', 'torrent': '#38a9e8', 'generic': '#747b84',
 }
 
 FAMILY_EXTENSIONS = {
@@ -133,12 +134,30 @@ def fitSvgRect(renderer, bounds, scale=1.0):
         width, height)
 
 
-def fileIconPixmap(fileName, isTorrent=False, status='active'):
-    """Render a native portrait tile; no post-render horizontal compression."""
+def displayDevicePixelRatio():
+    """Return the display scale used for crisp composed SVG tiles."""
+    app = QApplication.instance()
+    screen = app.primaryScreen() if app is not None else None
+    if screen is None:
+        return 1.0
+    return max(1.0, float(screen.devicePixelRatio()))
+
+
+def fileIconPixmap(
+        fileName, isTorrent=False, status='active', devicePixelRatio=None):
+    """Render the SVG tile at native display resolution, including Retina."""
     spec = fileIconSpec(fileName, isTorrent)
     width = TILE_WIDTH
     height = TILE_HEIGHT
-    pixmap = QPixmap(width, height)
+    ratio = (
+        displayDevicePixelRatio()
+        if devicePixelRatio is None
+        else max(1.0, float(devicePixelRatio))
+    )
+    pixmap = QPixmap(
+        max(1, round(width * ratio)),
+        max(1, round(height * ratio)))
+    pixmap.setDevicePixelRatio(ratio)
     pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
