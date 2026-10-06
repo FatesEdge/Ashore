@@ -257,7 +257,7 @@ class Aria2Tests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'refusing to delete'):
                 deleteTaskFiles({'dir': folder, 'filename': '', 'files': [str(root.parent / 'outside')]})
 
-    def test_running_task_removal_does_not_poll_tell_status(self):
+    def test_running_task_list_removal_preserves_payload_and_sidecar(self):
         client = Aria2Client.__new__(Aria2Client)
         payloads = []
         with tempfile.TemporaryDirectory() as folder:
@@ -289,7 +289,7 @@ class Aria2Tests(unittest.TestCase):
 
             self.assertEqual(result, {})
             self.assertTrue(payloadFile.exists())
-            self.assertFalse(sidecar.exists())
+            self.assertTrue(sidecar.exists())
 
         self.assertEqual(
             [payload['method'] for payload in payloads],
