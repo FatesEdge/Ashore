@@ -5,7 +5,7 @@ import signal
 import sys
 
 from PyQt6.QtCore import QCoreApplication, QEvent, QTimer
-from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtGui import QIcon
 
 from core.applicationRuntime import AshoreApplication, StartupController
 from interface.mainWindow import Ashore
@@ -17,7 +17,6 @@ def main():
     app = AshoreApplication(sys.argv)
 
     if platform.system() == 'Darwin':
-        app.setFont(QFont('Hiragino Sans GB'))
         app.setWindowIcon(QIcon(
             resourcePath + 'static/icon/functionIcons/appIcon.icns'))
     else:
