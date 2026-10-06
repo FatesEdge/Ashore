@@ -462,7 +462,7 @@ class SettingPage(QWidget):
         self.updateTokenRow()
 
     def setLanguage(self, language):
-        self.language = language or 'zh_CN'
+        self.language = resolveLanguage(language)
         self.retranslateUi()
 
     def addSettingItem(self, layout, label, field):
