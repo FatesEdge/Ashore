@@ -13,7 +13,7 @@ class TitleBar(QWidget):
         super().__init__(parent)
         self.hostWindow = window
         self.setProperty('titleBar', True)
-        self.setFixedHeight(38)
+        self.setFixedHeight(36)
 
         self.appIconLabel = QLabel()
         self.appIconLabel.setProperty('windowIcon', True)
@@ -35,7 +35,7 @@ class TitleBar(QWidget):
         self.closeButton.clicked.connect(self.hostWindow.close)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 6, 4)
+        layout.setContentsMargins(8, 3, 6, 3)
         layout.setSpacing(4)
 
         controls = (self.minimizeButton, self.maximizeButton, self.closeButton)
@@ -65,7 +65,7 @@ class TitleBar(QWidget):
         button.setProperty('windowControl', True)
         button.setProperty('windowControlRole', role)
         button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        button.setFixedSize(26, 26)
+        button.setFixedSize(24, 24)
         return button
 
     def toggleMaximized(self):
