@@ -237,10 +237,13 @@ class SettingsLayoutTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             page = self.makePage(folder)
             page.setLanguage('zh_CN')
-            self.assertFalse(page.defaultDownloadDirLabel.wordWrap())
+            self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
             self.assertEqual(
                 page.formLayout.rowWrapPolicy(),
-                QFormLayout.RowWrapPolicy.DontWrapRows)
+                QFormLayout.RowWrapPolicy.WrapAllRows)
+            self.assertEqual(
+                page.formLayout.labelAlignment(),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.assertFalse(page.showAria2StatusLabel.wordWrap())
 
 

@@ -400,24 +400,18 @@ class SettingPage(QWidget):
         if not hasattr(self, 'formLabelWidgets'):
             return
 
-        english = self.language == 'en'
         self.formLayout.setRowWrapPolicy(
-            QFormLayout.RowWrapPolicy.WrapAllRows
-            if english
-            else QFormLayout.RowWrapPolicy.DontWrapRows)
+            QFormLayout.RowWrapPolicy.WrapAllRows)
         self.formLayout.setLabelAlignment(
-            (Qt.AlignmentFlag.AlignLeft if english
-             else Qt.AlignmentFlag.AlignRight)
-            | Qt.AlignmentFlag.AlignVCenter)
-        self.formLayout.setVerticalSpacing(8 if english else 6)
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.formLayout.setVerticalSpacing(8)
 
         for label in self.formLabelWidgets:
-            label.setWordWrap(english)
+            label.setWordWrap(True)
             label.setMinimumWidth(0)
             label.setMaximumWidth(16777215)
             label.setAlignment(
-                (Qt.AlignmentFlag.AlignLeft if english
-                 else Qt.AlignmentFlag.AlignRight)
+                Qt.AlignmentFlag.AlignLeft
                 | Qt.AlignmentFlag.AlignVCenter)
 
         for row in range(self.formLayout.rowCount()):
