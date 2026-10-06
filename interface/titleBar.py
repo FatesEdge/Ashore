@@ -42,8 +42,10 @@ class TitleBar(QWidget):
             for button in controls:
                 layout.addWidget(button)
             layout.addSpacing(6)
+            layout.addWidget(self.appIconLabel)
             layout.addWidget(self.titleLabel)
         else:
+            layout.addWidget(self.appIconLabel)
             layout.addWidget(self.titleLabel)
 
         layout.addSpacing(8)
