@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -31,10 +32,10 @@ class TrackerManagerTests(unittest.TestCase):
             ashore.write_text('[global]\ntrackers_auto_update=true\ntrackers_list_time=尚未更新\ntrackers_list_source=\n', encoding='utf-8')
             aria2.write_text('# tracker\nbt-tracker=udp://old.example/announce\n', encoding='utf-8')
             manager = TrackerManager(ashore, aria2)
-            manager.finish(['udp://new.example/announce'], 'https://source.example/list.txt')
+            manager.finish(['udp://new.example/announce'], ['https://source.example/list.txt'])
             self.assertEqual(readOptions(aria2)['bt-tracker'], 'udp://new.example/announce')
             saved = readAshore(ashore)
-            self.assertEqual(saved['trackers_list_source'], 'https://source.example/list.txt')
+            self.assertEqual(json.loads(saved['trackers_list_source']), ['https://source.example/list.txt'])
             timestamp = saved['trackers_list_time']
             manager.finish([], 'timeout')
             self.assertEqual(readOptions(aria2)['bt-tracker'], 'udp://new.example/announce')
