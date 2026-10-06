@@ -175,7 +175,22 @@ class TrackerManagerDialog(QDialog):
         self.checkBtn.setEnabled(True)
         self.checkBtn.setText(self.tr('checkTrackers'))
 
+    def stopHealthCheck(self):
+        if self.worker is None or not self.worker.isRunning():
+            return
+        self.worker.requestInterruption()
+        self.worker.wait(2500)
+
+    def reject(self):
+        self.stopHealthCheck()
+        super().reject()
+
+    def closeEvent(self, event):
+        self.stopHealthCheck()
+        super().closeEvent(event)
+
     def applyChanges(self):
+        self.stopHealthCheck()
         trackers = self.trackers()
         self.trackersChanged.emit(trackers)
         self.accept()
