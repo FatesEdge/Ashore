@@ -219,6 +219,16 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(
                 page.showAria2StatusLabel.text(),
                 'Show aria2 status in main window:')
+    def test_connection_status_uses_semantic_states_and_current_language(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.setLanguage('en')
+            page.setConnectionStatus('connected', 'disconnected', '1.37.0')
+            self.assertEqual(page.httpStatusLabel.text(), 'Connected')
+            self.assertEqual(
+                page.websocketStatusLabel.text(), 'Disconnected, retrying')
+            self.assertEqual(page.aria2VersionLabel.text(), '1.37.0')
+
 
     def test_overflow_menu_only_contains_non_quick_actions(self):
         section = Section(
