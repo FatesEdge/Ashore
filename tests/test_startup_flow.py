@@ -31,7 +31,9 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(self.app.desktopFileName(), 'ashore')
 
     def test_splash_reports_only_after_its_first_paint(self):
-        splash = StartupWindow(RESOURCE_DIR / 'static/img/cover.png')
+        splash = StartupWindow(
+            RESOURCE_DIR / 'static/img/cover.png', 'en')
+        self.assertEqual(splash.statusLabel.text(), 'Loading configuration')
         painted = Mock()
         splash.firstPainted.connect(painted)
         self.assertFalse(splash.hasPainted)
@@ -294,7 +296,7 @@ class StartupFlowTests(unittest.TestCase):
 
         window.pageSetting.setConnectionStatus = Mock()
         window.hasPainted = False
-        window.updateConnection('已连接')
+        window.updateConnection('connected')
         window.pageSetting.setConnectionStatus.assert_not_called()
 
         window.hasPainted = True
