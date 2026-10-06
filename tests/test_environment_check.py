@@ -45,7 +45,7 @@ class EnvironmentCheckTests(unittest.TestCase):
                  'LOCALAPPDATA': 'C:/Users/test/AppData/Local',
                  'PROGRAMDATA': 'C:/ProgramData',
              }):
-            candidates = tuple(str(path).replace('\\\\', '/') for path in aria2ExecutableCandidates())
+            candidates = tuple(str(path).replace('\\', '/') for path in aria2ExecutableCandidates())
             self.assertTrue(any('WinGet/Links/aria2c.exe' in path for path in candidates))
             self.assertTrue(any('scoop/shims/aria2c.exe' in path for path in candidates))
             self.assertTrue(any('chocolatey/bin/aria2c.exe' in path for path in candidates))
