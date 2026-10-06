@@ -137,7 +137,7 @@ class Aria2Client:
             else:
                 item = classifyInput(url)
                 if item is None:
-                    return {'ResultError': '无法识别原下载地址'}
+                    return {'ResultError': 'Unable to recognize the original download source'}
                 return self.addUrl(item, targetDir)
 
     def getGlobalStatus(self) -> dict:
@@ -229,7 +229,7 @@ class Aria2Client:
 
     def getAria2Version(self) -> str:
         result = self.call(data=self.makeRequest(RPC_METHODS['getVersion']))
-        return result.get('version', '未知') if isinstance(result, dict) else '未知'
+        return result.get('version', '—') if isinstance(result, dict) else '—'
 
     def seekFileName(self, item: dict, bittorrent: bool) -> tuple[str, bool]:
         """Return the best current name and whether it is worth retaining."""
@@ -246,11 +246,11 @@ class Aria2Client:
             magnetName = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get('dn', [])
             if magnetName:
                 return magnetName[0], True
-            return item.get('infoHash', '正在获取 BT 元数据'), False
+            return item.get('infoHash', '…'), False
         if first.get('path'):
             return urllib.parse.unquote(Path(first['path']).name), True
         name = self.urlName(first.get('path') or url)
-        return urllib.parse.unquote(name) or '正在获取文件名', False
+        return urllib.parse.unquote(name) or '…', False
 
     def urlName(self, url:str) -> str:
         string = url.split('?', 1)[0]
@@ -306,7 +306,7 @@ class Aria2Client:
             if status in ('removed', 'complete', 'error'):
                 return {'status': status}
             time.sleep(0.05)
-        return {'ResultError': '等待 aria2 停止任务超时'}
+        return {'ResultError': 'Timed out waiting for aria2 to stop the task'}
 
     def removeMission(self, gid: str, delFile: bool = False) -> dict:
         """Remove a task cleanly, waiting for aria2 state before result cleanup."""
@@ -378,7 +378,7 @@ class Aria2Client:
             with urllib.request.urlopen(request, timeout=RPC_TIMEOUT) as response:
                 result = json.load(response)
             if 'error' in result:
-                return {'ResultError': result['error'].get('message', 'aria2 RPC 错误')}
+                return {'ResultError': result['error'].get('message', 'aria2 RPC error')}
             return result['result']
         except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
             return {'ResultError': str(exc)}
