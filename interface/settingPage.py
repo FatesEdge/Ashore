@@ -422,6 +422,9 @@ class SettingPage(QWidget):
             if self.trackerBtn.isEnabled()
             else self.tr('trackerUpdating'))
         self.trackerManageBtn.setText(self.tr('manageTrackers'))
+        self.trackerInfo.setText(
+            self.tr('lastTrackerUpdate').format(
+                time=displayTime(self.trackerTime)))
         self.autoTrackerLabel.setText(self.tr('autoTracker'))
         self.autoTrackerHintLabel.setText(self.tr('autoTrackerHint'))
         self.autoTrackerComboBox.setItemText(0, self.tr('yes'))
