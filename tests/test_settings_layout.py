@@ -109,6 +109,15 @@ class SettingsLayoutTests(unittest.TestCase):
                  for index in range(page.themeModeComboBox.count())},
                 set(THEME_MODES))
             self.assertIn(page.accentComboBox.currentText(), ACCENT_PRESETS)
+            userAgents = [
+                page.userAgentComboBox.itemText(index)
+                for index in range(page.userAgentComboBox.count())]
+            self.assertGreaterEqual(len(userAgents), 10)
+            self.assertTrue(any('Edg/' in value for value in userAgents))
+            self.assertTrue(any('Version/26.0 Safari/' in value for value in userAgents))
+            self.assertTrue(any(
+                'Mac OS X 10_15_7' in value and 'Chrome/' in value
+                for value in userAgents))
             self.assertEqual(page.getBoolOption(page.autoTrackerComboBox), 'true')
             self.assertEqual(StartupController.TRACKER_GRACE_MS, 1000)
             self.assertEqual(set(page.selectedTrackerSourceKeys()), {'ngosang', 'xiu2'})
