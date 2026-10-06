@@ -2,6 +2,7 @@
 
 import platform
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import QEvent, QSize, Qt, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import (
@@ -33,6 +34,11 @@ from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Removal, Aria2Shutdown
 from core.configStore import boolValue
+from core.downloadRequest import (
+    DownloadRequest,
+    existingOutputConflict,
+    nextAvailableOutputName,
+)
 from core.fileOperations import revealDownloadedFile
 from core.formatters import formatSpeed
 from interface.actionIcons import actionIcon
@@ -712,12 +718,68 @@ class Ashore(QMainWindow):
         form.submitted.connect(self.addUrls)
         form.exec()
         self.aria2Poller.poll()
+    def resolveExistingOutput(self, request):
+        item = request.items[0]
+        conflict = existingOutputConflict(
+            item, request.targetDir, request.options)
+        if conflict is None:
+            return request
+
+        message = QMessageBox(self)
+        message.setIcon(QMessageBox.Icon.Warning)
+        message.setWindowTitle(self.tr('existingFileTitle'))
+        message.setText(self.tr('existingFileQuestion').format(path=conflict))
+        message.setInformativeText(self.tr('existingFileInfo'))
+        overwriteButton = message.addButton(
+            self.tr('redownloadOverwrite'),
+            QMessageBox.ButtonRole.DestructiveRole)
+        saveAsButton = message.addButton(
+            self.tr('keepAndSaveAs'),
+            QMessageBox.ButtonRole.AcceptRole)
+        cancelButton = message.addButton(
+            self.tr('cancel'),
+            QMessageBox.ButtonRole.RejectRole)
+        message.setDefaultButton(cancelButton)
+        message.exec()
+
+        clicked = message.clickedButton()
+        if clicked is overwriteButton:
+            try:
+                conflict.unlink()
+                sidecar = Path(str(conflict) + '.aria2')
+                if sidecar.is_file() and not sidecar.is_symlink():
+                    sidecar.unlink()
+            except OSError as exc:
+                QMessageBox.warning(
+                    self, self.tr('addTaskFailedTitle'), str(exc))
+                return None
+            return request
+        if clicked is saveAsButton:
+            options = dict(request.options)
+            options['out'] = nextAvailableOutputName(conflict)
+            return DownloadRequest(
+                request.items, request.targetDir, options)
+        return None
+
     def addUrls(self, request):
-        result = self.aria2Client.addUrls(request)
-        if 'ResultError' in result:
+        prepared = []
+        for item in request.items:
+            itemRequest = DownloadRequest(
+                (item,), request.targetDir, dict(request.options))
+            resolved = self.resolveExistingOutput(itemRequest)
+            if resolved is None:
+                return
+            prepared.append(resolved)
+
+        errors = []
+        for itemRequest in prepared:
+            result = self.aria2Client.addUrls(itemRequest)
+            if 'ResultError' in result:
+                errors.append(str(result['ResultError']))
+        if errors:
             QMessageBox.warning(
                 self, self.tr('addTaskFailedTitle'),
-                str(result['ResultError']))
+                '\n'.join(errors))
     def slotAdd(self) -> None:
         """Open the new-download dialog from the main command button."""
         self.addNew()
