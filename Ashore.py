@@ -602,8 +602,8 @@ class Ashore(QMainWindow):
         title = '下载完成' if status == 'completed' else '下载失败'
         try:
             self.notificationBackend.show(gid, title, name)
-        except RuntimeError:
-            self.showStatus(f'{title}：{name}')
+        except RuntimeError as exc:
+            self.showStatus(f'{title}：{name}（通知失败：{exc}）')
 
     def slotNotificationClicked(self, gid=None):
         self.slotShowWindow()

@@ -1,7 +1,5 @@
 """Freedesktop notification backend for Linux desktops."""
 
-from PyQt6.QtCore import QVariant
-
 from .base import NotificationBackend
 
 
@@ -15,8 +13,11 @@ class LinuxNotificationBackend(NotificationBackend):
         self.iconPath = iconPath
         self.notificationTargets = {}
 
-        from PyQt6.QtDBus import QDBusConnection, QDBusInterface
+        from PyQt6.QtDBus import (
+            QDBusConnection, QDBusInterface, QDBusMessage,
+        )
 
+        self.errorMessageType = QDBusMessage.MessageType.ErrorMessage
         self.bus = QDBusConnection.sessionBus()
         self.interface = QDBusInterface(
             self.SERVICE, self.PATH, self.INTERFACE, self.bus)
@@ -36,8 +37,8 @@ class LinuxNotificationBackend(NotificationBackend):
 
         actions = ['default', 'Open Ashore']
         hints = {
-            'desktop-entry': QVariant('ashore'),
-            'category': QVariant('transfer.complete'),
+            'desktop-entry': 'ashore',
+            'category': 'transfer.complete',
         }
         reply = self.interface.call(
             'Notify',
@@ -49,6 +50,8 @@ class LinuxNotificationBackend(NotificationBackend):
             actions,
             hints,
             -1)
+        if reply.type() == self.errorMessageType:
+            raise RuntimeError(reply.errorMessage())
         arguments = reply.arguments()
         if not arguments:
             raise RuntimeError('notification service returned no id')
