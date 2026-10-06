@@ -10,6 +10,6 @@ def configureApplication():
     from PyQt6.QtWidgets import QApplication
 
     QApplication.setApplicationVersion(APP_VERSION)
-    QApplication.setOrganizationName('PanZK')
+    QApplication.setOrganizationName(APP_AUTHOR)
     QApplication.setApplicationName('Ashore')
     QApplication.setDesktopFileName('ashore')
