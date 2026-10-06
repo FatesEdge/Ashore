@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ashore-download-manager"
+version = "0.7.89"
+description = "A cross-platform aria2 desktop download manager."
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "GPL-3.0-only"}
+authors = [{name = "PanZK"}]
+dependencies = [
+    "PyQt6>=6.7,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyflakes>=3.2,<4",
+    "PyInstaller>=6.11,<7",
+]
+
+[tool.setuptools]
+py-modules = ["Ashore", "paths", "make"]
+
+[tool.setuptools.packages.find]
+include = ["core*", "interface*"]
