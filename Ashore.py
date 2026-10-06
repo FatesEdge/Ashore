@@ -60,7 +60,6 @@ class Ashore(QMainWindow):
     def __init__(self, aria2Service, themeManager):
         super().__init__()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'
@@ -129,6 +128,11 @@ class Ashore(QMainWindow):
             return True
         return super().event(event)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'windowFrame'):
+            self.windowFrame.updateWindowMask()
+
     def changeEvent(self, event):
         super().changeEvent(event)
         if (event.type() == QEvent.Type.PaletteChange
@@ -140,6 +144,7 @@ class Ashore(QMainWindow):
             margin = 0 if self.isMaximized() else 5
             self.windowFrameLayout.setContentsMargins(
                 margin, margin, margin, margin)
+            self.windowFrame.updateWindowMask()
 
 
     def createCommandActions(self) -> None:

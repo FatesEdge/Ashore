@@ -106,11 +106,11 @@ class ThemeManager(QObject):
         accentSoft = translucent(self.accent, 52 if dark else 34)
         return f"""
             QMainWindow {{
-                background: transparent;
+                background: {token['background']};
                 color: {token['text']};
             }}
             QWidget#mainRoot, QWidget[windowFrame="true"] {{
-                background: transparent;
+                background: {token['background']};
                 color: {token['text']};
                 border: none;
             }}

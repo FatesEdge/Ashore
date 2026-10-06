@@ -4,7 +4,7 @@ import sys
 
 from PyQt6 import sip
 from PyQt6.QtCore import QEvent, QRect, QRectF, Qt
-from PyQt6.QtGui import QCursor, QPainter, QPainterPath, QPalette
+from PyQt6.QtGui import QCursor, QPainterPath, QRegion
 from PyQt6.QtWidgets import (
     QApplication, QHBoxLayout, QStyle, QStyleOptionTitleBar, QToolButton, QWidget,
 )
@@ -77,18 +77,18 @@ class WindowFrame(QWidget):
             self.setCursor(self.cursorForEdges(edges))
         return edges
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(
-            self.palette().color(QPalette.ColorRole.Window))
-        radius = 0 if self.window.isMaximized() else 10
+    def updateWindowMask(self):
+        if sip.isdeleted(self.window):
+            return
+        if self.window.isMaximized():
+            self.window.clearMask()
+            return
+
+        radius = 10.0
         path = QPainterPath()
-        path.addRoundedRect(
-            QRectF(self.rect().adjusted(0, 0, -1, -1)),
-            radius, radius)
-        painter.drawPath(path)
+        path.addRoundedRect(QRectF(self.window.rect()), radius, radius)
+        region = QRegion(path.toFillPolygon().toPolygon())
+        self.window.setMask(region)
 
     def eventFilter(self, watched, event):
         if self.belongsToWindow(watched):

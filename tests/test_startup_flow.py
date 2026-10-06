@@ -85,7 +85,7 @@ class StartupFlowTests(unittest.TestCase):
         self.assertTrue(
             window.windowFlags() & Qt.WindowType.FramelessWindowHint)
         self.assertTrue(window.titleBar.property('customTitleBar'))
-        self.assertTrue(
+        self.assertFalse(
             window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
         self.assertTrue(window.pageStack.property('pageSurface'))
         self.assertIs(window.moreBtn.menu(), window.moreMenu)
