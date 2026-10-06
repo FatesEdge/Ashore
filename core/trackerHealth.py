@@ -86,12 +86,17 @@ class TrackerHealthWorker(QThread):
     def run(self):
         healthy = 0
         failed = 0
-        with ThreadPoolExecutor(max_workers=self.maxWorkers) as executor:
-            futureMap = {
-                executor.submit(probeTracker, url, self.timeout): (index, url)
-                for index, url in enumerate(self.trackers)
-            }
+        executor = ThreadPoolExecutor(max_workers=self.maxWorkers)
+        futureMap = {
+            executor.submit(probeTracker, url, self.timeout): (index, url)
+            for index, url in enumerate(self.trackers)
+        }
+        interrupted = False
+        try:
             for future in as_completed(futureMap):
+                if self.isInterruptionRequested():
+                    interrupted = True
+                    break
                 index, _ = futureMap[future]
                 try:
                     ok, latency, error = future.result()
@@ -104,4 +109,12 @@ class TrackerHealthWorker(QThread):
                     failed += 1
                     status = 'failed'
                 self.resultReady.emit(index, status, latency, error)
-        self.completed.emit(healthy, failed)
+        finally:
+            if interrupted:
+                for future in futureMap:
+                    future.cancel()
+            executor.shutdown(
+                wait=not interrupted, cancel_futures=interrupted)
+
+        if not interrupted:
+            self.completed.emit(healthy, failed)
