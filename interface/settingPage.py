@@ -404,7 +404,7 @@ class SettingPage(QWidget):
         scrollBtnLayout.addWidget(self.scrollToAshoreBtn)
         scrollBtnLayout.addStretch(10)
         scrollBtnLayout.addWidget(self.saveBtn)
-        scrollBtnLayout.setContentsMargins(2, 0, 6, 0)
+        scrollBtnLayout.setContentsMargins(2, 8, 6, 0)
 
         self.scrollArea = QScrollArea()
         self.scrollArea.setProperty('settingsScroll', True)
