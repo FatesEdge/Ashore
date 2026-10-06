@@ -22,6 +22,8 @@ class WindowChrome(QObject):
         self.window.destroyed.connect(self._hostDestroyed)
 
     def install(self):
+        if self._installed or self.window is None or sip.isdeleted(self.window):
+            return
         flags = self.window.windowFlags() | Qt.WindowType.FramelessWindowHint
         self.window.setWindowFlags(flags)
         self.window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
