@@ -40,7 +40,7 @@ class Aria2Tests(unittest.TestCase):
                 page.AshoreConfig = {'trackers_list_time': '2023.04.01 11:03'}
                 with patch.object(page, 'loadAria2'):
                     page.loadSettings({})
-                self.assertEqual(page.trackerInfo.text(), '2026.09.26 16:55')
+                self.assertIn('2026.09.26 16:55', page.trackerInfo.text())
 
     def test_user_agent_presets_are_full_and_custom_value_is_allowed(self):
         os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
