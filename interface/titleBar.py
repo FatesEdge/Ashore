@@ -2,6 +2,7 @@
 
 import sys
 
+from PyQt6 import sip
 from PyQt6.QtCore import QEvent, QRect, Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
@@ -59,8 +60,11 @@ class WindowFrame(QWidget):
         return Qt.CursorShape.ArrowCursor
 
     def belongsToWindow(self, watched):
+        if sip.isdeleted(self.window):
+            return False
         return (
             isinstance(watched, QWidget)
+            and not sip.isdeleted(watched)
             and (watched is self.window
                  or self.window.isAncestorOf(watched)))
 
