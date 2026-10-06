@@ -16,7 +16,7 @@ class WindowChrome(QObject):
     resizeMargin = 6
 
     def __init__(self, window):
-        super().__init__(window)
+        super().__init__(QApplication.instance())
         self.window = window
         self._installed = False
         self.window.destroyed.connect(self._hostDestroyed)
@@ -35,8 +35,9 @@ class WindowChrome(QObject):
         self._installed = False
 
     def _hostDestroyed(self):
-        self.uninstall()
         self.window = None
+        self.uninstall()
+        self.deleteLater()
 
     def eventFilter(self, watched, event):
         if self.window is None or sip.isdeleted(self.window):
