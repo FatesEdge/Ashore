@@ -508,9 +508,7 @@ class SettingPage(QWidget):
         self.trackerToggle.setText(self.tr('trackerManagement'))
         self.updateTrackerToggleIcon()
         self.trackerPanel.setLanguage(self.language)
-        self.trackerInfo.setText(
-            self.tr('lastTrackerUpdate').format(
-                time=displayTime(self.trackerTime)))
+        self.showTrackerStatus()
         self.autoTrackerLabel.setText(self.tr('autoTracker'))
         self.autoTrackerHintLabel.setText(self.tr('autoTrackerHint'))
         self.autoTrackerComboBox.setItemText(0, self.tr('yes'))
@@ -572,9 +570,6 @@ class SettingPage(QWidget):
 
     def loadAshore(self, ashoreConfig: dict):
         self.trackerTime = ashoreConfig['trackers_list_time']
-        self.trackerInfo.setText(
-            self.tr('lastTrackerUpdate').format(
-                time=displayTime(self.trackerTime)))
         self.trackerSource = ashoreConfig.get('trackers_list_source', '')
         self.loadTrackerSourceControls(ashoreConfig)
         self.setLanguage(resolveLanguage(ashoreConfig.get('language')))
@@ -701,7 +696,7 @@ class SettingPage(QWidget):
     def slotTracker(self):
         sources = self.selectedTrackerSourceUrls()
         if not sources:
-            self.showTrackerMessage(self.tr('noTrackerSources'))
+            self.showTrackerMessage('noTrackerSources')
             return
         self.saveBtn.setEnabled(False)
         self.trackerBtn.setEnabled(False)
@@ -751,7 +746,7 @@ class SettingPage(QWidget):
         value = validSourceUrl(value)
         if not value:
             if url is None:
-                self.showTrackerMessage(self.tr('invalidTrackerSource'))
+                self.showTrackerMessage('invalidTrackerSource')
             return
         known = {
             source['url'] for source in TRACKER_SOURCE_CATALOG}
@@ -759,7 +754,7 @@ class SettingPage(QWidget):
             row['checkBox'].text() for row in self.customTrackerRows)
         if value in known:
             if url is None:
-                self.showTrackerMessage(self.tr('duplicateTrackerSource'))
+                self.showTrackerMessage('duplicateTrackerSource')
             return
 
         rowWidget = QWidget()
@@ -797,10 +792,13 @@ class SettingPage(QWidget):
         name = 'chevron-down' if self.trackerToggle.isChecked() else 'chevron-right'
         self.trackerToggle.setIcon(actionIcon(name, size=16))
 
+    def trackerDisplayTime(self):
+        return displayTime(self.trackerTime) or self.tr('neverUpdated')
+
     def showTrackerStatus(self):
         self.trackerInfo.setText(
             self.tr('lastTrackerUpdate').format(
-                time=displayTime(self.trackerTime)))
+                time=self.trackerDisplayTime()))
 
     def applyManagedTrackers(self, trackers):
         self.trackers = list(trackers)
@@ -813,20 +811,16 @@ class SettingPage(QWidget):
         self.showTrackerStatus()
 
     def showTrackerMessage(self, message):
-        self.trackerInfo.setText(message)
+        self.trackerInfo.setText(self.tr(message))
 
 
     def applyTrackerUpdate(self, trackers, sources, timestamp):
         self.trackerSource = json.dumps(sources, ensure_ascii=False)
         self.trackerTime = timestamp
-        self.trackerInfo.setText(
-            self.tr('lastTrackerUpdate').format(time=displayTime(timestamp)))
         self.trackers = list(trackers)
         self.trackerHealthSummary = None
         self.trackerPanel.setTrackers(self.trackers)
-        self.trackerInfo.setText(
-            self.tr('lastTrackerUpdate').format(
-                time=displayTime(timestamp)))
+        self.showTrackerStatus()
         self.trackerBtn.setText(self.tr('updateTracker'))
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
@@ -835,7 +829,7 @@ class SettingPage(QWidget):
 
     def applyTrackerFailure(self, error):
         self.trackerInfo.setText(
-            self.tr('trackerUpdateFailed').format(error=error))
+            self.tr('trackerUpdateFailed').format(error=self.tr(error)))
         self.trackerBtn.setText(self.tr('trackerFailed'))
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
