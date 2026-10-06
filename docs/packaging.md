@@ -54,9 +54,18 @@ The DMG contains `Ashore.app` and an `Applications` shortcut.
 
 ## Windows
 
-Windows application logic is covered by CI, but there is currently no formal Windows packaging target in `make.py`.
+Windows supports a portable onefile build:
 
-A Windows installer should be added only after the packaging format and protocol/file-association behaviour have been validated on a physical Windows system.
+```bash
+python make.py onefile
+```
+
+Output:
+
+- `dist/Ashore.Windows.onefile/Ashore.exe`
+- `dist/Ashore.Windows.onefile/icon.png`
+
+This is intentionally a portable release rather than a formal installer. A Windows installer and system-level protocol/file-association installation should be added only after those behaviours have been validated on a physical Windows system.
 
 ## Release validation
 
@@ -76,4 +85,4 @@ Before publishing a release:
 12. On Linux, validate the packaged build on both X11 and Wayland and confirm Qt reports no missing/unloadable required plugins.
 13. Verify the release package contains no development-only files or credentials.
 
-CI does not publish GitHub Releases automatically.
+The release-build workflow creates native Linux, macOS, and Windows artifacts on GitHub-hosted runners and uploads them to the workflow run. It does not publish a GitHub Release automatically.
