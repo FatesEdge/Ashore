@@ -3,15 +3,16 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
 
+from interface.languageManager import resolveLanguage
 from interface.section import Section
 
 
 class Page(QScrollArea):
     sectionAdded = pyqtSignal(object)
 
-    def __init__(self, language='zh_CN'):
+    def __init__(self, language=None):
         super().__init__()
-        self.language = language
+        self.language = resolveLanguage(language)
         self.sections = {}
         self.setProperty('downloadPage', True)
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -31,7 +32,7 @@ class Page(QScrollArea):
         self.setWidget(self.sectionListWidget)
 
     def setLanguage(self, language):
-        self.language = language
+        self.language = resolveLanguage(language)
         for section in self.sections.values():
             section.setLanguage(language)
 
