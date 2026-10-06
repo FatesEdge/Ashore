@@ -36,7 +36,7 @@ jobs:
           XDG_CONFIG_HOME: ${{ runner.temp }}/ashore-release-config
         run: |
           set +e
-          xvfb-run -a env QT_QPA_PLATFORM=xcb \
+          xvfb-run -a env QT_QPA_PLATFORM=xcb QT_DEBUG_PLUGINS=1 \
             timeout --signal=INT --kill-after=5s 12s dist/Ashore.Linux.onefile/Ashore
           result=$?
           set -e
