@@ -17,6 +17,8 @@ class PathTests(unittest.TestCase):
             content = configPath.read_text(encoding='utf-8')
             self.assertIn(f'dir={expected}', content)
             self.assertNotIn('${DOWNLOAD_DIR}', content)
+            self.assertNotIn('${DEFAULT_USER_AGENT}', content)
+            self.assertIn('user-agent=Mozilla/5.0 (', content)
             self.assertIn('force-save=false', content)
             self.assertIn('check-integrity=true', content)
             sessionPath = configRoot / 'aria2.session'
