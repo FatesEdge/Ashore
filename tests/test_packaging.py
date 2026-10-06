@@ -21,7 +21,7 @@ class PackagingTests(unittest.TestCase):
 
             with patch.object(make, 'DIST', dist), patch.object(make.platform, 'system', return_value='Linux'):
                 with patch.object(make.subprocess, 'run', side_effect=incomplete):
-                    with self.assertRaisesRegex(ValueError, '未生成完整'):
+                    with self.assertRaisesRegex(ValueError, 'complete Ashore Linux package'):
                         make.build('onefile')
                 self.assertEqual((previous / 'Ashore').read_text(), 'old')
 
