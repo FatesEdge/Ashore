@@ -37,7 +37,7 @@ from core.trackerSources import (
 from interface.actionIcons import actionIcon
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.languageManager import LANGUAGES, translate
-from interface.settingItem import SettingItem
+from interface.settingItem import SettingItem, SettingsSectionHeader
 from interface.trackerManagerPanel import TrackerManagerPanel
 from interface.statusBadge import setConnectionBadge
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, validColor
@@ -90,8 +90,7 @@ class SettingPage(QWidget):
         settingsLayout.setSpacing(4)
         self.settingItems = []
 
-        self.aria2SettingLabel = QLabel()
-        self.aria2SettingLabel.setProperty('settingsSectionTitle', True)
+        self.aria2SettingLabel = SettingsSectionHeader()
         settingsLayout.addWidget(self.aria2SettingLabel)
 
         self.basicSettingLabel = QLabel()
@@ -223,7 +222,8 @@ class SettingPage(QWidget):
         tokenLayout.addWidget(self.rpcSecretRevealBtn)
         tokenLayout.addWidget(self.rpcSecretCopyBtn)
         self.rpcSecretLabel = QLabel()
-        self.addSettingItem(settingsLayout, self.rpcSecretLabel, tokenLayout)
+        self.rpcSecretItem = self.addSettingItem(
+            settingsLayout, self.rpcSecretLabel, tokenLayout)
 
         self.btSettingLabel = QLabel()
         self.btSettingLabel.setProperty('settingsSubTitle', True)
@@ -284,13 +284,6 @@ class SettingPage(QWidget):
         trackerActions.addWidget(self.trackerInfo)
         trackerActions.addStretch(1)
         trackerActions.addWidget(self.trackerBtn)
-        trackerOverviewLayout = QVBoxLayout()
-        trackerOverviewLayout.setContentsMargins(0, 0, 0, 0)
-        trackerOverviewLayout.setSpacing(6)
-        trackerOverviewLayout.addLayout(trackerActions)
-        self.btTrackerLabel = QLabel()
-        self.addSettingItem(
-            settingsLayout, self.btTrackerLabel, trackerOverviewLayout)
 
         self.trackerToggle = QToolButton()
         self.trackerToggle.setCheckable(True)
@@ -298,15 +291,24 @@ class SettingPage(QWidget):
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.trackerToggle.setProperty('trackerToggle', True)
         self.trackerToggle.setCursor(Qt.CursorShape.PointingHandCursor)
+
         self.trackerPanel = TrackerManagerPanel(
             self.trackers, self.language, self)
         self.trackerPanel.setVisible(False)
-        settingsLayout.addWidget(
-            self.trackerToggle, 0, Qt.AlignmentFlag.AlignLeft)
-        settingsLayout.addWidget(self.trackerPanel)
 
-        self.ashoreSettingLabel = QLabel()
-        self.ashoreSettingLabel.setProperty('settingsSectionTitle', True)
+        trackerOverviewLayout = QVBoxLayout()
+        trackerOverviewLayout.setContentsMargins(0, 0, 0, 0)
+        trackerOverviewLayout.setSpacing(6)
+        trackerOverviewLayout.addLayout(trackerActions)
+        trackerOverviewLayout.addWidget(
+            self.trackerToggle, 0, Qt.AlignmentFlag.AlignLeft)
+        trackerOverviewLayout.addWidget(self.trackerPanel)
+
+        self.btTrackerLabel = QLabel()
+        self.trackerSettingItem = self.addSettingItem(
+            settingsLayout, self.btTrackerLabel, trackerOverviewLayout)
+
+        self.ashoreSettingLabel = SettingsSectionHeader()
         settingsLayout.addWidget(self.ashoreSettingLabel)
 
         self.withAria2QuitComboBox = AshoreComboBox()
@@ -454,10 +456,8 @@ class SettingPage(QWidget):
         return item
 
     def retranslateUi(self):
-        self.aria2SettingLabel.setText(
-            f'<h3>{self.tr("aria2Settings")}</h3>')
-        self.ashoreSettingLabel.setText(
-            f'<h3>{self.tr("ashoreSettings")}</h3>')
+        self.aria2SettingLabel.setText(self.tr('aria2Settings'))
+        self.ashoreSettingLabel.setText(self.tr('ashoreSettings'))
         self.basicSettingLabel.setText(self.tr('basicSettings'))
         self.btSettingLabel.setText(self.tr('btSettings'))
 
@@ -899,10 +899,7 @@ class SettingPage(QWidget):
 
     def updateTokenRow(self) -> None:
         visible = self.rpcListenAllComboBox.currentIndex() == 0
-        self.rpcSecretLabel.setVisible(visible)
-        self.rpcSecretLineEdit.setVisible(visible)
-        self.rpcSecretRevealBtn.setVisible(visible)
-        self.rpcSecretCopyBtn.setVisible(visible)
+        self.rpcSecretItem.setVisible(visible)
 
     def toggleToken(self) -> None:
         self.rpcSecretVisible = not self.rpcSecretVisible
