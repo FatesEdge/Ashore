@@ -37,7 +37,7 @@ from core.fileOperations import revealDownloadedFile
 from core.formatters import formatSpeed
 from interface.actionIcons import actionIcon
 from interface.addNewDialog import AddNewDialog
-from interface.languageManager import translate
+from interface.languageManager import resolveLanguage, translate
 from interface.notificationManager import NotificationManager
 from interface.page import Page
 from interface.settingPage import SettingPage
@@ -61,7 +61,7 @@ class Ashore(QMainWindow):
 
         self.pageSetting = SettingPage()
         ashoreConfig = self.pageSetting.loadAshoreConfig()
-        self.language = ashoreConfig.get('language', 'zh_CN')
+        self.language = resolveLanguage(ashoreConfig.get('language'))
         self.trayIconStyle = ashoreConfig.get(
             'tray_icon_style', 'colorful')
         self.showAria2Status = boolValue(
