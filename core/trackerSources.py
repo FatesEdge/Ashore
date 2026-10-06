@@ -57,7 +57,7 @@ def validSourceUrl(value):
 
 def sourceUrls(selectedKeys=None, customSources=None):
     """Resolve selected built-in source keys plus enabled custom sources."""
-    selected = set(selectedKeys or DEFAULT_SOURCE_KEYS)
+    selected = set(DEFAULT_SOURCE_KEYS if selectedKeys is None else selectedKeys)
     urls = [
         item['url'] for item in TRACKER_SOURCE_CATALOG
         if item['key'] in selected
