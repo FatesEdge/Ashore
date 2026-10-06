@@ -76,7 +76,7 @@ def build(kind):
             if previous.exists():
                 previous.rename(target)
             raise
-    print(f'打包完成：{target}')
+    print(f'Build complete: {target}')
 
 
 if __name__ == '__main__':
