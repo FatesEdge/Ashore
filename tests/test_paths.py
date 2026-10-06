@@ -19,6 +19,8 @@ class PathTests(unittest.TestCase):
             self.assertNotIn('${DOWNLOAD_DIR}', content)
             self.assertIn('force-save=false', content)
             self.assertIn('check-integrity=true', content)
+            sessionPath = configRoot / 'aria2.session'
+            self.assertTrue(sessionPath.is_file())
 
     def test_existing_config_gets_integrity_default_without_overriding_user(self):
         with tempfile.TemporaryDirectory() as folder:
