@@ -45,6 +45,11 @@ class SettingsLayoutTests(unittest.TestCase):
                 self.assertEqual(field.sizePolicy().horizontalPolicy(),
                                  QSizePolicy.Policy.Expanding)
             self.assertLess(page.rpcPortLineEdit.maximumWidth(), 1000)
+            self.assertTrue(page.pathLineEdit.property('joinedLeft'))
+            self.assertTrue(page.pathBtn.property('joinedRight'))
+            self.assertTrue(
+                page.customTrackerSourceInput.property('joinedLeft'))
+            self.assertTrue(page.addTrackerSourceBtn.property('joinedRight'))
 
     def test_token_mask_has_fixed_length_and_reveals_real_value(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -76,6 +81,10 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(
                 firstItem.layout().contentsMargins().bottom(), 10)
             self.assertEqual(firstItem.layout().spacing(), 4)
+            self.assertEqual(
+                firstItem.fieldHost.layout().contentsMargins().left(),
+                SettingItem.FIELD_INDENT)
+            self.assertEqual(SettingItem.FIELD_INDENT, 18)
 
     def test_theme_and_tracker_controls_have_persistable_values(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -233,6 +242,9 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertIn('QComboBox::down-arrow', style)
         self.assertIn('QSpinBox::up-arrow', style)
         self.assertIn('QSpinBox::down-arrow', style)
+        self.assertIn('QSpinBox QLineEdit', style)
+        self.assertIn('QLineEdit[joinedLeft="true"]', style)
+        self.assertIn('QPushButton[joinedRight="true"]', style)
         self.assertNotIn('QLabel[connectionState="connected"]', style)
         self.assertIn('QLabel[mainConnectionDot="true"]', style)
         self.assertIn('QSpinBox {', style)
