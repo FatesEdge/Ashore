@@ -235,7 +235,7 @@ class SettingPage(QWidget):
             checkBox = QCheckBox(source['name'])
             checkBox.setToolTip(source['url'])
             self.trackerSourceChecks[source['key']] = checkBox
-            checkBox.toggled.connect(self.showTrackerStatus)
+            checkBox.toggled.connect(lambda _checked: self.showTrackerStatus())
             trackerSourceLayout.addWidget(checkBox)
 
         self.customTrackerRows = []
@@ -412,7 +412,8 @@ class SettingPage(QWidget):
         self.scrollToAria2Btn.clicked.connect(self.slotScrollToAria2)
         self.scrollToAshoreBtn.clicked.connect(self.slotScrollToAshore)
         self.trackerBtn.clicked.connect(self.slotTracker)
-        self.addTrackerSourceBtn.clicked.connect(self.addCustomTrackerSource)
+        self.addTrackerSourceBtn.clicked.connect(
+            lambda _checked=False: self.addCustomTrackerSource())
         self.trackerToggle.toggled.connect(self.toggleTrackerManager)
         self.trackerPanel.trackersChanged.connect(self.applyManagedTrackers)
         self.trackerPanel.healthSummaryChanged.connect(
@@ -742,7 +743,7 @@ class SettingPage(QWidget):
         rowLayout.setSpacing(6)
         checkBox = QCheckBox(value)
         checkBox.setChecked(bool(enabled))
-        checkBox.toggled.connect(self.showTrackerStatus)
+        checkBox.toggled.connect(lambda _checked: self.showTrackerStatus())
         removeBtn = QPushButton('×')
         removeBtn.setFixedSize(26, 26)
         rowLayout.addWidget(checkBox, 1)
