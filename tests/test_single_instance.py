@@ -21,24 +21,26 @@ class SingleInstanceTests(unittest.TestCase):
                 name, lockDirectory=folder)
             secondary = SingleInstanceCoordinator(
                 name, lockDirectory=folder)
-            self.addCleanup(primary.close)
-            self.addCleanup(secondary.close)
-
             received = []
             primary.messageReceived.connect(received.append)
 
-            self.assertTrue(primary.claimOrForward([]))
-            self.assertTrue(primary.server.isListening())
-            self.assertFalse(secondary.claimOrForward([
-                'https://example.org/file.bin']))
-
-            for _ in range(4):
+            try:
+                self.assertTrue(primary.claimOrForward([]))
+                self.assertTrue(primary.server.isListening())
                 self.app.processEvents()
+                self.assertFalse(secondary.claimOrForward([
+                    'https://example.org/file.bin']))
 
-            self.assertEqual(
-                received, [['https://example.org/file.bin']])
-            self.assertIsNone(secondary.server)
-            self.assertTrue(primary.server.isListening())
+                for _ in range(4):
+                    self.app.processEvents()
+
+                self.assertEqual(
+                    received, [['https://example.org/file.bin']])
+                self.assertIsNone(secondary.server)
+                self.assertTrue(primary.server.isListening())
+            finally:
+                secondary.close()
+                primary.close()
 
 
 if __name__ == '__main__':
