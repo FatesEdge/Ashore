@@ -67,7 +67,7 @@ def ensureConfig(name):
         options = readOptions(target)
         if ('check-integrity' not in options
                 and not writeOptions(target, {'check-integrity': 'true'})):
-            raise OSError(f'无法更新 aria2 配置：{target}')
+            raise OSError(f'Could not update aria2 configuration: {target}')
         target.chmod(0o600)
         sessionPath = CONFIG_DIR / 'aria2.session'
         sessionPath.touch(exist_ok=True)
