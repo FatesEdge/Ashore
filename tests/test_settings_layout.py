@@ -13,7 +13,7 @@ from core.applicationRuntime import StartupController
 from interface.addNewDialog import AddNewDialog
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.section import Section
-from interface.settingItem import SettingItem
+from interface.settingItem import SettingItem, SettingsSectionHeader
 from interface.settingPage import SettingPage
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, ThemeManager
 
@@ -88,6 +88,18 @@ class SettingsLayoutTests(unittest.TestCase):
                 firstItem.fieldHost.layout().contentsMargins().left(),
                 SettingItem.FIELD_INDENT)
             self.assertEqual(SettingItem.FIELD_INDENT, 18)
+            self.assertEqual(
+                firstItem.field.layout().contentsMargins().left(), 0)
+
+    def test_rpc_token_setting_item_disappears_when_external_rpc_is_off(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.rpcListenAllComboBox.setCurrentIndex(1)
+            page.updateTokenRow()
+            self.assertTrue(page.rpcSecretItem.isHidden())
+            page.rpcListenAllComboBox.setCurrentIndex(0)
+            page.updateTokenRow()
+            self.assertFalse(page.rpcSecretItem.isHidden())
 
     def test_theme_and_tracker_controls_have_persistable_values(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -134,6 +146,9 @@ class SettingsLayoutTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             page = self.makePage(folder)
             self.assertTrue(page.trackerToggle.text())
+            self.assertIs(
+                page.trackerToggle.parentWidget(),
+                page.trackerPanel.parentWidget())
             self.assertTrue(page.trackerPanel.isHidden())
             page.trackerToggle.setChecked(True)
             self.assertFalse(page.trackerPanel.isHidden())
@@ -185,6 +200,10 @@ class SettingsLayoutTests(unittest.TestCase):
                 'Default download directory:')
             self.assertEqual(page.saveBtn.text(), 'Save Settings')
             self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
+            self.assertIsInstance(
+                page.aria2SettingLabel, SettingsSectionHeader)
+            self.assertIsInstance(
+                page.ashoreSettingLabel, SettingsSectionHeader)
             self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
             self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
             self.assertGreater(len(page.settingItems), 10)
