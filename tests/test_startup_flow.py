@@ -9,7 +9,7 @@ from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication, QStackedWidget
 
 import paths
-from Ashore import Ashore
+from interface.mainWindow import Ashore
 from core.applicationInfo import configureApplication
 from core.applicationRuntime import AshoreApplication, StartupController
 from core.environmentCheck import makeEnvironmentIssue
@@ -77,7 +77,7 @@ class StartupFlowTests(unittest.TestCase):
              patch.object(paths, 'CONFIG_DIR', Path(folder)), \
              patch.object(SettingPage, 'ashoreConfDir', folder), \
              patch.object(SettingPage, 'aria2ConfPath', str(Path(folder) / 'aria2.conf')), \
-             patch('Ashore.Aria2Events', return_value=events):
+             patch('interface.mainWindow.Aria2Events', return_value=events):
             window = Ashore(service, Mock())
 
         self.assertIsInstance(window.pageStack, QStackedWidget)
@@ -139,7 +139,7 @@ class StartupFlowTests(unittest.TestCase):
         window = Mock()
         callback = Mock()
 
-        with patch('Ashore.QTimer.singleShot') as singleShot:
+        with patch('interface.mainWindow.QTimer.singleShot') as singleShot:
             Ashore.deferTrayAction(window, callback)
 
         window.trayMenu.close.assert_called_once_with()
@@ -170,7 +170,7 @@ class StartupFlowTests(unittest.TestCase):
         window.tr.return_value = 'Exiting'
         exitWindow = Mock()
 
-        with patch('Ashore.ExitWindow', return_value=exitWindow) as factory:
+        with patch('interface.mainWindow.ExitWindow', return_value=exitWindow) as factory:
             Ashore.requestTrayQuit(window)
 
         factory.assert_called_once_with(
@@ -204,7 +204,7 @@ class StartupFlowTests(unittest.TestCase):
              patch.object(
                  SettingPage, 'aria2ConfPath',
                  str(Path(folder) / 'aria2.conf')), \
-             patch('Ashore.Aria2Events', return_value=events):
+             patch('interface.mainWindow.Aria2Events', return_value=events):
             window = Ashore(service, theme)
 
         window.applyAshoreConfig({
@@ -247,7 +247,7 @@ class StartupFlowTests(unittest.TestCase):
              patch.object(
                  SettingPage, 'aria2ConfPath',
                  str(Path(folder) / 'aria2.conf')), \
-             patch('Ashore.Aria2Events', return_value=events):
+             patch('interface.mainWindow.Aria2Events', return_value=events):
             window = Ashore(service, Mock())
 
         window.setMainAria2State('connected')
@@ -272,7 +272,7 @@ class StartupFlowTests(unittest.TestCase):
              patch.object(
                  SettingPage, 'aria2ConfPath',
                  str(Path(folder) / 'aria2.conf')), \
-             patch('Ashore.Aria2Events', return_value=events):
+             patch('interface.mainWindow.Aria2Events', return_value=events):
             window = Ashore(service, Mock())
 
         window.pageSetting.setConnectionStatus = Mock()
@@ -298,7 +298,7 @@ class StartupFlowTests(unittest.TestCase):
              patch.object(
                  SettingPage, 'aria2ConfPath',
                  str(Path(folder) / 'aria2.conf')), \
-             patch('Ashore.Aria2Events', return_value=events):
+             patch('interface.mainWindow.Aria2Events', return_value=events):
             window = Ashore(service, Mock())
 
         window.showStatus('status message')
