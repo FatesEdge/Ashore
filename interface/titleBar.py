@@ -45,7 +45,7 @@ class TitleBar(QWidget):
 
         controls = (self.minimizeButton, self.maximizeButton, self.closeButton)
         controlLayout = QHBoxLayout()
-        controlLayout.setContentsMargins(0, 5, 0, 0)
+        controlLayout.setContentsMargins(0, 3, 0, 0)
         controlLayout.setSpacing(6)
         for button in controls:
             controlLayout.addWidget(button)
@@ -61,8 +61,12 @@ class TitleBar(QWidget):
             layout.addWidget(self.titleLabel)
 
         layout.addSpacing(8)
+        commandLayout = QHBoxLayout()
+        commandLayout.setContentsMargins(0, 2, 0, 0)
+        commandLayout.setSpacing(4)
         for widget in self.commandWidgets:
-            layout.addWidget(widget)
+            commandLayout.addWidget(widget)
+        layout.addLayout(commandLayout)
         layout.addStretch(1)
         layout.addWidget(overflowButton)
 
