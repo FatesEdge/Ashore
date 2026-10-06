@@ -31,6 +31,7 @@ from core.trackerSources import parseTrackers
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.languageManager import LANGUAGES, translate
 from interface.settingItem import SettingItem
+from interface.trackerManagerDialog import TrackerManagerDialog
 from interface.statusBadge import setConnectionBadge
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, validColor
 from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig, systemDownloadDirectory
@@ -214,22 +215,25 @@ class SettingPage(QWidget):
         self.btSettingLabel.setProperty('settingsSubTitle', True)
         settingsLayout.addWidget(self.btSettingLabel)
 
-        self.btTracker = QTextEdit()
-        self.btTracker.setMinimumWidth(260)
-        self.btTracker.setMinimumHeight(120)
-        self.btTracker.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.trackerBtn = QPushButton()
-        self.trackerInfo = QLabel('1')
-        self.trackerStatus = QLabel('')
+        self.trackers = []
         self.trackerSource = self.ashoreConfig['trackers_list_source']
-        trackerLayout = QGridLayout()
-        trackerLayout.addWidget(self.btTracker, 0, 0, 1, 2)
-        trackerLayout.addWidget(self.trackerInfo, 1, 0)
-        trackerLayout.addWidget(self.trackerBtn, 1, 1)
-        trackerLayout.addWidget(self.trackerStatus, 2, 0, 1, 2)
-        trackerLayout.setColumnStretch(0, 1)
-        self.btTrackerLabel = QLabel('BT Tracker:')
+        self.trackerHealthSummary = None
+        self.trackerStatus = QLabel('')
+        self.trackerStatus.setWordWrap(True)
+        self.trackerInfo = QLabel('')
+        self.trackerBtn = QPushButton()
+        self.trackerManageBtn = QPushButton()
+        trackerActions = QHBoxLayout()
+        trackerActions.addWidget(self.trackerInfo)
+        trackerActions.addStretch(1)
+        trackerActions.addWidget(self.trackerBtn)
+        trackerActions.addWidget(self.trackerManageBtn)
+        trackerLayout = QVBoxLayout()
+        trackerLayout.setContentsMargins(0, 0, 0, 0)
+        trackerLayout.setSpacing(6)
+        trackerLayout.addWidget(self.trackerStatus)
+        trackerLayout.addLayout(trackerActions)
+        self.btTrackerLabel = QLabel()
         self.addSettingItem(settingsLayout, self.btTrackerLabel, trackerLayout)
 
         self.autoTrackerComboBox = AshoreComboBox()
@@ -358,6 +362,7 @@ class SettingPage(QWidget):
         self.scrollToAria2Btn.clicked.connect(self.slotScrollToAria2)
         self.scrollToAshoreBtn.clicked.connect(self.slotScrollToAshore)
         self.trackerBtn.clicked.connect(self.slotTracker)
+        self.trackerManageBtn.clicked.connect(self.openTrackerManager)
         self.saveBtn.clicked.connect(self.slotSaveConf)
         self.rpcPortChangeableComboBox.currentIndexChanged.connect(
             self.slotRpcPortChangeable)
@@ -412,10 +417,12 @@ class SettingPage(QWidget):
         self.rpcListenAllComboBox.setItemText(1, self.tr('no'))
         self.rpcSecretLabel.setText(self.tr('rpcToken'))
 
+        self.btTrackerLabel.setText(self.tr('trackerOverview'))
         self.trackerBtn.setText(
             self.tr('updateTracker')
             if self.trackerBtn.isEnabled()
             else self.tr('trackerUpdating'))
+        self.trackerManageBtn.setText(self.tr('manageTrackers'))
         self.autoTrackerLabel.setText(self.tr('autoTracker'))
         self.autoTrackerHintLabel.setText(self.tr('autoTrackerHint'))
         self.autoTrackerComboBox.setItemText(0, self.tr('yes'))
@@ -469,13 +476,16 @@ class SettingPage(QWidget):
         self.setRpcSecret(aria2Config.get('rpc-secret', ''))
         self.updateEndpoints()
         self.updateTokenRow()
-        self.btTracker.setText(aria2Config['bt-tracker'])
+        self.trackers = parseTrackers(aria2Config['bt-tracker'])
+        self.trackerHealthSummary = None
         self.showTrackerStatus()
 
 
     def loadAshore(self, ashoreConfig:dict):
         self.trackerTime = ashoreConfig['trackers_list_time']
-        self.trackerInfo.setText(displayTime(self.trackerTime))
+        self.trackerInfo.setText(
+            self.tr('lastTrackerUpdate').format(
+                time=displayTime(self.trackerTime)))
         self.trackerSource = ashoreConfig['trackers_list_source']
         self.setLanguage(ashoreConfig.get('language', self.language))
         self.showTrackerStatus()
@@ -604,13 +614,39 @@ class SettingPage(QWidget):
 
 
     def showTrackerStatus(self):
-        count = len(parseTrackers(self.btTracker.toPlainText()))
+        count = len(self.trackers)
         source = (
             urllib.parse.urlsplit(self.trackerSource).netloc
             if self.trackerSource else self.tr('manualConfiguration'))
-        self.trackerStatus.setText(
-            self.tr('trackerSummary').format(
-                count=count, source=source))
+        if self.trackerHealthSummary is None:
+            text = self.tr('trackerSummary').format(
+                count=count, source=source)
+        else:
+            healthy, failed = self.trackerHealthSummary
+            text = (
+                self.tr('trackerSummary').format(
+                    count=count, source=source)
+                + ' · '
+                + self.tr('trackerHealthSummary').format(
+                    count=count, healthy=healthy, failed=failed))
+        self.trackerStatus.setText(text)
+    def openTrackerManager(self):
+        dialog = TrackerManagerDialog(
+            self.trackers, self.language, self)
+        dialog.trackersChanged.connect(self.applyManagedTrackers)
+        dialog.healthSummaryChanged.connect(self.applyTrackerHealthSummary)
+        dialog.exec()
+
+    def applyManagedTrackers(self, trackers):
+        self.trackers = list(trackers)
+        self.trackerSource = ''
+        self.trackerHealthSummary = None
+        self.showTrackerStatus()
+
+    def applyTrackerHealthSummary(self, healthy, failed):
+        self.trackerHealthSummary = (healthy, failed)
+        self.showTrackerStatus()
+
     def showTrackerMessage(self, message):
         self.trackerStatus.setText(message)
 
@@ -618,8 +654,10 @@ class SettingPage(QWidget):
     def applyTrackerUpdate(self, trackers, source, timestamp):
         self.trackerSource = source
         self.trackerTime = timestamp
-        self.trackerInfo.setText(displayTime(timestamp))
-        self.btTracker.setText(','.join(trackers))
+        self.trackerInfo.setText(
+            self.tr('lastTrackerUpdate').format(time=displayTime(timestamp)))
+        self.trackers = list(trackers)
+        self.trackerHealthSummary = None
         host = urllib.parse.urlsplit(source).netloc
         self.trackerStatus.setText(
             self.tr('trackerUpdated').format(
@@ -640,7 +678,7 @@ class SettingPage(QWidget):
         #用户配置界面有的选项
         aria2Values = {
             'dir'                       :   self.pathLineEdit.text(),
-            'bt-tracker'                :   ','.join(parseTrackers(self.btTracker.toPlainText())),
+            'bt-tracker'                :   ','.join(self.trackers),
             'max-concurrent-downloads'  :   str(self.maxDownloadsSpin.value()),
             'max-connection-per-server' :   str(self.maxConnectionSpin.value()),
             'user-agent'                :   self.userAgentComboBox.currentText().strip(),
