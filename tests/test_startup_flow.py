@@ -117,6 +117,18 @@ class StartupFlowTests(unittest.TestCase):
         window.aria2Poller.timer.stop()
         window.close()
 
+    def test_startup_controller_dispose_breaks_application_cycle(self):
+        controller = StartupController(self.app, ['Ashore.py'], Ashore)
+        controller.window = None
+        controller.recovery = None
+        controller.startup = None
+
+        controller.dispose()
+
+        self.assertIsNone(controller.app)
+        self.assertIsNone(controller.window)
+        self.assertIsNone(controller.themeManager)
+
     def test_instance_messages_are_queued_until_main_window_is_ready(self):
         app = Mock()
         app.pendingInstanceMessages = []
