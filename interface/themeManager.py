@@ -109,10 +109,37 @@ class ThemeManager(QObject):
                 background: {token['background']};
                 color: {token['text']};
             }}
-            QWidget[commandBar="true"] {{
+            QWidget[titleBar="true"] {{
                 background: {token['surface']};
-                border: 1px solid {token['border']};
-                border-radius: 12px;
+                border: none;
+                border-bottom: 1px solid {token['border']};
+            }}
+            QLabel[windowTitle="true"] {{
+                background: transparent;
+                color: {token['text']};
+                border: none;
+                padding: 0 6px;
+                font-weight: 700;
+            }}
+            QPushButton[windowControl="true"] {{
+                background: transparent;
+                color: {token['text']};
+                border: none;
+                border-radius: 8px;
+                min-width: 32px;
+                max-width: 32px;
+                min-height: 30px;
+                max-height: 30px;
+                padding: 0;
+                font-size: 16px;
+                font-weight: 500;
+            }}
+            QPushButton[windowControl="true"]:hover {{
+                background: {token['hover']};
+                border: none;
+            }}
+            QPushButton[windowControl="true"]:pressed {{
+                background: {token['pressed']};
             }}
             QPushButton {{
                 background: {token['raised']};
@@ -193,16 +220,18 @@ class ThemeManager(QObject):
                 border-top-right-radius: 0;
                 border-bottom-right-radius: 0;
             }}
-            QStackedWidget[pageSurface="true"],
+            QWidget[pageSurface="true"] {{
+                background: {token['surface']};
+                border: none;
+                border-top-right-radius: 12px;
+                border-bottom-right-radius: 12px;
+            }}
+            QStackedWidget[pageStack="true"],
             QScrollArea[downloadPage="true"],
             QWidget[pageViewport="true"],
             QWidget[pageBody="true"] {{
-                background: {token['surface']};
+                background: transparent;
                 border: none;
-            }}
-            QStackedWidget[pageSurface="true"] {{
-                border-top-right-radius: 12px;
-                border-bottom-right-radius: 12px;
             }}
             QFrame[downloadCard="true"] {{
                 background: {token['raised']};
@@ -245,8 +274,9 @@ class ThemeManager(QObject):
             }}
             QWidget[settingsPage="true"],
             QWidget[settingsSurface="true"],
-            QScrollArea[settingsScroll="true"] {{
-                background: {token['surface']};
+            QScrollArea[settingsScroll="true"],
+            QScrollArea[settingsScroll="true"] > QWidget > QWidget {{
+                background: transparent;
                 border: none;
             }}
             QLabel[settingsSectionTitle="true"] {{
@@ -279,6 +309,7 @@ class ThemeManager(QObject):
                 border: 1px solid {token['border']};
                 border-radius: 7px;
                 min-height: 28px;
+                max-height: 28px;
                 padding: 2px 28px 2px 7px;
                 selection-background-color: {self.accent};
                 selection-color: {accentText};
@@ -313,6 +344,7 @@ class ThemeManager(QObject):
             QSpinBox::up-button, QSpinBox::down-button {{
                 subcontrol-origin: border;
                 width: 22px;
+                height: 14px;
                 background: transparent;
                 border-left: 1px solid {token['border']};
             }}
