@@ -4,7 +4,7 @@ Ashore uses PyInstaller through `make.py`.
 
 The build script keeps a reviewed `PYINSTALLER_EXCLUDES` list for large optional Python/Qt modules that Ashore does not use. Required Qt modules such as Core, Gui, Widgets, Network, Svg, and WebSockets must never be added to that list. Linux builds also request binary stripping to reduce the shipped Qt/Python footprint.
 
-PyInstaller module exclusions apply to Python import modules. They are not a reliable way to remove arbitrary shared libraries such as `libssl` or `libcrypto`; native libraries should only be removed when their dependency relationship has been verified.
+PyInstaller module exclusions apply to Python import modules. They are not a reliable way to remove arbitrary shared libraries or Qt plugins. Linux packaging therefore uses a generated PyInstaller spec to filter a deliberately small set of native Qt components after dependency analysis and before the onefile archive is assembled. The filter keeps X11, Wayland, GTK/portal integration, input methods, SVG, Network, WebSockets and Qt translations; it removes only reviewed embedded/headless platform plugins and unused image/PDF plugins. Native libraries should only be removed when their dependency relationship has been verified.
 
 ## Linux
 
@@ -36,6 +36,8 @@ sudo ./install.sh
 ```
 
 The installer stages the new application under `/opt`, preserves the previous installation in a backup directory during replacement, installs the desktop entry, and leaves the user's configuration untouched. It deliberately does not require aria2 to be installed first; runtime environment validation belongs to Ashore itself. If aria2 is missing at launch, Ashore presents the platform-specific installation guidance and can recheck after the dependency is installed.
+
+Linux size optimization must be validated on both X11 and Wayland. Do not remove XCB, Wayland, platform input contexts, GTK/desktop-portal integration, SVG support, Qt Network/WebSockets, or ICU merely to reduce package size.
 
 ## macOS
 
