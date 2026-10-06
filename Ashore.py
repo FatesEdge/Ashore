@@ -398,7 +398,7 @@ class Ashore(QMainWindow):
     def initUI(self) -> None:
         self.setWindowTitle('Ashore')
         self.setWindowIcon(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
+            QIcon(self.resourcePath + 'static/icon/functionIcons/icon0.png'))
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
