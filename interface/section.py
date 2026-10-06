@@ -101,7 +101,7 @@ class Section(QFrame):
     removeRequested = pyqtSignal(tuple)
 
     CONTENT_MIN_WIDTH = 660
-    DETAILS_MAX_WIDTH = 820
+    DETAILS_MAX_WIDTH = 720
 
     def __init__(
             self, gid: str, fileName: str, status: str, fileSize: int,
@@ -127,12 +127,12 @@ class Section(QFrame):
         self.setObjectName('Section')
         self.setProperty('downloadCard', True)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-        self.setFixedHeight(84)
+        self.setFixedHeight(78)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.iconLabel = QLabel()
-        self.iconLabel.setFixedSize(50, 60)
+        self.iconLabel.setFixedSize(50, 56)
         self.iconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.nameLabel = ElidingLabel(self.fileName)
@@ -145,7 +145,7 @@ class Section(QFrame):
         self.rateLabel.setProperty('cardPercent', True)
         self.rateLabel.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.rateLabel.setFixedWidth(64)
+        self.rateLabel.setFixedWidth(54)
 
         self.actionButton = self.makeActionButton()
         self.openFolderButton = self.makeActionButton()
@@ -222,8 +222,8 @@ class Section(QFrame):
         self.progressBar.setFixedHeight(4)
 
         mainLayout = QVBoxLayout(self)
-        mainLayout.setContentsMargins(14, 6, 10, 5)
-        mainLayout.setSpacing(3)
+        mainLayout.setContentsMargins(14, 5, 10, 4)
+        mainLayout.setSpacing(2)
         mainLayout.addLayout(self.bodyLayout)
         mainLayout.addWidget(self.progressBar)
 
