@@ -59,6 +59,17 @@ class PackagingTests(unittest.TestCase):
                 'PyQt6.QtWebSockets'):
             self.assertNotIn(required, make.PYINSTALLER_EXCLUDES)
 
+    def test_macos_bundle_identifier_matches_repository_identity(self):
+        import plistlib
+
+        plist = make.ROOT / 'packaging' / 'Info.plist'
+        with plist.open('rb') as file:
+            info = plistlib.load(file)
+
+        self.assertEqual(
+            info['CFBundleIdentifier'],
+            'io.github.kai-x64.ashore')
+
     def test_non_linux_build_does_not_request_binary_stripping(self):
         with tempfile.TemporaryDirectory() as directory:
             command = make.pyinstallerCommand(
