@@ -34,6 +34,7 @@ from core.trackerSources import (
     sourceUrls,
     validSourceUrl,
 )
+from core.userAgents import USER_AGENT_PRESETS
 from interface.actionIcons import actionIcon
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.languageManager import LANGUAGES, resolveLanguage, translate
@@ -43,19 +44,6 @@ from interface.statusBadge import setConnectionBadge
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, validColor
 from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig, systemDownloadDirectory
 
-
-DEFAULT_USER_AGENT_PRESETS = (
-    'Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:157.0) Gecko/20100101 Firefox/157.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:157.0) Gecko/20100101 Firefox/157.0',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
-)
 
 
 class SettingPage(QWidget):
@@ -149,7 +137,7 @@ class SettingPage(QWidget):
         self.userAgentComboBox.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         configuredUserAgents = self.ashoreConfig.get('user_agent_presets', [])
         self.userAgentComboBox.addItems(list(dict.fromkeys(
-            [*configuredUserAgents, *DEFAULT_USER_AGENT_PRESETS])))
+            [*configuredUserAgents, *USER_AGENT_PRESETS])))
         self.userAgentComboBox.setMinimumWidth(260)
         self.userAgentComboBox.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
