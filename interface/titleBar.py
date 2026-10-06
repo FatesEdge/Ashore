@@ -11,7 +11,7 @@ class TitleBar(QWidget):
 
     def __init__(self, window, commandWidgets, overflowButton, parent=None):
         super().__init__(parent)
-        self.window = window
+        self.hostWindow = window
         self.setProperty('titleBar', True)
         self.setFixedHeight(42)
 
@@ -23,9 +23,9 @@ class TitleBar(QWidget):
         self.maximizeButton = self._windowButton('maximize', '□')
         self.closeButton = self._windowButton('close', '×')
 
-        self.minimizeButton.clicked.connect(self.window.showMinimized)
+        self.minimizeButton.clicked.connect(self.hostWindow.showMinimized)
         self.maximizeButton.clicked.connect(self.toggleMaximized)
-        self.closeButton.clicked.connect(self.window.close)
+        self.closeButton.clicked.connect(self.hostWindow.close)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 5, 6, 5)
@@ -60,18 +60,18 @@ class TitleBar(QWidget):
         return button
 
     def toggleMaximized(self):
-        if self.window.isMaximized():
-            self.window.showNormal()
+        if self.hostWindow.isMaximized():
+            self.hostWindow.showNormal()
         else:
-            self.window.showMaximized()
+            self.hostWindow.showMaximized()
         self.syncWindowState()
 
     def syncWindowState(self):
-        self.maximizeButton.setText('❐' if self.window.isMaximized() else '□')
+        self.maximizeButton.setText('❐' if self.hostWindow.isMaximized() else '□')
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            handle = self.window.windowHandle()
+            handle = self.hostWindow.windowHandle()
             if handle is not None and handle.startSystemMove():
                 event.accept()
                 return
