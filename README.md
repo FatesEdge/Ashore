@@ -1,7 +1,7 @@
 <h1  align="center">Ashore</h1>
 
 <p align="center">
-  <a target="_blank" href="https://github.com/PanZK/Ashore"><img src="https://raw.githubusercontent.com/PanZK/Ashore/main/static/icon/functionIcons/icon0.png"></a></p>
+  <a target="_blank" href="https://github.com/FatesEdge/Ashore"><img src="./static/icon/functionIcons/icon0.png"></a></p>
 <p align="center"><br>Ashore 是一个用Python编写的内核为aria2的界面管理程序。<br><br>
 </p>
 
@@ -26,11 +26,13 @@
 - 启动准备工作在后台执行，开屏窗口显示当前阶段；Tracker 超时不会阻止进入主界面
 - 支持跟随系统、浅色、深色主题以及统一的主题颜色
 - BT Tracker 首次运行自动获取，之后可选择在启动时按24小时周期自动更新
+- 设置页提供 Tracker 摘要与独立管理窗口，可手动维护列表并并发检测 Tracker 可达性与延迟
 
-## Stand by
+## Platforms
 
-- Ubuntu 18.04 或更高版本
-- MacOS 10.15 或更高版本
+- Linux：主要开发与人工测试平台
+- macOS：支持应用打包与协议关联
+- Windows：代码与自动化测试覆盖，仍需要更多实体机验收
 
 ## Install
 
@@ -38,7 +40,7 @@
 
 1. 确认已安装好[aria2](https://github.com/aria2/aria2)；
 2. 下载 [release](https://github.com/FatesEdge/Ashore/releases) 中的 `dmg` 文件；
-3. 双击运行 `dmg` 文件，将Ashorer拉进 `Applications` 文件夹；
+3. 双击运行 `dmg` 文件，将 Ashore 拖入 `Applications` 文件夹；
 4. 程序坞中找到，点击运行。
 
 ### 	Linux
@@ -69,11 +71,15 @@
 
 ## make
 
-GitHub Actions 在 Linux 上运行测试、检查打包脚本，构建 `onefile` 并进行无界面启动检查；它不会安装程序或自动发布 Release。本机安装后的桌面关联和实际下载仍需手动验证。
+GitHub Actions 在 Linux、Windows 与 macOS 上运行静态检查和单元测试；Linux 额外构建 `onefile` 并进行无界面启动检查。它不会安装程序或自动发布 Release。本机安装后的桌面关联和实际下载仍需手动验证。
 
-1. 编程环境vscode、python3.10、pyqt6
+1. 使用 Python 3.12+。开发依赖已写入 `pyproject.toml`：
 
-2. 安装 `PyQt6` 和 `PyInstaller` 后，在项目根目录执行
+   ```
+   python3 -m pip install -e ".[dev]"
+   ```
+
+2. 在项目根目录执行
 
    ```
    python3 make.py onefile
@@ -92,23 +98,22 @@ User Agent 使用可编辑下拉框：预设是 `ashore.conf` 中的完整 UA �
 
 ## 代码结构
 
-- `Ashore.py`：应用入口、主窗口编排、连接状态和系统通知
+- `Ashore.py`：主窗口编排、连接状态和系统通知
+- `core/applicationRuntime.py`：单实例路由、启动流程与启动窗口协调
 - `core/aria2Client.py`：aria2 HTTP JSON-RPC 与任务整理
 - `core/aria2Service.py`：aria2 进程生命周期、异步启动和轮询
 - `core/aria2Events.py`：WebSocket 事件及重连；不可用时仍按间隔查询
-- `core/trackerManager.py`、`core/trackerSources.py`：Tracker 更新策略、持久化、来源与校验
+- `core/trackerManager.py`、`core/trackerSources.py`：Tracker 更新策略、持久化、来源与格式校验
+- `core/trackerHealth.py`、`interface/trackerManagerDialog.py`：Tracker 健康检测与管理界面
 - `core/configStore.py`：配置读取与原子写入
+- `core/fileOperations.py`：本地任务文件安全删除与系统文件管理器集成
 - `interface/startupWindow.py`、`interface/themeManager.py`：启动反馈与统一主题
 - `interface/`：下载页面、任务卡片、设置页和新建下载对话框
 - `paths.py`：源代码及打包运行共用的资源、配置路径
 
 ## Development
 
-1. 上一版是通过[aria2p](https://github.com/pawamoy/aria2p)实现，后面感觉过于繁琐，故自行写了一版，目前仍有许多不足，后续继续努力；
-2. 后续可继续补充常用文件类型图标；
-3. 目前手头没有Windows实体机及虚拟机，还未对win平台做测试；
-4. 继续扩大简体中文、繁体中文、英语的翻译覆盖范围；
-5. 后续考虑对任务管理添加多选功能。
+Ashore 直接维护轻量的 aria2 JSON-RPC 客户端，不依赖 aria2p。当前重点是保持下载器本身的边界清晰、三平台行为一致，以及继续扩大简体中文、繁体中文和英语的翻译覆盖。
 
 
 
