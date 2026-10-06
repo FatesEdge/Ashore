@@ -50,7 +50,6 @@ class Aria2Client:
         self.missionNames = MissionNames()
         self.globalStatus = {}
         self.confPath = ensureConfig('aria2.conf')
-        ensureConfig('aria2.session')
         self.readRpcOptions()
 
     def readRpcOptions(self):
