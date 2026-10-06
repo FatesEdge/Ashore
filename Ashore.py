@@ -139,7 +139,18 @@ class Ashore(QMainWindow):
         elif (event.type() == QEvent.Type.WindowStateChange
                 and hasattr(self, 'titleBar')):
             self.titleBar.syncWindowState()
+            self.syncWindowSurfaceState()
 
+
+    def syncWindowSurfaceState(self):
+        if not hasattr(self, 'windowSurface'):
+            return
+        maximized = self.isMaximized() or self.isFullScreen()
+        for widget in (self.windowSurface, self.titleBar, self.statusStrip):
+            widget.setProperty('windowMaximized', maximized)
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            widget.update()
 
     def createCommandActions(self) -> None:
         """Create low-frequency actions for the command-bar overflow menu."""
@@ -486,15 +497,23 @@ class Ashore(QMainWindow):
         mainWidget = QWidget()
         mainWidget.setObjectName('mainRoot')
 
+        self.windowSurface = QWidget()
+        self.windowSurface.setProperty('windowSurface', True)
+        surfaceLayout = QVBoxLayout(self.windowSurface)
+        surfaceLayout.setContentsMargins(0, 0, 0, 0)
+        surfaceLayout.setSpacing(0)
+        surfaceLayout.addWidget(self.titleBar)
+        surfaceLayout.addSpacing(4)
+        surfaceLayout.addWidget(bodyWidget, 1)
+        surfaceLayout.addSpacing(8)
+        surfaceLayout.addWidget(self.statusStrip)
+
         mainLayout = QVBoxLayout(mainWidget)
         mainLayout.setContentsMargins(0, 0, 0, 0)
         mainLayout.setSpacing(0)
-        mainLayout.addWidget(self.titleBar)
-        mainLayout.addSpacing(4)
-        mainLayout.addWidget(bodyWidget, 1)
-        mainLayout.addSpacing(8)
-        mainLayout.addWidget(self.statusStrip)
+        mainLayout.addWidget(self.windowSurface)
         self.setCentralWidget(mainWidget)
+        self.syncWindowSurfaceState()
 
         self.setMinimumSize(920, 520)
         self.createTrayIcon()
