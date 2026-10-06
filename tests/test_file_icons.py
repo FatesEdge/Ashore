@@ -23,6 +23,10 @@ class FileIconTests(unittest.TestCase):
     def test_known_torrent_payload_keeps_its_file_family(self):
         self.assertEqual(fileIconSpec('Movie.MKV', True).family, 'video')
 
+    def test_video_and_torrent_use_requested_release_colors(self):
+        self.assertEqual(fileIconSpec('Movie.MKV').color, '#8b5cf6')
+        self.assertEqual(fileIconSpec('download.torrent').color, '#38a9e8')
+
     def test_unknown_and_torrent_have_stable_fallbacks(self):
         generic = fileIconSpec('unknown.zzz')
         self.assertEqual((generic.family, generic.label), ('generic', 'ZZZ'))
