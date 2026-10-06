@@ -117,7 +117,10 @@ def build(kind):
                 info = plistlib.load(file)
             with (ROOT / 'packaging/Info.plist').open('rb') as file:
                 template = plistlib.load(file)
-            for key in ('CFBundleURLTypes', 'CFBundleDocumentTypes'):
+            for key in (
+                    'CFBundleIdentifier',
+                    'CFBundleURLTypes',
+                    'CFBundleDocumentTypes'):
                 info[key] = template[key]
             info['CFBundleShortVersionString'] = APP_VERSION
             info['CFBundleVersion'] = APP_VERSION
