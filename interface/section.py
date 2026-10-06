@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
 from core.formatters import formatBytes, formatSpeed
 from interface.actionIcons import DANGER_COLOR, actionIcon
 from interface.fileIcons import fileIconPixmap
-from interface.languageManager import translate
+from interface.languageManager import resolveLanguage, translate
 
 
 class HoverMenuButton(QPushButton):
@@ -71,7 +71,7 @@ class Section(QFrame):
     def __init__(
             self, gid: str, fileName: str, status: str, fileSize: int,
             completedSize: int, speed: int, isTorrent: bool = False,
-            files=None, language='zh_CN'):
+            files=None, language=None):
         super().__init__()
         self.gid = gid
         self.fileName = fileName
@@ -81,7 +81,7 @@ class Section(QFrame):
         self.speed = speed
         self.isTorrent = isTorrent
         self.files = list(files or [])
-        self.language = language
+        self.language = resolveLanguage(language)
         self.initUI()
         self.connectSignals()
 
@@ -259,7 +259,7 @@ class Section(QFrame):
             button.setVisible(visible)
 
     def setLanguage(self, language):
-        self.language = language
+        self.language = resolveLanguage(language)
         self.refresh()
 
     def updateInfo(
