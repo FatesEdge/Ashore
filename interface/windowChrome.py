@@ -4,6 +4,7 @@ The application paints its own top bar, while move/resize operations are still
 delegated to the platform window manager through QWindow.
 """
 
+from PyQt6 import sip
 from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QApplication, QWidget
@@ -38,7 +39,9 @@ class WindowChrome(QObject):
         self.window = None
 
     def eventFilter(self, watched, event):
-        if self.window is None:
+        if self.window is None or sip.isdeleted(self.window):
+            self.window = None
+            self._installed = False
             return False
         if not isinstance(watched, QWidget):
             return False
