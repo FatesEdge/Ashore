@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from core.configStore import readOptions
 from core.downloadRequest import (
     DownloadItem,
     DownloadRequest,
@@ -53,12 +54,7 @@ class Aria2Client:
         self.readRpcOptions()
 
     def readRpcOptions(self):
-        options = {}
-        for line in self.confPath.read_text(encoding='utf-8').splitlines():
-            line = line.strip()
-            if line and not line.startswith(('#', ';', '[')) and '=' in line:
-                key, value = line.split('=', 1)
-                options[key.strip()] = value.strip()
+        options = readOptions(self.confPath)
         self.rpcPort = int(options.get('rpc-listen-port', '6801'))
         self.rpcSecret = options.get('rpc-secret', '')
 
@@ -360,7 +356,7 @@ class Aria2Client:
         jsonData = self.makeRequest(
             method=RPC_METHODS['changeGlobalOption'], params=[conf])
         result = self.call(data=jsonData)
-        return {} if result == 'OK' else result   #设置失败返回带错误字典
+        return {} if result == 'OK' else result
 
     def makeRequest(self, method: str, params: list | None = None) -> str:
         data = json.dumps({
@@ -393,4 +389,4 @@ class Aria2Client:
     def saveSession(self):
         jsonData = self.makeRequest(method=RPC_METHODS['saveSession'])
         saveResult = self.call(data=jsonData)
-        return {} if saveResult == 'OK' else saveResult   #设置失败返回带错误字典
+        return {} if saveResult == 'OK' else saveResult
