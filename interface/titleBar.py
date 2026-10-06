@@ -12,6 +12,8 @@ class TitleBar(QWidget):
     def __init__(self, window, commandWidgets, overflowButton, parent=None):
         super().__init__(parent)
         self.hostWindow = window
+        self.commandWidgets = tuple(commandWidgets)
+        self.overflowButton = overflowButton
         self.setProperty('titleBar', True)
         self.setFixedHeight(36)
 
@@ -50,7 +52,7 @@ class TitleBar(QWidget):
             layout.addWidget(self.titleLabel)
 
         layout.addSpacing(8)
-        for widget in commandWidgets:
+        for widget in self.commandWidgets:
             layout.addWidget(widget)
         layout.addStretch(1)
         layout.addWidget(overflowButton)
@@ -65,7 +67,7 @@ class TitleBar(QWidget):
         button.setProperty('windowControl', True)
         button.setProperty('windowControlRole', role)
         button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        button.setFixedSize(24, 24)
+        button.setFixedSize(22, 22)
         return button
 
     def toggleMaximized(self):
@@ -85,6 +87,25 @@ class TitleBar(QWidget):
                 event.accept()
                 return
         super().mousePressEvent(event)
+
+    def contextMenuEvent(self, event):
+        interactive = (
+            *self.commandWidgets,
+            self.overflowButton,
+            self.minimizeButton,
+            self.maximizeButton,
+            self.closeButton,
+        )
+        if any(widget.geometry().contains(event.pos()) for widget in interactive):
+            event.ignore()
+            return
+
+        menu = self.overflowButton.menu()
+        if menu is not None:
+            menu.popup(event.globalPos())
+            event.accept()
+            return
+        super().contextMenuEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
