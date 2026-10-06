@@ -7,49 +7,63 @@ delegated to the platform window manager through QWindow.
 from PyQt6 import sip
 from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtGui import QCursor
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QWidget
 
 
 class WindowChrome(QObject):
-    """Provide frameless chrome without reimplementing window geometry."""
+    """Provide frameless chrome scoped to one application window."""
 
     resizeMargin = 6
 
     def __init__(self, window):
-        super().__init__(QApplication.instance())
+        super().__init__(window)
         self.window = window
         self._installed = False
-        self.window.destroyed.connect(self._hostDestroyed)
 
     def install(self):
         if self._installed or self.window is None or sip.isdeleted(self.window):
             return
+
         flags = self.window.windowFlags() | Qt.WindowType.FramelessWindowHint
         self.window.setWindowFlags(flags)
-        self.window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        QApplication.instance().installEventFilter(self)
+        self.window.setAttribute(
+            Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+        self._installOnSubtree(self.window)
         self._installed = True
 
     def uninstall(self):
-        app = QApplication.instance()
-        if self._installed and app is not None:
-            app.removeEventFilter(self)
+        if (self._installed and self.window is not None
+                and not sip.isdeleted(self.window)):
+            self._removeFromSubtree(self.window)
         self._installed = False
 
-    def _hostDestroyed(self):
-        self.window = None
-        self.uninstall()
-        self.deleteLater()
+    def _installOnSubtree(self, widget):
+        widget.installEventFilter(self)
+        for child in widget.findChildren(
+                QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly):
+            self._installOnSubtree(child)
+
+    def _removeFromSubtree(self, widget):
+        widget.removeEventFilter(self)
+        for child in widget.findChildren(
+                QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly):
+            self._removeFromSubtree(child)
 
     def eventFilter(self, watched, event):
         if self.window is None or sip.isdeleted(self.window):
-            self.window = None
             self._installed = False
             return False
+
+        if event.type() == QEvent.Type.ChildAdded:
+            child = event.child()
+            if self._installed and isinstance(child, QWidget):
+                self._installOnSubtree(child)
+            return False
+
         if not isinstance(watched, QWidget):
             return False
-        if watched is not self.window and not self.window.isAncestorOf(watched):
-            return False
+
         if self.window.isMaximized() or self.window.isFullScreen():
             if event.type() == QEvent.Type.MouseMove:
                 self.window.unsetCursor()
@@ -85,12 +99,19 @@ class WindowChrome(QObject):
 
     @staticmethod
     def _applyCursor(widget, edges):
-        horizontal = bool(edges & (Qt.Edge.LeftEdge | Qt.Edge.RightEdge))
-        vertical = bool(edges & (Qt.Edge.TopEdge | Qt.Edge.BottomEdge))
+        horizontal = bool(
+            edges & (Qt.Edge.LeftEdge | Qt.Edge.RightEdge))
+        vertical = bool(
+            edges & (Qt.Edge.TopEdge | Qt.Edge.BottomEdge))
         if horizontal and vertical:
-            sameDiagonal = bool(edges & Qt.Edge.LeftEdge and edges & Qt.Edge.TopEdge) or bool(
+            sameDiagonal = bool(
+                edges & Qt.Edge.LeftEdge and edges & Qt.Edge.TopEdge
+            ) or bool(
                 edges & Qt.Edge.RightEdge and edges & Qt.Edge.BottomEdge)
-            shape = Qt.CursorShape.SizeFDiagCursor if sameDiagonal else Qt.CursorShape.SizeBDiagCursor
+            shape = (
+                Qt.CursorShape.SizeFDiagCursor
+                if sameDiagonal
+                else Qt.CursorShape.SizeBDiagCursor)
             widget.setCursor(QCursor(shape))
         elif horizontal:
             widget.setCursor(QCursor(Qt.CursorShape.SizeHorCursor))
