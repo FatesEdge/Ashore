@@ -1,5 +1,6 @@
 """Automatic BitTorrent tracker refresh and persistence."""
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -12,11 +13,13 @@ from core.configStore import (
     writeAshore,
     writeOptions,
 )
-from core.trackerSources import fetchTrackers, parseTrackers
+from core.trackerSources import DEFAULT_SOURCE_KEYS, fetchTrackers, parseTrackers, sourceUrls
 
 AUTO_UPDATE_KEY = 'trackers_auto_update'
 LAST_SUCCESS_KEY = 'trackers_list_time'
 SOURCE_KEY = 'trackers_list_source'
+SOURCE_KEYS_KEY = 'tracker_source_keys'
+CUSTOM_SOURCES_KEY = 'tracker_custom_sources'
 UPDATE_AGE = timedelta(days=1)
 
 
@@ -51,17 +54,29 @@ def updateDue(lastSuccess, now=None):
     return now.astimezone(timezone.utc) - parsed.astimezone(timezone.utc) >= UPDATE_AGE
 
 
+def jsonList(value, default):
+    try:
+        parsed = json.loads(value) if isinstance(value, str) else value
+    except (TypeError, ValueError):
+        parsed = None
+    return parsed if isinstance(parsed, list) else list(default)
+
+
 class TrackerWorker(QThread):
-    completed = pyqtSignal(list, str)
+    completed = pyqtSignal(list, object)
+
+    def __init__(self, sources, parent=None):
+        super().__init__(parent)
+        self.sources = list(sources)
 
     def run(self):
-        trackers, source = fetchTrackers()
-        self.completed.emit(trackers, source)
+        trackers, sourceResult = fetchTrackers(self.sources)
+        self.completed.emit(trackers, sourceResult)
 
 
 class TrackerManager(QObject):
     statusChanged = pyqtSignal(str)
-    updated = pyqtSignal(list, str, str)
+    updated = pyqtSignal(list, list, str)
     failed = pyqtSignal(str)
 
     def __init__(self, ashorePath, aria2Path, defaultsPath=None, parent=None):
@@ -70,6 +85,12 @@ class TrackerManager(QObject):
         self.aria2Path = Path(aria2Path)
         self.defaultsPath = defaultsPath
         self.worker = None
+
+    def configuredSources(self):
+        settings = readAshore(self.ashorePath, self.defaultsPath)
+        keys = jsonList(settings.get(SOURCE_KEYS_KEY), DEFAULT_SOURCE_KEYS)
+        custom = jsonList(settings.get(CUSTOM_SOURCES_KEY), ())
+        return sourceUrls(keys, custom)
 
     def shouldUpdate(self, force=False):
         if force:
@@ -80,14 +101,18 @@ class TrackerManager(QObject):
         automatic = boolValue(settings.get(AUTO_UPDATE_KEY), True)
         return firstRun or (automatic and updateDue(settings.get(LAST_SUCCESS_KEY)))
 
-    def start(self, force=False):
+    def start(self, force=False, sources=None):
         if self.worker and self.worker.isRunning():
             return False
         if not self.shouldUpdate(force):
             self.statusChanged.emit('BT Tracker 已是最新')
             return False
+        selectedSources = list(sources if sources is not None else self.configuredSources())
+        if not selectedSources:
+            self.failed.emit('没有启用 Tracker 来源')
+            return False
         self.statusChanged.emit('正在更新 BT Tracker')
-        self.worker = TrackerWorker(self)
+        self.worker = TrackerWorker(selectedSources, self)
         self.worker.completed.connect(self.finish)
         self.worker.finished.connect(self.clearWorker)
         self.worker.start()
@@ -99,18 +124,20 @@ class TrackerManager(QObject):
         if worker:
             worker.deleteLater()
 
-    def finish(self, trackers, sourceOrError):
+    def finish(self, trackers, sourceResult):
         if not trackers:
             self.statusChanged.emit('BT Tracker 更新失败，继续使用现有列表')
-            self.failed.emit(sourceOrError)
+            self.failed.emit(str(sourceResult))
             return
+        successfulSources = list(sourceResult)
         timestamp = isoNow()
         oldTracker = readOptions(self.aria2Path).get('bt-tracker', '')
         oldSettings = readAshore(self.ashorePath, self.defaultsPath)
-        aria2Saved = writeOptions(self.aria2Path, {'bt-tracker': ','.join(trackers)})
+        aria2Saved = writeOptions(
+            self.aria2Path, {'bt-tracker': ','.join(trackers)})
         ashoreSaved = writeAshore(self.ashorePath, {
             LAST_SUCCESS_KEY: timestamp,
-            SOURCE_KEY: sourceOrError,
+            SOURCE_KEY: json.dumps(successfulSources, ensure_ascii=False),
         })
         if not aria2Saved or not ashoreSaved:
             writeOptions(self.aria2Path, {'bt-tracker': oldTracker})
@@ -122,4 +149,4 @@ class TrackerManager(QObject):
             self.failed.emit('无法写入配置目录')
             return
         self.statusChanged.emit('BT Tracker 更新完成')
-        self.updated.emit(trackers, sourceOrError, timestamp)
+        self.updated.emit(trackers, successfulSources, timestamp)
