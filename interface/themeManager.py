@@ -392,14 +392,12 @@ class ThemeManager(QObject):
             QSpinBox::up-button, QSpinBox::down-button {{
                 subcontrol-origin: border;
                 width: 22px;
-                height: 13px;
                 background: transparent;
-                border-left: 1px solid {token['border']};
+                border: none;
             }}
             QSpinBox::up-button {{
                 subcontrol-position: top right;
                 border-top-right-radius: 7px;
-                border-bottom: 1px solid {token['border']};
             }}
             QSpinBox::down-button {{
                 subcontrol-position: bottom right;
@@ -441,11 +439,17 @@ class ThemeManager(QObject):
                 font-weight: 500;
             }}
             QLineEdit {{
+                background: {token['field']};
+                color: {token['text']};
+                border: 1px solid {token['border']};
+                border-radius: 7px;
                 min-height: 28px;
                 max-height: 28px;
                 padding: 0 7px;
+                selection-background-color: {self.accent};
+                selection-color: {accentText};
             }}
-            QLineEdit, QTextEdit {{
+            QTextEdit {{
                 background: {token['field']};
                 color: {token['text']};
                 border: 1px solid {token['border']};
@@ -453,6 +457,23 @@ class ThemeManager(QObject):
                 padding: 4px 7px;
                 selection-background-color: {self.accent};
                 selection-color: {accentText};
+            }}
+            QSpinBox QLineEdit {{
+                background: transparent;
+                border: none;
+                border-radius: 0;
+                min-height: 0;
+                max-height: none;
+                padding: 0;
+            }}
+            QLineEdit[joinedLeft="true"] {{
+                border-top-right-radius: 0;
+                border-bottom-right-radius: 0;
+            }}
+            QPushButton[joinedRight="true"] {{
+                border-top-left-radius: 0;
+                border-bottom-left-radius: 0;
+                border-left: none;
             }}
             QLineEdit:focus, QTextEdit:focus {{
                 border-color: {self.accent};
