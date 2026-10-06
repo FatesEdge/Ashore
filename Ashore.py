@@ -5,9 +5,7 @@ import signal
 import sys
 
 from PyQt6.QtCore import (
-    QElapsedTimer,
     QEvent,
-    QObject,
     QSize,
     Qt,
     QTimer,
@@ -30,28 +28,25 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.applicationInfo import APP_VERSION, configureApplication
+from core.applicationInfo import APP_VERSION
 from core.applicationRuntime import AshoreApplication, StartupController
 from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
-from core.aria2Service import Aria2Poller, Aria2Removal, Aria2Shutdown, Aria2Startup
-from core.configStore import boolValue, readAshore, writeAshore
+from core.aria2Service import Aria2Poller, Aria2Removal, Aria2Shutdown
+from core.configStore import boolValue
 from core.formatters import formatSpeed
-from core.singleInstance import SingleInstanceCoordinator
 from interface.actionIcons import actionIcon
 from interface.addNewDialog import AddNewDialog
 from interface.languageManager import translate
 from interface.page import Page
 from interface.settingPage import SettingPage
-from interface.startupWindow import ExitWindow, RecoveryWindow, StartupWindow
+from interface.startupWindow import ExitWindow
 from interface.titleBar import TitleBar
 from interface.windowChrome import WindowChrome
 from interface.notificationManager import NotificationManager
-from interface.themeManager import TRAY_GRAY, ThemeManager
+from interface.themeManager import TRAY_GRAY
 from paths import (
-    CONFIG_DIR,
     RESOURCE_DIR,
-    ensureConfig,
     legacyDownloadDirectoryMigration,
 )
 
