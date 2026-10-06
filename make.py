@@ -185,10 +185,13 @@ def pyinstallerCommand(system, kind, staging):
 
 
 def directorySize(path):
-    return sum(
-        file.stat().st_size
-        for file in Path(path).rglob('*')
-        if file.is_file())
+    total = 0
+    for entry in Path(path).rglob('*'):
+        if entry.is_symlink():
+            total += entry.lstat().st_size
+        elif entry.is_file():
+            total += entry.stat().st_size
+    return total
 
 
 def copyMacAppBundle(source, destination):
@@ -277,7 +280,11 @@ def build(kind):
             if previous.exists():
                 previous.rename(target)
             raise
-    printPackageSize(target)
+    if system == 'Darwin' and kind == 'dmg':
+        printPackageSize(target / 'Ashore.app')
+        printPackageSize(target / 'Ashore.dmg')
+    else:
+        printPackageSize(target)
     print(f'Build complete: {target}')
 
 
