@@ -327,6 +327,8 @@ class Ashore(QMainWindow):
         self.pageSetting.setLanguage(self.language)
         self.pageDownloading.setLanguage(self.language)
         self.pageDownloaded.setLanguage(self.language)
+        if self.hasPainted:
+            self.flushConnectionStatus()
         self.refreshActionIcons()
 
 
