@@ -6,13 +6,14 @@ from unittest.mock import patch
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPalette
-from PyQt6.QtWidgets import QApplication, QFormLayout, QSizePolicy
+from PyQt6.QtWidgets import QApplication, QSizePolicy
 
 import paths
 from Ashore import StartupController
 from interface.addNewDialog import AddNewDialog
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.section import Section
+from interface.settingItem import SettingItem
 from interface.settingPage import SettingPage
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, ThemeManager
 
@@ -65,6 +66,10 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(
                 page.updateIntervalSpin.focusPolicy(),
                 Qt.FocusPolicy.StrongFocus)
+            self.assertTrue(page.settingItems)
+            self.assertTrue(all(
+                isinstance(item, SettingItem)
+                for item in page.settingItems))
             self.assertTrue(
                 page.defaultDownloadDirLabel.property('settingsFormLabel'))
 
@@ -160,12 +165,7 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
             self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
             self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
-            self.assertEqual(
-                page.formLayout.rowWrapPolicy(),
-                QFormLayout.RowWrapPolicy.WrapAllRows)
-            self.assertEqual(
-                page.formLayout.labelAlignment(),
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.assertGreater(len(page.settingItems), 10)
             self.assertEqual(
                 page.showAria2StatusLabel.text(),
                 'Show aria2 status in main window:')
@@ -247,12 +247,7 @@ class SettingsLayoutTests(unittest.TestCase):
             page.setLanguage('zh_CN')
             self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
             self.assertTrue(page.showAria2StatusLabel.wordWrap())
-            self.assertEqual(
-                page.formLayout.rowWrapPolicy(),
-                QFormLayout.RowWrapPolicy.WrapAllRows)
-            self.assertEqual(
-                page.formLayout.labelAlignment(),
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.assertGreater(len(page.settingItems), 10)
 
 
 

@@ -105,45 +105,9 @@ class ThemeManager(QObject):
         accentText = contrastText(self.accent)
         accentSoft = translucent(self.accent, 52 if dark else 34)
         return f"""
-            QMainWindow {{
+            QMainWindow, QWidget#mainRoot {{
                 background: {token['background']};
                 color: {token['text']};
-            }}
-            QWidget#mainRoot, QWidget[windowFrame="true"] {{
-                background: {token['background']};
-                color: {token['text']};
-                border: none;
-            }}
-            QWidget[windowContent="true"] {{
-                background: {token['background']};
-                border: none;
-            }}
-            QWidget[customTitleBar="true"] {{
-                background: {token['surface']};
-                border: 1px solid {token['border']};
-                border-radius: 12px;
-            }}
-            QToolButton[windowControl="true"] {{
-                background: {token['raised']};
-                color: {token['muted']};
-                border: none;
-                border-radius: 11px;
-                min-width: 22px; max-width: 22px;
-                min-height: 22px; max-height: 22px;
-                padding: 0;
-                font-size: 13px;
-                font-weight: 500;
-            }}
-            QToolButton[windowControl="true"]:hover {{
-                background: {token['hover']};
-                color: {token['text']};
-            }}
-            QToolButton[windowControlRole="maximize"] {{
-                font-size: 11px;
-            }}
-            QToolButton[windowControlRole="close"]:hover {{
-                background: {token['danger']};
-                color: white;
             }}
             QWidget[commandBar="true"] {{
                 background: {token['surface']};
@@ -291,8 +255,17 @@ class ThemeManager(QObject):
                 font-weight: 700;
                 padding: 10px 2px 6px 2px;
             }}
+            QWidget[settingItem="true"],
+            QWidget[settingFieldHost="true"] {{
+                background: transparent;
+                border: none;
+            }}
             QLabel[settingsFormLabel="true"] {{
-                padding-top: 7px;
+                color: {token['muted']};
+                background: transparent;
+                border: none;
+                padding: 0;
+                font-weight: 500;
             }}
             QLabel[settingsSubTitle="true"] {{
                 color: {token['text']};

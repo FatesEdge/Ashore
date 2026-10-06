@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QCompleter,
     QFileDialog,
-    QFormLayout,
     QGridLayout,
     QFrame,
     QHBoxLayout,
@@ -31,6 +30,7 @@ from core.trackerManager import TrackerManager, displayTime
 from core.trackerSources import parseTrackers
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.languageManager import LANGUAGES, translate
+from interface.settingItem import SettingItem
 from interface.statusBadge import setConnectionBadge
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, validColor
 from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig, systemDownloadDirectory
@@ -76,21 +76,18 @@ class SettingPage(QWidget):
     def initUI(self):
         self.setProperty('settingsPage', True)
 
-        formLayout = QFormLayout()
-        self.formLayout = formLayout
-        formLayout.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        formLayout.setVerticalSpacing(6)
-        formLayout.setFieldGrowthPolicy(
-            QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        settingsLayout = QVBoxLayout()
+        settingsLayout.setContentsMargins(18, 0, 18, 18)
+        settingsLayout.setSpacing(12)
+        self.settingItems = []
 
         self.aria2SettingLabel = QLabel()
         self.aria2SettingLabel.setProperty('settingsSectionTitle', True)
-        formLayout.addRow(self.aria2SettingLabel)
+        settingsLayout.addWidget(self.aria2SettingLabel)
 
         self.basicSettingLabel = QLabel()
         self.basicSettingLabel.setProperty('settingsSubTitle', True)
-        formLayout.addRow(self.basicSettingLabel)
+        settingsLayout.addWidget(self.basicSettingLabel)
 
         completer = QCompleter()
         model = QFileSystemModel()
@@ -107,19 +104,19 @@ class SettingPage(QWidget):
         pathLayout.addWidget(self.pathLineEdit, 1)
         pathLayout.addWidget(self.pathBtn)
         self.defaultDownloadDirLabel = QLabel()
-        formLayout.addRow(self.defaultDownloadDirLabel, pathLayout)
+        self.addSettingItem(settingsLayout, self.defaultDownloadDirLabel, pathLayout)
 
         self.maxDownloadsSpin = AshoreSpinBox()
         self.maxDownloadsSpin.setRange(1, 100)
         self.maxDownloadsSpin.setMaximumWidth(100)
         self.maxDownloadsLabel = QLabel()
-        formLayout.addRow(self.maxDownloadsLabel, self.maxDownloadsSpin)
+        self.addSettingItem(settingsLayout, self.maxDownloadsLabel, self.maxDownloadsSpin)
 
         self.maxConnectionSpin = AshoreSpinBox()
         self.maxConnectionSpin.setRange(1, 16)
         self.maxConnectionSpin.setMaximumWidth(100)
         self.maxConnectionsLabel = QLabel()
-        formLayout.addRow(self.maxConnectionsLabel, self.maxConnectionSpin)
+        self.addSettingItem(settingsLayout, self.maxConnectionsLabel, self.maxConnectionSpin)
 
         self.userAgentComboBox = AshoreComboBox()
         self.userAgentComboBox.setEditable(True)
@@ -129,7 +126,7 @@ class SettingPage(QWidget):
         self.userAgentComboBox.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.userAgentLabel = QLabel('User Agent:')
-        formLayout.addRow(self.userAgentLabel, self.userAgentComboBox)
+        self.addSettingItem(settingsLayout, self.userAgentLabel, self.userAgentComboBox)
 
         self.uploadLimitLabel = QLabel()
         self.uploadLimitSpin = AshoreSpinBox()
@@ -154,12 +151,12 @@ class SettingPage(QWidget):
         transLayout.addWidget(self.downloadLimitComboBox, 1, 2)
         transLayout.setColumnStretch(3, 1)
         self.speedLimitsLabel = QLabel()
-        formLayout.addRow(self.speedLimitsLabel, transLayout)
+        self.addSettingItem(settingsLayout, self.speedLimitsLabel, transLayout)
 
         self.rpcPortLineEdit = QLineEdit()
         self.rpcPortLineEdit.setMaximumWidth(200)
         self.rpcPortLabel = QLabel()
-        formLayout.addRow(self.rpcPortLabel, self.rpcPortLineEdit)
+        self.addSettingItem(settingsLayout, self.rpcPortLabel, self.rpcPortLineEdit)
 
         self.httpEndpointLabel = QLabel()
         self.httpEndpointLabel.setTextInteractionFlags(
@@ -170,7 +167,7 @@ class SettingPage(QWidget):
         httpLayout.addWidget(self.httpStatusLabel)
         httpLayout.addStretch(10)
         self.httpPollingLabel = QLabel()
-        formLayout.addRow(self.httpPollingLabel, httpLayout)
+        self.addSettingItem(settingsLayout, self.httpPollingLabel, httpLayout)
 
         self.websocketEndpointLabel = QLabel()
         self.websocketEndpointLabel.setTextInteractionFlags(
@@ -181,12 +178,12 @@ class SettingPage(QWidget):
         websocketLayout.addWidget(self.websocketStatusLabel)
         websocketLayout.addStretch(10)
         self.websocketLabel = QLabel()
-        formLayout.addRow(self.websocketLabel, websocketLayout)
+        self.addSettingItem(settingsLayout, self.websocketLabel, websocketLayout)
 
         self.aria2VersionLabel = QLabel('—')
         self.aria2VersionFormLabel = QLabel()
-        formLayout.addRow(
-            self.aria2VersionFormLabel, self.aria2VersionLabel)
+        self.addSettingItem(
+            settingsLayout, self.aria2VersionFormLabel, self.aria2VersionLabel)
 
         self.rpcListenAllComboBox = AshoreComboBox()
         self.rpcListenAllComboBox.addItems(['', ''])
@@ -195,7 +192,7 @@ class SettingPage(QWidget):
         listenAllLayout.addWidget(self.rpcListenAllComboBox)
         listenAllLayout.addStretch(10)
         self.externalRpcLabel = QLabel()
-        formLayout.addRow(self.externalRpcLabel, listenAllLayout)
+        self.addSettingItem(settingsLayout, self.externalRpcLabel, listenAllLayout)
 
         self.rpcSecretLineEdit = QLineEdit()
         self.rpcSecretLineEdit.setReadOnly(True)
@@ -211,11 +208,11 @@ class SettingPage(QWidget):
         tokenLayout.addWidget(self.rpcSecretRevealBtn)
         tokenLayout.addWidget(self.rpcSecretCopyBtn)
         self.rpcSecretLabel = QLabel()
-        formLayout.addRow(self.rpcSecretLabel, tokenLayout)
+        self.addSettingItem(settingsLayout, self.rpcSecretLabel, tokenLayout)
 
         self.btSettingLabel = QLabel()
         self.btSettingLabel.setProperty('settingsSubTitle', True)
-        formLayout.addRow(self.btSettingLabel)
+        settingsLayout.addWidget(self.btSettingLabel)
 
         self.btTracker = QTextEdit()
         self.btTracker.setMinimumWidth(260)
@@ -233,7 +230,7 @@ class SettingPage(QWidget):
         trackerLayout.addWidget(self.trackerStatus, 2, 0, 1, 2)
         trackerLayout.setColumnStretch(0, 1)
         self.btTrackerLabel = QLabel('BT Tracker:')
-        formLayout.addRow(self.btTrackerLabel, trackerLayout)
+        self.addSettingItem(settingsLayout, self.btTrackerLabel, trackerLayout)
 
         self.autoTrackerComboBox = AshoreComboBox()
         self.autoTrackerComboBox.addItems(['', ''])
@@ -243,11 +240,11 @@ class SettingPage(QWidget):
         autoTrackerLayout.addWidget(self.autoTrackerHintLabel)
         autoTrackerLayout.addStretch(1)
         self.autoTrackerLabel = QLabel()
-        formLayout.addRow(self.autoTrackerLabel, autoTrackerLayout)
+        self.addSettingItem(settingsLayout, self.autoTrackerLabel, autoTrackerLayout)
 
         self.ashoreSettingLabel = QLabel()
         self.ashoreSettingLabel.setProperty('settingsSectionTitle', True)
-        formLayout.addRow(self.ashoreSettingLabel)
+        settingsLayout.addWidget(self.ashoreSettingLabel)
 
         self.withAria2QuitComboBox = AshoreComboBox()
         self.withAria2QuitComboBox.addItems(['', ''])
@@ -255,7 +252,7 @@ class SettingPage(QWidget):
         quitWithAria2Layout.addWidget(self.withAria2QuitComboBox)
         quitWithAria2Layout.addStretch(10)
         self.quitWithAria2Label = QLabel()
-        formLayout.addRow(self.quitWithAria2Label, quitWithAria2Layout)
+        self.addSettingItem(settingsLayout, self.quitWithAria2Label, quitWithAria2Layout)
 
         self.showAria2StatusComboBox = AshoreComboBox()
         self.showAria2StatusComboBox.addItems(['', ''])
@@ -263,8 +260,8 @@ class SettingPage(QWidget):
         showAria2StatusLayout.addWidget(self.showAria2StatusComboBox)
         showAria2StatusLayout.addStretch(10)
         self.showAria2StatusLabel = QLabel()
-        formLayout.addRow(
-            self.showAria2StatusLabel, showAria2StatusLayout)
+        self.addSettingItem(
+            settingsLayout, self.showAria2StatusLabel, showAria2StatusLayout)
 
         self.updateIntervalSpin = AshoreSpinBox()
         self.updateIntervalSpin.setRange(500, 10000)
@@ -275,7 +272,7 @@ class SettingPage(QWidget):
         updateIntervalLayout.addWidget(self.updateIntervalSpin)
         updateIntervalLayout.addWidget(self.updateIntervalUnitLabel)
         self.refreshIntervalLabel = QLabel()
-        formLayout.addRow(self.refreshIntervalLabel, updateIntervalLayout)
+        self.addSettingItem(settingsLayout, self.refreshIntervalLabel, updateIntervalLayout)
 
         self.rpcPortChangeableComboBox = AshoreComboBox()
         self.rpcPortChangeableComboBox.addItems(['', ''])
@@ -283,7 +280,7 @@ class SettingPage(QWidget):
         rpcPortChangeableLayout.addWidget(self.rpcPortChangeableComboBox)
         rpcPortChangeableLayout.addStretch(10)
         self.rpcChangeLabel = QLabel()
-        formLayout.addRow(self.rpcChangeLabel, rpcPortChangeableLayout)
+        self.addSettingItem(settingsLayout, self.rpcChangeLabel, rpcPortChangeableLayout)
 
         self.languageComboBox = AshoreComboBox()
         for code, name in LANGUAGES.items():
@@ -292,7 +289,7 @@ class SettingPage(QWidget):
         languageLayout.addWidget(self.languageComboBox)
         languageLayout.addStretch(10)
         self.languageLabel = QLabel()
-        formLayout.addRow(self.languageLabel, languageLayout)
+        self.addSettingItem(settingsLayout, self.languageLabel, languageLayout)
 
         self.trayIconStyleComboBox = AshoreComboBox()
         self.trayIconStyleComboBox.addItem('', 'colorful')
@@ -301,7 +298,7 @@ class SettingPage(QWidget):
         trayIconLayout.addWidget(self.trayIconStyleComboBox)
         trayIconLayout.addStretch(10)
         self.trayIconStyleLabel = QLabel()
-        formLayout.addRow(self.trayIconStyleLabel, trayIconLayout)
+        self.addSettingItem(settingsLayout, self.trayIconStyleLabel, trayIconLayout)
 
         self.themeModeComboBox = AshoreComboBox()
         for mode in THEME_MODES:
@@ -310,7 +307,7 @@ class SettingPage(QWidget):
         themeLayout.addWidget(self.themeModeComboBox)
         themeLayout.addStretch(1)
         self.themeModeLabel = QLabel()
-        formLayout.addRow(self.themeModeLabel, themeLayout)
+        self.addSettingItem(settingsLayout, self.themeModeLabel, themeLayout)
 
         self.accentComboBox = AshoreComboBox()
         self.accentComboBox.setEditable(True)
@@ -322,12 +319,12 @@ class SettingPage(QWidget):
         accentLayout.addWidget(self.accentButton)
         accentLayout.addStretch(1)
         self.accentColorLabel = QLabel()
-        formLayout.addRow(self.accentColorLabel, accentLayout)
+        self.addSettingItem(settingsLayout, self.accentColorLabel, accentLayout)
 
+        settingsLayout.addStretch(1)
         settingWidget = QWidget()
         settingWidget.setProperty('settingsSurface', True)
-        settingWidget.setLayout(formLayout)
-        settingWidget.setContentsMargins(18, 0, 18, 0)
+        settingWidget.setLayout(settingsLayout)
 
         self.scrollToAria2Btn = QPushButton()
         self.scrollToAshoreBtn = QPushButton()
@@ -373,55 +370,18 @@ class SettingPage(QWidget):
         self.accentComboBox.currentTextChanged.connect(self.previewTheme)
         self.accentButton.clicked.connect(self.pickAccent)
 
-        self.formLabelWidgets = (
-            self.defaultDownloadDirLabel, self.maxDownloadsLabel,
-            self.maxConnectionsLabel, self.userAgentLabel,
-            self.speedLimitsLabel, self.rpcPortLabel,
-            self.httpPollingLabel, self.websocketLabel,
-            self.aria2VersionFormLabel, self.externalRpcLabel,
-            self.rpcSecretLabel, self.btTrackerLabel,
-            self.autoTrackerLabel, self.quitWithAria2Label,
-            self.showAria2StatusLabel, self.refreshIntervalLabel,
-            self.rpcChangeLabel, self.languageLabel,
-            self.trayIconStyleLabel, self.themeModeLabel,
-            self.accentColorLabel,
-        )
-        self.configureFormLabels()
         self.retranslateUi()
         self.updateTokenRow()
 
     def setLanguage(self, language):
         self.language = language or 'zh_CN'
-        self.configureFormLabels()
         self.retranslateUi()
 
-
-    def configureFormLabels(self):
-        if not hasattr(self, 'formLabelWidgets'):
-            return
-
-        self.formLayout.setRowWrapPolicy(
-            QFormLayout.RowWrapPolicy.WrapAllRows)
-        self.formLayout.setLabelAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.formLayout.setVerticalSpacing(4)
-
-        for label in self.formLabelWidgets:
-            label.setProperty('settingsFormLabel', True)
-            label.setWordWrap(True)
-            label.setMinimumWidth(0)
-            label.setMaximumWidth(16777215)
-            label.setAlignment(
-                Qt.AlignmentFlag.AlignLeft
-                | Qt.AlignmentFlag.AlignVCenter)
-
-        for row in range(self.formLayout.rowCount()):
-            fieldItem = self.formLayout.itemAt(
-                row, QFormLayout.ItemRole.FieldRole)
-            if fieldItem is not None:
-                fieldItem.setAlignment(
-                    Qt.AlignmentFlag.AlignLeft
-                    | Qt.AlignmentFlag.AlignVCenter)
+    def addSettingItem(self, layout, label, field):
+        item = SettingItem(label, field, self)
+        layout.addWidget(item)
+        self.settingItems.append(item)
+        return item
 
     def retranslateUi(self):
         self.aria2SettingLabel.setText(

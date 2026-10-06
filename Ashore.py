@@ -43,7 +43,7 @@ from interface.languageManager import translate
 from interface.page import Page
 from interface.settingPage import SettingPage
 from interface.startupWindow import ExitWindow, RecoveryWindow, StartupWindow
-from interface.titleBar import AshoreTitleBar, WindowFrame
+from interface.windowChrome import createWindowChrome
 from interface.themeManager import TRAY_GRAY, ThemeManager
 from paths import (
     CONFIG_DIR,
@@ -59,7 +59,8 @@ class Ashore(QMainWindow):
 
     def __init__(self, aria2Service, themeManager):
         super().__init__()
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        self.windowChrome = createWindowChrome(self)
+        self.windowChrome.install()
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'
@@ -128,23 +129,11 @@ class Ashore(QMainWindow):
             return True
         return super().event(event)
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        if hasattr(self, 'windowFrame'):
-            self.windowFrame.updateWindowMask()
-
     def changeEvent(self, event):
         super().changeEvent(event)
         if (event.type() == QEvent.Type.PaletteChange
                 and hasattr(self, 'addBtn')):
             self.refreshActionIcons()
-        if (event.type() == QEvent.Type.WindowStateChange
-                and hasattr(self, 'titleBar')):
-            self.titleBar.syncState()
-            margin = 0 if self.isMaximized() else 5
-            self.windowFrameLayout.setContentsMargins(
-                margin, margin, margin, margin)
-            self.windowFrame.updateWindowMask()
 
 
     def createCommandActions(self) -> None:
@@ -422,6 +411,23 @@ class Ashore(QMainWindow):
         self.moreBtn.setProperty('overflowButton', True)
         self.moreBtn.setMenu(self.moreMenu)
 
+        self.commandBar = QWidget()
+        self.commandBar.setProperty('commandBar', True)
+        self.commandBar.setFixedHeight(40)
+        commandLayout = QHBoxLayout(self.commandBar)
+        commandLayout.setContentsMargins(8, 5, 8, 5)
+        commandLayout.setSpacing(4)
+        commandLayout.addWidget(self.addBtn)
+        commandLayout.addWidget(self.unpauseAllBtn)
+        commandLayout.addWidget(self.pauseAllBtn)
+        commandLayout.addStretch(1)
+        commandLayout.addWidget(self.moreBtn)
+
+        commandHost = QWidget()
+        commandHostLayout = QHBoxLayout(commandHost)
+        commandHostLayout.setContentsMargins(12, 0, 12, 10)
+        commandHostLayout.addWidget(self.commandBar)
+
         self.tabDownloading = QPushButton()
         self.tabDownloaded = QPushButton()
         self.tabSetting = QPushButton()
@@ -471,32 +477,16 @@ class Ashore(QMainWindow):
         self.createStatusStrip()
 
         self.setWindowTitle('Ashore')
-        mainWidget = WindowFrame(self)
+        mainWidget = QWidget()
         mainWidget.setObjectName('mainRoot')
-        self.windowFrame = mainWidget
-        self.titleBar = AshoreTitleBar(
-            self,
-            self.addBtn,
-            self.unpauseAllBtn,
-            self.pauseAllBtn,
-            self.moreBtn)
-        self.commandBar = self.titleBar
-
-        contentWidget = QWidget()
-        contentWidget.setProperty('windowContent', True)
-        contentLayout = QVBoxLayout(contentWidget)
-        contentLayout.setContentsMargins(0, 10, 0, 0)
-        contentLayout.setSpacing(0)
-        contentLayout.addWidget(bodyWidget, 1)
-        contentLayout.addSpacing(8)
-        contentLayout.addWidget(self.statusStrip)
 
         mainLayout = QVBoxLayout(mainWidget)
-        self.windowFrameLayout = mainLayout
-        mainLayout.setContentsMargins(5, 5, 5, 5)
+        mainLayout.setContentsMargins(0, 10, 0, 0)
         mainLayout.setSpacing(0)
-        mainLayout.addWidget(self.titleBar)
-        mainLayout.addWidget(contentWidget, 1)
+        mainLayout.addWidget(commandHost)
+        mainLayout.addWidget(bodyWidget, 1)
+        mainLayout.addSpacing(8)
+        mainLayout.addWidget(self.statusStrip)
         self.setCentralWidget(mainWidget)
 
         self.setMinimumSize(920, 520)
