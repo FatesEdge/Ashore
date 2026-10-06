@@ -77,6 +77,13 @@ def expandAshoreUri(value):
 
 
 def classifyInput(value):
+    localPath = Path(value).expanduser()
+    try:
+        if localPath.is_file() and localPath.suffix.lower() == '.torrent':
+            return DownloadItem(str(localPath.resolve()), ITEM_LOCAL_TORRENT)
+    except OSError:
+        pass
+
     parsed = urlsplit(value)
     scheme = parsed.scheme.lower()
 
@@ -97,11 +104,6 @@ def classifyInput(value):
             if unquote(parsed.path).lower().endswith('.torrent')
             else ITEM_NETWORK)
         return DownloadItem(value, kind)
-
-    if not scheme:
-        path = Path(value).expanduser()
-        if path.is_file() and path.suffix.lower() == '.torrent':
-            return DownloadItem(str(path.resolve()), ITEM_LOCAL_TORRENT)
 
     return None
 
