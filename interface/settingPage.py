@@ -86,7 +86,7 @@ class SettingPage(QWidget):
         self.setProperty('settingsPage', True)
 
         settingsLayout = QVBoxLayout()
-        settingsLayout.setContentsMargins(18, 0, 18, 18)
+        settingsLayout.setContentsMargins(12, 0, 12, 14)
         settingsLayout.setSpacing(4)
         self.settingItems = []
 
@@ -235,7 +235,6 @@ class SettingPage(QWidget):
             checkBox = QCheckBox(source['name'])
             checkBox.setToolTip(source['url'])
             self.trackerSourceChecks[source['key']] = checkBox
-            checkBox.toggled.connect(lambda _checked: self.showTrackerStatus())
             trackerSourceLayout.addWidget(checkBox)
 
         self.customTrackerRows = []
@@ -279,7 +278,6 @@ class SettingPage(QWidget):
         trackerOverviewLayout = QVBoxLayout()
         trackerOverviewLayout.setContentsMargins(0, 0, 0, 0)
         trackerOverviewLayout.setSpacing(6)
-        trackerOverviewLayout.addWidget(self.trackerStatus)
         trackerOverviewLayout.addLayout(trackerActions)
         self.btTrackerLabel = QLabel()
         self.addSettingItem(
@@ -289,11 +287,13 @@ class SettingPage(QWidget):
         self.trackerToggle.setCheckable(True)
         self.trackerToggle.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.trackerToggle.setProperty('advancedToggle', True)
+        self.trackerToggle.setProperty('trackerToggle', True)
+        self.trackerToggle.setCursor(Qt.CursorShape.PointingHandCursor)
         self.trackerPanel = TrackerManagerPanel(
             self.trackers, self.language, self)
         self.trackerPanel.setVisible(False)
-        settingsLayout.addWidget(self.trackerToggle)
+        settingsLayout.addWidget(
+            self.trackerToggle, 0, Qt.AlignmentFlag.AlignLeft)
         settingsLayout.addWidget(self.trackerPanel)
 
         self.ashoreSettingLabel = QLabel()
@@ -392,7 +392,7 @@ class SettingPage(QWidget):
         scrollBtnLayout.addWidget(self.scrollToAshoreBtn)
         scrollBtnLayout.addStretch(10)
         scrollBtnLayout.addWidget(self.saveBtn)
-        scrollBtnLayout.setContentsMargins(4, 0, 10, 0)
+        scrollBtnLayout.setContentsMargins(2, 0, 6, 0)
 
         self.scrollArea = QScrollArea()
         self.scrollArea.setProperty('settingsScroll', True)
@@ -402,7 +402,7 @@ class SettingPage(QWidget):
         self.scrollArea.viewport().setProperty('settingsSurface', True)
 
         mainLayout = QHBoxLayout(self)
-        mainLayout.setContentsMargins(14, 14, 10, 10)
+        mainLayout.setContentsMargins(8, 10, 6, 8)
         mainLayout.setSpacing(0)
         mainLayout.addWidget(settingsNav)
         mainLayout.addWidget(self.scrollArea, 1)
@@ -743,7 +743,6 @@ class SettingPage(QWidget):
         rowLayout.setSpacing(6)
         checkBox = QCheckBox(value)
         checkBox.setChecked(bool(enabled))
-        checkBox.toggled.connect(lambda _checked: self.showTrackerStatus())
         removeBtn = QPushButton('×')
         removeBtn.setFixedSize(26, 26)
         rowLayout.addWidget(checkBox, 1)
@@ -774,20 +773,9 @@ class SettingPage(QWidget):
         self.trackerToggle.setIcon(actionIcon(name, size=16))
 
     def showTrackerStatus(self):
-        count = len(self.trackers)
-        sourceCount = len(self.selectedTrackerSourceUrls())
-        if self.trackerHealthSummary is None:
-            text = self.tr('trackerSummary').format(
-                count=count, sources=sourceCount)
-        else:
-            healthy, failed = self.trackerHealthSummary
-            text = (
-                self.tr('trackerSummary').format(
-                    count=count, sources=sourceCount)
-                + ' · '
-                + self.tr('trackerHealthSummary').format(
-                    count=count, healthy=healthy, failed=failed))
-        self.trackerStatus.setText(text)
+        self.trackerInfo.setText(
+            self.tr('lastTrackerUpdate').format(
+                time=displayTime(self.trackerTime)))
 
     def applyManagedTrackers(self, trackers):
         self.trackers = list(trackers)
@@ -800,7 +788,7 @@ class SettingPage(QWidget):
         self.showTrackerStatus()
 
     def showTrackerMessage(self, message):
-        self.trackerStatus.setText(message)
+        self.trackerInfo.setText(message)
 
 
     def applyTrackerUpdate(self, trackers, sources, timestamp):
@@ -811,9 +799,9 @@ class SettingPage(QWidget):
         self.trackers = list(trackers)
         self.trackerHealthSummary = None
         self.trackerPanel.setTrackers(self.trackers)
-        self.trackerStatus.setText(
-            self.tr('trackerUpdated').format(
-                count=len(trackers), sources=len(sources)))
+        self.trackerInfo.setText(
+            self.tr('lastTrackerUpdate').format(
+                time=displayTime(timestamp)))
         self.trackerBtn.setText(self.tr('updateTracker'))
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
@@ -821,7 +809,7 @@ class SettingPage(QWidget):
             {'bt-tracker': ','.join(trackers)})
 
     def applyTrackerFailure(self, error):
-        self.trackerStatus.setText(
+        self.trackerInfo.setText(
             self.tr('trackerUpdateFailed').format(error=error))
         self.trackerBtn.setText(self.tr('trackerFailed'))
         self.trackerBtn.setEnabled(True)
