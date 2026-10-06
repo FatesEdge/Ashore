@@ -89,6 +89,19 @@ class PackagingTests(unittest.TestCase):
         self.assertIn('strip=True', onefile)
         self.assertIn('strip=True', onedir)
 
+    def test_directory_size_does_not_follow_symlinks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payload = root / 'payload.bin'
+            payload.write_bytes(b'x' * 4096)
+            alias = root / 'alias.bin'
+            alias.symlink_to(payload.name)
+
+            size = make.directorySize(root)
+
+            self.assertGreaterEqual(size, payload.stat().st_size)
+            self.assertLess(size, payload.stat().st_size * 2)
+
     def test_macos_bundle_copy_preserves_symlinks(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
