@@ -38,7 +38,7 @@ class TitleBar(QWidget):
         self.closeButton.clicked.connect(self.hostWindow.close)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 3, 12, 3)
+        layout.setContentsMargins(12, 4, 12, 2)
         layout.setSpacing(4)
 
         controls = (self.minimizeButton, self.maximizeButton, self.closeButton)
