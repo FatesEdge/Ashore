@@ -61,7 +61,8 @@ class WindowFrame(QWidget):
     def belongsToWindow(self, watched):
         return (
             isinstance(watched, QWidget)
-            and watched.window() is self.window)
+            and (watched is self.window
+                 or self.window.isAncestorOf(watched)))
 
     def updateResizeCursor(self):
         position = self.mapFromGlobal(QCursor.pos())
