@@ -89,6 +89,27 @@ class PackagingTests(unittest.TestCase):
         self.assertIn('strip=True', onefile)
         self.assertIn('strip=True', onedir)
 
+    def test_macos_bundle_copy_preserves_symlinks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'Source.app'
+            destination = root / 'Destination.app'
+            resources = source / 'Contents' / 'Resources'
+            frameworks = source / 'Contents' / 'Frameworks'
+            resources.mkdir(parents=True)
+            frameworks.mkdir(parents=True)
+            target = resources / 'payload.dat'
+            target.write_text('payload')
+            linkPath = frameworks / 'payload.dat'
+            linkPath.symlink_to(Path('../Resources/payload.dat'))
+
+            make.copyMacAppBundle(source, destination)
+
+            copiedLink = destination / 'Contents' / 'Frameworks' / 'payload.dat'
+            self.assertTrue(copiedLink.is_symlink())
+            self.assertEqual(
+                copiedLink.readlink(), Path('../Resources/payload.dat'))
+
     def test_macos_bundle_identifier_matches_repository_identity(self):
         import plistlib
 
