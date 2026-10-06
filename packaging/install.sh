@@ -2,17 +2,17 @@
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then
-    echo '请使用 sudo 运行安装脚本。' >&2
+    echo 'Run this installer with sudo.' >&2
     exit 1
 fi
 if ! command -v aria2c >/dev/null 2>&1; then
-    echo '未检测到 aria2c。请先安装 aria2。' >&2
+    echo 'aria2c was not found. Install aria2 first.' >&2
     exit 1
 fi
 
 package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ ! -f "$package_dir/icon.png" ] || [ ! -f "$package_dir/ashore.desktop" ]; then
-    echo '安装包不完整：缺少 icon.png 或 ashore.desktop。' >&2
+    echo 'The package is incomplete: icon.png or ashore.desktop is missing.' >&2
     exit 1
 fi
 if [ -d "$package_dir/Ashore" ]; then
@@ -21,7 +21,7 @@ else
     executable="$package_dir/Ashore"
 fi
 if [ ! -f "$executable" ]; then
-    echo '安装包不完整：缺少 Ashore 可执行文件。' >&2
+    echo 'The package is incomplete: the Ashore executable is missing.' >&2
     exit 1
 fi
 
@@ -48,14 +48,14 @@ if ! mv "$staging" /opt/Ashore; then
     if [ -n "$backup" ]; then
         mv "$backup" /opt/Ashore
     fi
-    echo '安装失败，原有安装已恢复。' >&2
+    echo 'Installation failed; the previous Ashore installation was restored.' >&2
     exit 1
 fi
 trap - EXIT
 if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database /usr/local/share/applications || echo '桌面数据库刷新失败，请手动刷新。' >&2
+    update-desktop-database /usr/local/share/applications || echo 'Could not refresh the desktop database; refresh it manually if needed.' >&2
 fi
-echo 'Ashore 已安装到 /opt/Ashore。'
+echo 'Ashore was installed to /opt/Ashore.'
 if [ -n "$backup" ]; then
-    echo "原有安装已备份到 $backup。"
+    echo "The previous installation was backed up to $backup."
 fi
