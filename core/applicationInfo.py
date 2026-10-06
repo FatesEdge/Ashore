@@ -2,7 +2,7 @@
 
 APP_VERSION = '0.7.89'
 APP_AUTHOR = 'PanZK'
-PROJECT_URL = 'https://github.com/FatesEdge/Ashore'
+PROJECT_URL = 'https://github.com/Kai-x64/Ashore'
 
 
 def configureApplication():
