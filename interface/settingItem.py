@@ -1,9 +1,38 @@
-"""Reusable settings item composition."""
+"""Reusable settings item and section-header composition."""
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QLayout, QSizePolicy, QVBoxLayout, QWidget,
+    QFrame, QHBoxLayout, QLabel, QLayout, QSizePolicy, QVBoxLayout, QWidget,
 )
+
+
+class SettingsSectionHeader(QWidget):
+    """Major settings section title followed by a horizontal divider."""
+
+    def __init__(self, text='', parent=None):
+        super().__init__(parent)
+        self.setProperty('settingsSectionHeader', True)
+
+        self.titleLabel = QLabel(text)
+        self.titleLabel.setProperty('settingsSectionTitle', True)
+
+        self.divider = QFrame()
+        self.divider.setProperty('settingsSectionDivider', True)
+        self.divider.setFrameShape(QFrame.Shape.HLine)
+        self.divider.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 12, 0, 6)
+        layout.setSpacing(10)
+        layout.addWidget(self.titleLabel)
+        layout.addWidget(self.divider, 1)
+
+    def setText(self, text):
+        self.titleLabel.setText(text)
+
+    def text(self):
+        return self.titleLabel.text()
 
 
 class SettingItem(QWidget):
@@ -34,6 +63,7 @@ class SettingItem(QWidget):
         fieldHostLayout.setSpacing(0)
 
         if isinstance(field, QLayout):
+            field.setContentsMargins(0, 0, 0, 0)
             fieldWidget = QWidget(self.fieldHost)
             fieldWidget.setProperty('settingFieldBody', True)
             fieldWidget.setLayout(field)
