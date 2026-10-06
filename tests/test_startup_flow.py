@@ -85,7 +85,8 @@ class StartupFlowTests(unittest.TestCase):
             window.windowFlags() & Qt.WindowType.FramelessWindowHint)
         self.assertFalse(
             window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
-        self.assertTrue(window.pageStack.property('pageSurface'))
+        self.assertTrue(window.pageSurface.property('pageSurface'))
+        self.assertTrue(window.pageStack.property('pageStack'))
         self.assertIs(window.moreBtn.menu(), window.moreMenu)
         self.assertEqual(window.tabDownloading.text(), '')
         self.assertEqual(window.tabDownloaded.text(), '')
