@@ -34,6 +34,7 @@ from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Removal, Aria2Shutdown
 from core.configStore import boolValue
+from core.fileOperations import revealDownloadedFile
 from core.formatters import formatSpeed
 from interface.actionIcons import actionIcon
 from interface.addNewDialog import AddNewDialog
@@ -800,13 +801,15 @@ class Ashore(QMainWindow):
         elif action == 'retry':
             self.aria2Client.retry(gid)
         self.aria2Poller.poll()
-    def slotOpenFolder(self, gid:str) -> None:
-        openResult = self.aria2Client.openFileDir(gid)
-        if 'ResultError' in openResult:
-            self.showStatus(openResult['ResultError'])
-        elif 'dir' in openResult:
-            #返回非空,含有目录地址，代表使用不同系统特色方法调用失败,使用通用办法
-            QDesktopServices.openUrl(QUrl.fromLocalFile(openResult['dir']))
+    def slotOpenFolder(self, gid: str) -> None:
+        mission = self.aria2Client.getMission(gid)
+        if 'ResultError' in mission:
+            self.showStatus(mission['ResultError'])
+            return
+        openResult = revealDownloadedFile(mission)
+        if 'dir' in openResult:
+            QDesktopServices.openUrl(
+                QUrl.fromLocalFile(openResult['dir']))
 
     def slotCopyUrl(self, gid:str) -> None:
         urlResult = self.aria2Client.getUrl(gid)
