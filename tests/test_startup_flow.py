@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -84,16 +85,8 @@ class StartupFlowTests(unittest.TestCase):
 
         self.assertIsInstance(window.pageStack, QStackedWidget)
         self.assertEqual(window.pageStack.count(), 3)
-        self.assertTrue(window.titleBar.property('titleBar'))
-        self.assertTrue(
-            window.windowFlags() & Qt.WindowType.FramelessWindowHint)
-        self.assertTrue(
-            window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
         self.assertIs(window.windowChrome.parent(), window)
         self.assertTrue(window.windowChrome._installed)
-        self.assertTrue(window.hasMouseTracking())
-        self.assertTrue(window.windowSurface.hasMouseTracking())
-        self.assertTrue(window.pageSurface.hasMouseTracking())
         self.assertTrue(window.windowSurface.property('windowSurface'))
         self.assertTrue(window.pageSurface.property('pageSurface'))
         self.assertTrue(window.pageStack.property('pageStack'))
@@ -108,11 +101,37 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloading.height(), 52)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.tabSetting.iconSize().width(), 28)
-        self.assertEqual(window.titleBar.height(), 36)
-        self.assertEqual(window.titleBar.titleLabel.text(), 'Ashore')
-        self.assertFalse(window.titleBar.appIconLabel.pixmap().isNull())
-        self.assertEqual(window.titleBar.minimizeButton.width(), 20)
-        self.assertEqual(window.titleBar.minimizeButton.height(), 20)
+
+        if sys.platform == 'darwin':
+            self.assertTrue(window.windowChrome.nativeChrome)
+            self.assertFalse(window.titleBar.property('titleBar'))
+            self.assertTrue(window.titleBar.property('commandBar'))
+            self.assertTrue(window.windowSurface.property('nativeChrome'))
+            self.assertFalse(
+                window.windowFlags() & Qt.WindowType.FramelessWindowHint)
+            self.assertFalse(window.testAttribute(
+                Qt.WidgetAttribute.WA_TranslucentBackground))
+            self.assertEqual(window.titleBar.height(), 40)
+            self.assertIsNone(window.titleBar.titleLabel)
+            self.assertIsNone(window.titleBar.appIconLabel)
+            self.assertIsNone(window.titleBar.minimizeButton)
+        else:
+            self.assertFalse(window.windowChrome.nativeChrome)
+            self.assertTrue(window.titleBar.property('titleBar'))
+            self.assertFalse(window.titleBar.property('commandBar'))
+            self.assertFalse(window.windowSurface.property('nativeChrome'))
+            self.assertTrue(
+                window.windowFlags() & Qt.WindowType.FramelessWindowHint)
+            self.assertTrue(window.testAttribute(
+                Qt.WidgetAttribute.WA_TranslucentBackground))
+            self.assertTrue(window.hasMouseTracking())
+            self.assertTrue(window.windowSurface.hasMouseTracking())
+            self.assertTrue(window.pageSurface.hasMouseTracking())
+            self.assertEqual(window.titleBar.height(), 36)
+            self.assertEqual(window.titleBar.titleLabel.text(), 'Ashore')
+            self.assertFalse(window.titleBar.appIconLabel.pixmap().isNull())
+            self.assertEqual(window.titleBar.minimizeButton.width(), 20)
+            self.assertEqual(window.titleBar.minimizeButton.height(), 20)
         self.assertTrue(window.statusStrip.property('statusStrip'))
         self.assertEqual(window.statusStrip.height(), 30)
         self.assertTrue(window.aria2StateText.property('statusMetricText'))
