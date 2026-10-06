@@ -4,7 +4,7 @@ import platform
 import signal
 import sys
 
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QCoreApplication, QEvent, QTimer
 from PyQt6.QtGui import QFont, QIcon
 
 from core.applicationRuntime import AshoreApplication, StartupController
@@ -31,7 +31,18 @@ def main():
     signalTimer = QTimer()
     signalTimer.timeout.connect(lambda: None)
     signalTimer.start(250)
-    return app.exec()
+
+    exitCode = app.exec()
+
+    signalTimer.stop()
+    controller = app.startupController
+    controller.dispose()
+    app.startupController = None
+    controller.deleteLater()
+    QCoreApplication.sendPostedEvents(
+        None, QEvent.Type.DeferredDelete)
+    app.processEvents()
+    return exitCode
 
 
 if __name__ == '__main__':
