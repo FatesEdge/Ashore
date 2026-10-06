@@ -22,6 +22,7 @@ class TitleBar(QWidget):
         self.appIconLabel.setFixedSize(20, 20)
         self.appIconLabel.setPixmap(self.hostWindow.windowIcon().pixmap(18, 18))
         self.appIconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.appIconLabel.setContentsMargins(0, 1, 0, 0)
         self.appIconLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         self.titleLabel = QLabel('Ashore')
@@ -37,12 +38,14 @@ class TitleBar(QWidget):
         self.closeButton.clicked.connect(self.hostWindow.close)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 3, 6, 3)
+        layout.setContentsMargins(10, 3, 10, 3)
         layout.setSpacing(4)
 
         controls = (self.minimizeButton, self.maximizeButton, self.closeButton)
         if sys.platform == 'darwin':
-            for button in controls:
+            for index, button in enumerate(controls):
+                if index:
+                    layout.addSpacing(2)
                 layout.addWidget(button)
             layout.addSpacing(6)
             layout.addWidget(self.appIconLabel)
@@ -58,8 +61,10 @@ class TitleBar(QWidget):
         layout.addWidget(overflowButton)
 
         if sys.platform != 'darwin':
-            layout.addSpacing(4)
-            for button in controls:
+            layout.addSpacing(6)
+            for index, button in enumerate(controls):
+                if index:
+                    layout.addSpacing(2)
                 layout.addWidget(button)
 
     def _windowButton(self, role, text):
