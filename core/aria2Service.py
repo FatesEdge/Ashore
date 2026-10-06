@@ -1,14 +1,13 @@
 """aria2 process lifecycle and asynchronous polling."""
 
 import copy
-import shutil
 import subprocess
 import time
 
 from PyQt6.QtCore import QThread, QTimer, pyqtSignal
 
 from core.aria2Client import RPC_METHODS, Aria2Client
-from core.environmentCheck import makeEnvironmentIssue
+from core.environmentCheck import findAria2Executable, makeEnvironmentIssue
 from paths import CONFIG_DIR
 
 
@@ -26,7 +25,7 @@ class Aria2Service:
         return self.start()
 
     def start(self):
-        executable = shutil.which('aria2c')
+        executable = findAria2Executable()
         if not executable:
             return makeEnvironmentIssue('aria2_missing')
         self.client.readRpcOptions()
