@@ -1,6 +1,6 @@
 """Ashore-styled native controls with palette-aware accent arrows."""
 
-from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import QPainter, QPalette, QPen
 from PyQt6.QtWidgets import (
     QComboBox, QSpinBox, QStyle, QStyleOptionComboBox, QStyleOptionSpinBox,
@@ -94,16 +94,37 @@ class AshoreSpinBox(QSpinBox):
         super().paintEvent(event)
         option = QStyleOptionSpinBox()
         self.initStyleOption(option)
-        painter = QPainter(self)
-        upRect = self.style().subControlRect(
+        nativeUpRect = self.style().subControlRect(
             QStyle.ComplexControl.CC_SpinBox,
             option,
             QStyle.SubControl.SC_SpinBoxUp,
             self)
-        downRect = self.style().subControlRect(
-            QStyle.ComplexControl.CC_SpinBox,
-            option,
-            QStyle.SubControl.SC_SpinBoxDown,
-            self)
+
+        buttonWidth = max(20, nativeUpRect.width())
+        separatorX = self.width() - buttonWidth - 1
+        top = 1.0
+        bottom = float(self.height() - 1)
+        middle = self.height() / 2.0
+
+        upRect = QRectF(
+            separatorX + 1, top,
+            buttonWidth, max(1.0, middle - top))
+        downRect = QRectF(
+            separatorX + 1, middle,
+            buttonWidth, max(1.0, bottom - middle))
+
+        painter = QPainter(self)
+        painter.save()
+        borderColor = self.palette().color(QPalette.ColorRole.Mid)
+        pen = QPen(borderColor, 1.0)
+        painter.setPen(pen)
+        painter.drawLine(
+            QPointF(separatorX, top),
+            QPointF(separatorX, bottom))
+        painter.drawLine(
+            QPointF(separatorX, middle),
+            QPointF(self.width() - 1, middle))
+        painter.restore()
+
         _drawChevron(self, painter, upRect, 'up')
         _drawChevron(self, painter, downRect, 'down')
