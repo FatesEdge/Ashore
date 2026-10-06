@@ -104,7 +104,7 @@ class RecoveryWindow(QWidget):
     recheckRequested = pyqtSignal()
     quitRequested = pyqtSignal()
 
-    def __init__(self, issue, language='zh_CN'):
+    def __init__(self, issue, language='en'):
         super().__init__()
         self.issue = issue
         self.language = language
