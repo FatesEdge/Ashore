@@ -171,7 +171,7 @@ def pyinstallerCommand(system, kind, staging):
         '--noconfirm', '--clean',
         '--name', 'Ashore',
         '--windowed',
-        '--onedir',
+        '--onefile' if system == 'Windows' else '--onedir',
         '--distpath', str(staging),
         '--workpath', str(ROOT / 'build' / f'{system}.{kind}'),
         '--specpath', str(ROOT / 'build' / f'{system}.{kind}'),
@@ -204,7 +204,11 @@ def printPackageSize(target):
 
 def build(kind):
     system = platform.system()
-    supported = {'Linux': ('onefile', 'onedir'), 'Darwin': ('app', 'dmg')}
+    supported = {
+        'Linux': ('onefile', 'onedir'),
+        'Darwin': ('app', 'dmg'),
+        'Windows': ('onefile',),
+    }
     if kind not in supported.get(system, ()):
         raise ValueError(f'{system} does not support {kind} packaging')
     target = DIST / f'Ashore.{system}.{kind}'
@@ -224,7 +228,7 @@ def build(kind):
                                  (ROOT / 'packaging/install.sh', 'install.sh')]:
                 shutil.copy2(source, staging / name)
             (staging / 'install.sh').chmod(0o755)
-        else:
+        elif system == 'Darwin':
             app = staging / 'Ashore.app'
             plist = app / 'Contents/Info.plist'
             with plist.open('rb') as file:
@@ -249,6 +253,13 @@ def build(kind):
                 (dmg_stage / 'Applications').symlink_to('/Applications')
                 subprocess.run(['hdiutil', 'create', '-volname', 'Ashore', '-srcfolder', str(dmg_stage),
                                 '-format', 'UDZO', str(staging / 'Ashore.dmg')], check=True)
+        else:
+            executable = staging / 'Ashore.exe'
+            if not executable.is_file():
+                raise ValueError('PyInstaller did not produce a complete Ashore Windows package')
+            shutil.copy2(
+                ROOT / 'static/icon/functionIcons/appIcon.png',
+                staging / 'icon.png')
         previous = Path(directory) / 'previous'
         if target.exists():
             target.rename(previous)
