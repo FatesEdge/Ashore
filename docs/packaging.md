@@ -70,8 +70,10 @@ Before publishing a release:
 6. Verify URL/magnet and `.torrent` routing where supported.
 7. Verify the missing-aria2 startup guidance on a clean system or equivalent environment.
 8. Perform at least one real aria2 download.
-9. Verify settings persist across restart.
-10. Verify external RPC remains disabled by default.
-11. Verify the release package contains no development-only files or credentials.
+9. Verify download-complete/error notifications open Ashore and route to the downloaded-task view.
+10. Verify settings persist across restart.
+11. Verify external RPC remains disabled by default.
+12. On Linux, validate the packaged build on both X11 and Wayland and confirm Qt reports no missing/unloadable required plugins.
+13. Verify the release package contains no development-only files or credentials.
 
 CI does not publish GitHub Releases automatically.
