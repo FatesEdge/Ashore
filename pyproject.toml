@@ -8,7 +8,7 @@ version = "0.7.89"
 description = "A cross-platform aria2 desktop download manager."
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "GPL-3.0-only"}
+license = {text = "MPL-2.0"}
 authors = [{name = "PanZK"}]
 dependencies = [
     "PyQt6>=6.7,<7",
