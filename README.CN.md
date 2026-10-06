@@ -44,7 +44,7 @@ Ashore 使用 aria2 JSON-RPC 作为任务状态的权威来源，并使用 WebSo
 | --- | --- |
 | Linux | 主要开发与人工验收平台 |
 | macOS | 代码与打包支持已具备，可生成 App/DMG |
-| Windows | 已覆盖代码与 CI，正式发布前仍希望增加实体机验收 |
+| Windows | 已覆盖代码、CI 与便携 onefile 打包；正式安装器仍需实体机验收 |
 
 从源码运行需要 **Python 3.12+**，下载功能需要系统中存在可用的 **aria2**。发布版 Ashore 可以先于 aria2 安装；若启动时未检测到 aria2，Ashore 会显示当前系统对应的安装提示。
 
@@ -70,7 +70,7 @@ sudo ./install.sh
 
 ### Windows
 
-Windows 已纳入自动化测试，但目前尚未提供正式安装器。在 Windows 打包流程完成前，从源码运行仍是开发方式。
+Windows 发布版提供便携式 `Ashore.exe`。正式安装器以及系统级协议/文件关联安装流程暂不加入，待 Windows 实体机完成验证后再提供。
 
 ## 从源码运行
 
@@ -127,13 +127,14 @@ python -m unittest discover -s tests -v
 
 ## 打包
 
-Linux 支持 PyInstaller `onefile` 与 `onedir`；macOS 支持 `.app` 与 DMG。
+Linux 支持 PyInstaller `onefile` 与 `onedir`；macOS 支持 `.app` 与 DMG；Windows 支持便携式 PyInstaller `onefile`。
 
 ```bash
 python make.py onefile   # Linux
 python make.py onedir    # Linux
 python make.py app       # macOS
 python make.py dmg       # macOS
+python make.py onefile   # Windows
 ```
 
 发布目录与验收说明见 [打包说明](docs/packaging.md)。
