@@ -4,17 +4,18 @@ The application paints its own top bar, while move/resize operations are still
 delegated to the platform window manager through QWindow.
 """
 
-from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QApplication, QWidget
 
 
-class WindowChrome:
+class WindowChrome(QObject):
     """Provide frameless chrome without reimplementing window geometry."""
 
     resizeMargin = 6
 
     def __init__(self, window):
+        super().__init__(window)
         self.window = window
         self._installed = False
 
