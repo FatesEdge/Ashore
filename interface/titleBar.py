@@ -22,7 +22,7 @@ class TitleBar(QWidget):
         self.appIconLabel.setFixedSize(20, 20)
         self.appIconLabel.setPixmap(self.hostWindow.windowIcon().pixmap(18, 18))
         self.appIconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.appIconLabel.setContentsMargins(0, 1, 0, 0)
+        self.appIconLabel.setContentsMargins(0, 2, 0, 0)
         self.appIconLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         self.titleLabel = QLabel('Ashore')
@@ -38,16 +38,19 @@ class TitleBar(QWidget):
         self.closeButton.clicked.connect(self.hostWindow.close)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 3, 10, 3)
+        layout.setContentsMargins(12, 3, 12, 3)
         layout.setSpacing(4)
 
         controls = (self.minimizeButton, self.maximizeButton, self.closeButton)
+        controlLayout = QHBoxLayout()
+        controlLayout.setContentsMargins(0, 0, 0, 0)
+        controlLayout.setSpacing(6)
+        for button in controls:
+            controlLayout.addWidget(button)
+
         if sys.platform == 'darwin':
-            for index, button in enumerate(controls):
-                if index:
-                    layout.addSpacing(2)
-                layout.addWidget(button)
-            layout.addSpacing(6)
+            layout.addLayout(controlLayout)
+            layout.addSpacing(8)
             layout.addWidget(self.appIconLabel)
             layout.addWidget(self.titleLabel)
         else:
@@ -61,18 +64,15 @@ class TitleBar(QWidget):
         layout.addWidget(overflowButton)
 
         if sys.platform != 'darwin':
-            layout.addSpacing(6)
-            for index, button in enumerate(controls):
-                if index:
-                    layout.addSpacing(2)
-                layout.addWidget(button)
+            layout.addSpacing(8)
+            layout.addLayout(controlLayout)
 
     def _windowButton(self, role, text):
         button = QPushButton(text)
         button.setProperty('windowControl', True)
         button.setProperty('windowControlRole', role)
         button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        button.setFixedSize(22, 22)
+        button.setFixedSize(20, 20)
         return button
 
     def toggleMaximized(self):
