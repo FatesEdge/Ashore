@@ -88,7 +88,7 @@ class SettingPage(QWidget):
         self.setProperty('settingsPage', True)
 
         settingsLayout = QVBoxLayout()
-        settingsLayout.setContentsMargins(12, 0, 12, 14)
+        settingsLayout.setContentsMargins(14, 14, 14, 14)
         settingsLayout.setSpacing(4)
         self.settingItems = []
 
