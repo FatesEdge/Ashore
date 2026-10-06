@@ -167,7 +167,9 @@ class SettingPage(QWidget):
         self.addSettingItem(settingsLayout, self.speedLimitsLabel, transLayout)
 
         self.rpcPortLineEdit = QLineEdit()
-        self.rpcPortLineEdit.setMaximumWidth(200)
+        self.rpcPortLineEdit.setFixedWidth(200)
+        self.rpcPortLineEdit.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.rpcPortLabel = QLabel()
         self.addSettingItem(settingsLayout, self.rpcPortLabel, self.rpcPortLineEdit)
 
