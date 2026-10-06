@@ -1,6 +1,6 @@
 import unittest
 
-from interface.languageManager import LANGUAGES, translate
+from interface.languageManager import LANGUAGES, resolveLanguage, systemLanguage, translate
 
 
 class LanguageManagerTests(unittest.TestCase):
@@ -10,6 +10,19 @@ class LanguageManagerTests(unittest.TestCase):
             self.assertNotEqual(translate(language, 'new'), 'new')
             self.assertNotEqual(translate(language, 'settings'), 'settings')
 
+
+    def test_system_language_prefers_supported_locale_and_falls_back_to_english(self):
+        self.assertEqual(systemLanguage('zh_CN'), 'zh_CN')
+        self.assertEqual(systemLanguage('zh_TW'), 'zh_TW')
+        self.assertEqual(systemLanguage('zh_HK'), 'zh_TW')
+        self.assertEqual(systemLanguage('en_AU'), 'en')
+        self.assertEqual(systemLanguage('ja_JP'), 'en')
+
+    def test_configured_language_overrides_system_default(self):
+        self.assertEqual(resolveLanguage('zh_TW', 'en_AU'), 'zh_TW')
+        self.assertEqual(resolveLanguage('system', 'zh_CN'), 'zh_CN')
+        self.assertEqual(resolveLanguage(None, 'fr_FR'), 'en')
+        self.assertEqual(resolveLanguage('unsupported', 'zh_CN'), 'en')
 
 if __name__ == '__main__':
     unittest.main()
