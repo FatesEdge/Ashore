@@ -88,7 +88,7 @@ class SettingPage(QWidget):
         self.setProperty('settingsPage', True)
 
         settingsLayout = QVBoxLayout()
-        settingsLayout.setContentsMargins(14, 14, 14, 14)
+        settingsLayout.setContentsMargins(12, 0, 12, 14)
         settingsLayout.setSpacing(4)
         self.settingItems = []
 
@@ -414,7 +414,7 @@ class SettingPage(QWidget):
         self.scrollArea.viewport().setProperty('settingsSurface', True)
 
         mainLayout = QHBoxLayout(self)
-        mainLayout.setContentsMargins(8, 10, 6, 8)
+        mainLayout.setContentsMargins(14, 14, 14, 14)
         mainLayout.setSpacing(0)
         mainLayout.addWidget(settingsNav)
         mainLayout.addWidget(self.scrollArea, 1)
