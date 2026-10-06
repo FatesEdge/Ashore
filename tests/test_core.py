@@ -112,7 +112,9 @@ class Aria2Tests(unittest.TestCase):
 
     def test_missing_aria2_returns_recovery_issue(self):
         with patch('core.aria2Service.Aria2Client') as clientType, \
-             patch('core.aria2Service.shutil.which', return_value=None):
+             patch(
+                 'core.aria2Service.findAria2Executable',
+                 return_value=None):
             clientType.return_value.isRpcReady.return_value = False
             service = Aria2Service()
             issue = service.ensureReady()
