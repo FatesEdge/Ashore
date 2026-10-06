@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QMainWindow,
     QMenu,
@@ -38,6 +39,7 @@ from core.downloadRequest import (
     DownloadRequest,
     existingOutputConflict,
     nextAvailableOutputName,
+    outputNameAvailable,
 )
 from core.fileOperations import revealDownloadedFile
 from core.formatters import formatSpeed
@@ -755,10 +757,25 @@ class Ashore(QMainWindow):
                 return None
             return request
         if clicked is saveAsButton:
-            options = dict(request.options)
-            options['out'] = nextAvailableOutputName(conflict)
-            return DownloadRequest(
-                request.items, request.targetDir, options)
+            suggestedName = nextAvailableOutputName(conflict)
+            while True:
+                name, accepted = QInputDialog.getText(
+                    self,
+                    self.tr('saveAsTitle'),
+                    self.tr('saveAsPrompt'),
+                    text=suggestedName)
+                if not accepted:
+                    return None
+                name = name.strip()
+                if outputNameAvailable(request.targetDir, name):
+                    options = dict(request.options)
+                    options['out'] = name
+                    return DownloadRequest(
+                        request.items, request.targetDir, options)
+                QMessageBox.warning(
+                    self,
+                    self.tr('existingFileTitle'),
+                    self.tr('saveAsInvalid'))
         return None
 
     def addUrls(self, request):
