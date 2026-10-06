@@ -57,12 +57,12 @@ class Aria2Service:
                 self.client.makeRequest(RPC_METHODS['shutdown']))
             if result != 'OK':
                 message = result.get('ResultError', result) if isinstance(result, dict) else result
-                raise RuntimeError(f'无法通过 RPC 正常关闭当前 aria2：{message}')
+                raise RuntimeError(f'Could not shut down the current aria2 process through RPC: {message}')
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline and self.client.isRpcReady():
                 time.sleep(0.1)
             if self.client.isRpcReady():
-                raise RuntimeError('当前 aria2 收到关闭请求后仍在运行。')
+                raise RuntimeError('aria2 is still running after the shutdown request.')
         issue = self.start()
         if issue is not None:
             message = issue.detail or issue.code
