@@ -7,7 +7,7 @@ name = "ashore-download-manager"
 version = "1.0.0"
 description = "A cross-platform aria2 desktop download manager."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = {text = "MPL-2.0"}
 authors = [{name = "PanZK"}]
 dependencies = [
