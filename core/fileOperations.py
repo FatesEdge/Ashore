@@ -7,7 +7,8 @@ import subprocess
 from pathlib import Path
 
 
-def deleteTaskFiles(mission):
+def taskPaths(mission):
+    """Return validated task payload paths rooted inside the download directory."""
     root = Path(mission['dir']).resolve()
     if not root.is_dir():
         raise ValueError('The download directory does not exist; no files were deleted')
@@ -29,11 +30,32 @@ def deleteTaskFiles(mission):
 
     if not targets:
         raise ValueError('Task files could not be determined; refusing to delete')
+    return root, targets
+
+
+def deleteTaskSidecars(mission):
+    """Delete aria2 control files while preserving downloaded payload files."""
+    root, targets = taskPaths(mission)
+    candidates = {Path(str(path) + '.aria2') for path in targets}
+
+    filename = str(mission.get('filename') or '').strip()
+    if filename:
+        topLevel = root / filename
+        if topLevel.resolve().is_relative_to(root) and topLevel.resolve() != root:
+            candidates.add(Path(str(topLevel) + '.aria2'))
+
+    for sidecar in candidates:
+        if sidecar.is_file() and not sidecar.is_symlink():
+            sidecar.unlink()
+
+
+def deleteTaskFiles(mission):
+    root, targets = taskPaths(mission)
+    deleteTaskSidecars(mission)
 
     for path in targets:
-        for item in (path, Path(str(path) + '.aria2')):
-            if item.is_file() and not item.is_symlink():
-                item.unlink()
+        if path.is_file() and not path.is_symlink():
+            path.unlink()
         parent = path.parent
         while parent != root and parent.is_relative_to(root):
             try:
