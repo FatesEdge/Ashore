@@ -162,7 +162,9 @@ class SettingsLayoutTests(unittest.TestCase):
             page.trackerToggle.setChecked(True)
             self.assertFalse(page.trackerPanel.isHidden())
             self.assertTrue(page.saveBtn.property('primaryAction'))
-        section = Section('gid', 'example.bin', 'completed', 100, 100, 0)
+        section = Section(
+            'gid', 'example.bin', 'completed', 100, 100, 0,
+            language='zh_CN')
         self.assertEqual(section.progressBar.height(), 4)
         self.assertFalse(section.progressBar.isTextVisible())
         self.assertEqual(section.rateLabel.text(), '100%')
