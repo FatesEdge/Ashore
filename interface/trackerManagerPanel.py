@@ -16,16 +16,16 @@ from PyQt6.QtWidgets import (
 
 from core.trackerHealth import TrackerHealthWorker
 from core.trackerSources import parseTrackers
-from interface.languageManager import translate
+from interface.languageManager import resolveLanguage, translate
 
 
 class TrackerManagerPanel(QWidget):
     trackersChanged = pyqtSignal(list)
     healthSummaryChanged = pyqtSignal(int, int)
 
-    def __init__(self, trackers=(), language='zh_CN', parent=None):
+    def __init__(self, trackers=(), language=None, parent=None):
         super().__init__(parent)
-        self.language = language
+        self.language = resolveLanguage(language)
         self.worker = None
         self.updatingTable = False
         self.setProperty('trackerManagerPanel', True)
@@ -78,7 +78,7 @@ class TrackerManagerPanel(QWidget):
         return translate(self.language, key)
 
     def setLanguage(self, language):
-        self.language = language or 'zh_CN'
+        self.language = resolveLanguage(language)
         self.retranslateUi()
 
     def retranslateUi(self):
