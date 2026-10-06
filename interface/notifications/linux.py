@@ -1,8 +1,8 @@
+"""Freedesktop notification backend for Linux desktops."""
+
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSlot
-
-"""Freedesktop notification backend for Linux desktops."""
 
 from .base import NotificationBackend
 
