@@ -224,9 +224,9 @@ class SettingsLayoutTests(unittest.TestCase):
             page = self.makePage(folder)
             page.setLanguage('en')
             page.setConnectionStatus('connected', 'disconnected', '1.37.0')
-            self.assertEqual(page.httpStatusLabel.text(), 'Connected')
+            self.assertEqual(page.httpStatusLabel.text(), '● Connected')
             self.assertEqual(
-                page.websocketStatusLabel.text(), 'Disconnected, retrying')
+                page.websocketStatusLabel.text(), '● Disconnected, retrying')
             self.assertEqual(page.aria2VersionLabel.text(), '1.37.0')
 
 
