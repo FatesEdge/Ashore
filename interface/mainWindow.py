@@ -662,9 +662,8 @@ class Ashore(QMainWindow):
     def showSettings(self) -> None:
         config = self.aria2Client.getGlobalConfig()
         if 'ResultError' in config:
-            self.showStatus(
-                'aria2 未连接，设置页显示本地配置：'
-                + str(config['ResultError']))
+            self.showStatus(self.tr('localConfigFallback').format(
+                error=config['ResultError']))
             config = self.pageSetting.readAria2Config()
         self.tabSetting.setChecked(True)
         self.pageSetting.loadSettings(config)
@@ -679,7 +678,7 @@ class Ashore(QMainWindow):
         oldPath, newPath = migration
         answer = QMessageBox.question(
             self,
-            '更新默认下载目录',
+            self.tr('migrationTitle'),
             self.tr('migrationQuestion').format(
                 oldPath=oldPath, newPath=newPath),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -718,8 +717,7 @@ class Ashore(QMainWindow):
                 self, self.tr('addTaskFailedTitle'),
                 str(result['ResultError']))
     def slotAdd(self) -> None:
-        """用户通过按钮触发的添加新任务,无参数
-        """
+        """Open the new-download dialog from the main command button."""
         self.addNew()
 
     def slotUnpauseAll(self):
@@ -920,9 +918,8 @@ class Ashore(QMainWindow):
                 conf['theme_mode'], conf.get('accent_color'))
 
         if getattr(self, 'aria2ConfigError', None):
-            self.showStatus(
-                '配置已保存，但运行中 aria2 未能应用设置：'
-                + str(self.aria2ConfigError))
+            self.showStatus(self.tr('configSavedRuntimeFailed').format(
+                error=self.aria2ConfigError))
         else:
             self.showStatus(conf['isSaved'])
 
