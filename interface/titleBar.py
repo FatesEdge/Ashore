@@ -27,6 +27,7 @@ class TitleBar(QWidget):
 
         self.titleLabel = QLabel('Ashore')
         self.titleLabel.setProperty('windowTitle', True)
+        self.titleLabel.setContentsMargins(3, 0, 0, 0)
         self.titleLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         self.minimizeButton = self._windowButton('minimize', '−')
