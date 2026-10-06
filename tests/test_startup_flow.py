@@ -9,7 +9,9 @@ from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication, QStackedWidget
 
 import paths
-from Ashore import Ashore, AshoreApplication, StartupController, configureApplication
+from Ashore import Ashore
+from core.applicationInfo import configureApplication
+from core.applicationRuntime import AshoreApplication, StartupController
 from core.environmentCheck import makeEnvironmentIssue
 from interface.startupWindow import RecoveryWindow
 from interface.settingPage import SettingPage
@@ -41,7 +43,7 @@ class StartupFlowTests(unittest.TestCase):
         splash.close()
 
     def test_startup_requires_snapshot_and_tracker_before_finish(self):
-        controller = StartupController(self.app, ['Ashore.py'])
+        controller = StartupController(self.app, ['Ashore.py'], Ashore)
         controller.MIN_VISIBLE_MS = 0
         controller.window = object()
         controller.clock.start()
@@ -56,7 +58,7 @@ class StartupFlowTests(unittest.TestCase):
         controller.finish.assert_called_once_with()
 
     def test_runtime_services_wait_for_main_window_first_paint(self):
-        controller = StartupController(self.app, ['Ashore.py'])
+        controller = StartupController(self.app, ['Ashore.py'], Ashore)
         controller.window = Mock()
         controller.window.showTray = Mock()
         controller.window.offerDownloadMigration = Mock()
