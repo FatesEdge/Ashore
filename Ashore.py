@@ -396,6 +396,9 @@ class Ashore(QMainWindow):
         self.aria2StateDot.setPalette(palette)
 
     def initUI(self) -> None:
+        self.setWindowTitle('Ashore')
+        self.setWindowIcon(
+            QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
@@ -480,7 +483,6 @@ class Ashore(QMainWindow):
 
         self.createStatusStrip()
 
-        self.setWindowTitle('Ashore')
         mainWidget = QWidget()
         mainWidget.setObjectName('mainRoot')
 
@@ -488,15 +490,13 @@ class Ashore(QMainWindow):
         mainLayout.setContentsMargins(0, 0, 0, 0)
         mainLayout.setSpacing(0)
         mainLayout.addWidget(self.titleBar)
-        mainLayout.addSpacing(8)
+        mainLayout.addSpacing(4)
         mainLayout.addWidget(bodyWidget, 1)
         mainLayout.addSpacing(8)
         mainLayout.addWidget(self.statusStrip)
         self.setCentralWidget(mainWidget)
 
         self.setMinimumSize(920, 520)
-        self.setWindowIcon(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/icon.png'))
         self.createTrayIcon()
         self.refreshActionIcons()
 
