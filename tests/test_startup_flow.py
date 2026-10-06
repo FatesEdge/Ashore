@@ -200,14 +200,37 @@ class StartupFlowTests(unittest.TestCase):
     def test_notification_click_restores_window_and_focuses_task(self):
         window = Mock()
         window.notificationTarget = 'gid'
-        window.pageDownloaded.focusSection.return_value = True
+        window.notificationTargetStatus = 'completed'
 
         Ashore.slotNotificationClicked(window, 'gid')
 
         window.slotShowWindow.assert_called_once_with()
-        window.pageDownloaded.focusSection.assert_called_once_with('gid')
         window.showCompleted.assert_called_once_with()
-        window.pageDownloading.focusSection.assert_not_called()
+        window.pageDownloaded.focusSection.assert_called_once_with('gid')
+        window.showDownloading.assert_not_called()
+
+    def test_completed_notification_opens_completed_page_before_card_exists(self):
+        window = Mock()
+        window.notificationTarget = 'gid'
+        window.notificationTargetStatus = 'completed'
+        window.pageDownloaded.focusSection.return_value = False
+
+        Ashore.slotNotificationClicked(window, 'gid')
+
+        window.showCompleted.assert_called_once_with()
+        window.pageDownloaded.focusSection.assert_called_once_with('gid')
+        window.showDownloading.assert_not_called()
+
+    def test_error_notification_opens_completed_page(self):
+        window = Mock()
+        window.notificationTarget = 'gid'
+        window.notificationTargetStatus = 'error'
+
+        Ashore.slotNotificationClicked(window, 'gid')
+
+        window.showCompleted.assert_called_once_with()
+        window.pageDownloaded.focusSection.assert_called_once_with('gid')
+        window.showDownloading.assert_not_called()
 
 
     def test_aria2_status_visibility_can_change_at_runtime(self):
