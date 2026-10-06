@@ -144,22 +144,22 @@ class ThemeManager(QObject):
                 background: {token['raised']};
                 color: {token['text']};
                 border: 1px solid {token['border']};
-                border-radius: 11px;
-                min-width: 22px;
-                max-width: 22px;
-                min-height: 22px;
-                max-height: 22px;
+                border-radius: 10px;
+                min-width: 20px;
+                max-width: 20px;
+                min-height: 20px;
+                max-height: 20px;
                 padding: 0;
                 font-weight: 400;
             }}
             QPushButton[windowControlRole="minimize"] {{
-                font-size: 11px;
+                font-size: 10px;
             }}
             QPushButton[windowControlRole="maximize"] {{
-                font-size: 9px;
+                font-size: 8px;
             }}
             QPushButton[windowControlRole="close"] {{
-                font-size: 11px;
+                font-size: 10px;
             }}
             QPushButton[windowControl="true"]:hover {{
                 background: {token['hover']};
