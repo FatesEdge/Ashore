@@ -456,12 +456,12 @@ class SettingPage(QWidget):
         self.refreshRpcSecret()
         self.showTrackerStatus()
 
-    def loadSettings(self, aria2Config:dict):
+    def loadSettings(self, aria2Config: dict):
         self.ashoreConfig = self.loadAshoreConfig()
         self.loadAria2(aria2Config)
         self.loadAshore(self.ashoreConfig)
 
-    def loadAria2(self, aria2Config:dict):
+    def loadAria2(self, aria2Config: dict):
         aria2Config = dict(aria2Config)
         aria2Config.update(self.readRpcConfig())
         self.pathLineEdit.setText(aria2Config['dir'])
@@ -483,7 +483,7 @@ class SettingPage(QWidget):
         self.showTrackerStatus()
 
 
-    def loadAshore(self, ashoreConfig:dict):
+    def loadAshore(self, ashoreConfig: dict):
         self.trackerTime = ashoreConfig['trackers_list_time']
         self.trackerInfo.setText(
             self.tr('lastTrackerUpdate').format(
@@ -518,7 +518,7 @@ class SettingPage(QWidget):
             validColor(
                 ashoreConfig.get(
                     'accent_color', ACCENT_PRESETS[0])))
-    def setMaxLimit(self, value, which:str):
+    def setMaxLimit(self, value, which: str):
         text = str(value or '0').strip()
         suffixes = {'K': 1, 'M': 2, 'G': 3}
         suffix = text[-1].upper()
@@ -538,8 +538,7 @@ class SettingPage(QWidget):
             self.downloadLimitSpin.setValue(amount)
             self.downloadLimitComboBox.setCurrentIndex(unitIndex)
 
-    def getMaxLimit(self, which:str) -> str:
-        #将settingpage上带单位的限速设置写入aria2.conf
+    def getMaxLimit(self, which: str) -> str:
         if which == 'upload':
             amount = self.uploadLimitSpin.value()
             unitIndex = self.uploadLimitComboBox.currentIndex()
@@ -548,10 +547,10 @@ class SettingPage(QWidget):
             unitIndex = self.downloadLimitComboBox.currentIndex()
         return f'{amount}{("", "K", "M", "G")[unitIndex]}'
 
-    def getBoolOption(self, boolObject:QComboBox) -> str:
+    def getBoolOption(self, boolObject: QComboBox) -> str:
         return 'true' if boolObject.currentIndex() == 0 else 'false'
 
-    def setBoolOption(self, boolObject:QComboBox, flag:bool) -> None:
+    def setBoolOption(self, boolObject: QComboBox, flag: bool) -> None:
         boolObject.setCurrentIndex(0 if flag else 1)
 
     def loadAshoreConfig(self) -> dict:
@@ -677,7 +676,6 @@ class SettingPage(QWidget):
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
     def slotSaveConf(self) -> None:
-        #用户配置界面有的选项
         aria2Values = {
             'dir'                       :   self.pathLineEdit.text(),
             'bt-tracker'                :   ','.join(self.trackers),
@@ -735,13 +733,13 @@ class SettingPage(QWidget):
             ashoreValues.update({'isSaved': '保存失败'})
             self.ashoreConfigChanged.emit(ashoreValues)
 
-    def saveAria2Conf(self, aria2Values:dict, removeKeys=None) -> int:
+    def saveAria2Conf(self, aria2Values: dict, removeKeys=None) -> int:
         removeKeys = set(removeKeys or ())
         if not writeOptions(self.aria2ConfPath, aria2Values, removeKeys):
             return -1
         return 0
 
-    def toggleRpcAccess(self, index:int) -> None:
+    def toggleRpcAccess(self, index: int) -> None:
         if index == 0 and not self.rpcSecret:
             self.setRpcSecret(secrets.token_urlsafe(32))
         self.updateTokenRow()
@@ -786,8 +784,8 @@ class SettingPage(QWidget):
 
 
     def setConnectionStatus(
-            self, httpStatus:str, websocketStatus:str,
-            aria2Version:str='') -> None:
+            self, httpStatus: str, websocketStatus: str,
+            aria2Version: str = '') -> None:
         statusKeys = {
             '已连接': 'connected', 'Connected': 'connected',
             '未连接': 'disconnected', 'Disconnected': 'disconnected',
@@ -814,7 +812,7 @@ class SettingPage(QWidget):
         setConnectionBadge(
             self.websocketStatusLabel, websocketText, websocketState)
         self.aria2VersionLabel.setText(aria2Version or '—')
-    def saveAshoreConf(self, ashoreValues:dict) -> int:
+    def saveAshoreConf(self, ashoreValues: dict) -> int:
         cleanValues = {key: value for key, value in ashoreValues.items()
                        if key != 'isSaved'}
         if not writeAshore(self.ashoreConfPath, cleanValues):
@@ -833,8 +831,7 @@ class SettingPage(QWidget):
             self, self.tr('chooseColor'))
         if color.isValid():
             self.accentComboBox.setCurrentText(color.name())
-    def slotRpcPortChangeable(self, index:int=1) -> None:
-        #将rpc port LineEdit设置为相应状态
+    def slotRpcPortChangeable(self, index: int=1) -> None:
         self.rpcPortLineEdit.setEnabled(not index)
 
     def slotScrollToAria2(self) -> None:
