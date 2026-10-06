@@ -380,6 +380,16 @@ class Aria2Client:
             if 'error' in result:
                 return {'ResultError': result['error'].get('message', 'aria2 RPC error')}
             return result['result']
+        except urllib.error.HTTPError as exc:
+            try:
+                body = exc.read().decode('utf-8', errors='replace').strip()
+                payload = json.loads(body) if body else {}
+                message = payload.get('error', {}).get('message')
+                if message:
+                    return {'ResultError': message}
+            except (OSError, ValueError, UnicodeDecodeError, AttributeError):
+                pass
+            return {'ResultError': f'HTTP {exc.code}: {exc.reason}'}
         except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as exc:
             return {'ResultError': str(exc)}
 
