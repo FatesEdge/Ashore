@@ -16,7 +16,7 @@ class TrackerHealthTests(unittest.TestCase):
         ok, latency, error = probeTracker('ftp://tracker.example/announce')
         self.assertFalse(ok)
         self.assertIsNone(latency)
-        self.assertIn('协议', error)
+        self.assertIn('protocol', error)
 
     def test_panel_normalizes_and_deduplicates_trackers(self):
         panel = TrackerManagerPanel([
