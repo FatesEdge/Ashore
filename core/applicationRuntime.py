@@ -104,7 +104,7 @@ class StartupController(QObject):
                     {'tray_icon_style': 'gray'})
             self.themeManager.apply(
                 self.settings.get('theme_mode', 'system'),
-                self.settings.get('accent_color', '#5d795f'))
+                self.settings.get('accent_color', '#1c71d8'))
         except (OSError, ValueError) as exc:
             self.fail(str(exc))
             return
