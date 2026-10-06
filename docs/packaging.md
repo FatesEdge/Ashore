@@ -35,7 +35,7 @@ Install with:
 sudo ./install.sh
 ```
 
-The installer stages the new application under `/opt`, preserves the previous installation in a backup directory during replacement, installs the desktop entry, and leaves the user's configuration untouched.
+The installer stages the new application under `/opt`, preserves the previous installation in a backup directory during replacement, installs the desktop entry, and leaves the user's configuration untouched. It deliberately does not require aria2 to be installed first; runtime environment validation belongs to Ashore itself. If aria2 is missing at launch, Ashore presents the platform-specific installation guidance and can recheck after the dependency is installed.
 
 ## macOS
 
@@ -66,9 +66,10 @@ Before publishing a release:
 4. Build the platform artifact on the target platform.
 5. Start the packaged application, verify normal exit, and exercise window move/resize.
 6. Verify URL/magnet and `.torrent` routing where supported.
-7. Perform at least one real aria2 download.
-8. Verify settings persist across restart.
-9. Verify external RPC remains disabled by default.
-10. Verify the release package contains no development-only files or credentials.
+7. Verify the missing-aria2 startup guidance on a clean system or equivalent environment.
+8. Perform at least one real aria2 download.
+9. Verify settings persist across restart.
+10. Verify external RPC remains disabled by default.
+11. Verify the release package contains no development-only files or credentials.
 
 CI does not publish GitHub Releases automatically.
