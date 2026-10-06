@@ -48,7 +48,7 @@ python make.py app
 python make.py dmg
 ```
 
-The macOS build injects protocol and torrent-document associations from `packaging/Info.plist` and uses the application version from `core/applicationInfo.py`. Release dependencies pin PyQt6 6.8.1 and Qt 6.8.2; this combination has been validated on Intel macOS 12.7.6 with Python 3.10.2.
+The macOS build injects protocol and torrent-document associations from `packaging/Info.plist` and uses the application version from `core/applicationInfo.py`. Release dependencies pin PyQt6 6.8.1 and Qt 6.8.2; this combination has been validated on Intel macOS 12.7.6 with Python 3.10.2. Packaged GUI launches do not inherit the user's shell PATH reliably, so aria2 discovery checks PATH first and then common Homebrew (`/usr/local/bin`, `/opt/homebrew/bin`) and MacPorts (`/opt/local/bin`) locations. Linux and Windows also include common package-manager fallback locations.
 
 The DMG contains `Ashore.app` and an `Applications` shortcut. macOS release artifacts are architecture-specific; build the Intel/x86_64 DMG on an Intel Mac and the ARM64 DMG on an Apple Silicon runner or machine.
 
