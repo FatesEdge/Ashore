@@ -85,8 +85,8 @@ class LifecycleWindow(QWidget):
 
 
 class StartupWindow(LifecycleWindow):
-    def __init__(self, imagePath):
-        super().__init__(imagePath, '正在读取配置')
+    def __init__(self, imagePath, language='en'):
+        super().__init__(imagePath, translate(language, 'startupLoadingConfig'))
 
     def finish(self, window):
         self.complete()
