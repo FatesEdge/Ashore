@@ -57,7 +57,7 @@ class DownloadRequestTests(unittest.TestCase):
         self.assertEqual(len(parsed.invalid), 3)
 
     def test_dialog_disables_submit_until_all_lines_are_valid(self):
-        dialog = AddNewDialog('/tmp')
+        dialog = AddNewDialog('/tmp', language='zh_CN')
         dialog.text.setPlainText(
             'https://example.org/file.bin\ninvalid input')
         self.assertFalse(dialog.confirmBtn.isEnabled())
@@ -69,7 +69,7 @@ class DownloadRequestTests(unittest.TestCase):
 
     def test_advanced_options_build_headers_cookie_and_checksum(self):
         dialog = AddNewDialog(
-            '/tmp', ['https://example.org/file.bin'])
+            '/tmp', ['https://example.org/file.bin'], language='zh_CN')
         dialog.advancedToggle.setChecked(True)
         dialog.fileNameEdit.setText('renamed.bin')
         dialog.refererEdit.setText('https://example.org/')
