@@ -39,6 +39,7 @@ class WindowChrome(QObject):
         self._installed = False
 
     def _installOnSubtree(self, widget):
+        widget.setMouseTracking(True)
         widget.installEventFilter(self)
         for child in widget.findChildren(
                 QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly):
