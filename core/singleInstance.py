@@ -59,22 +59,23 @@ class SingleInstanceCoordinator(QObject):
         self.server.newConnection.connect(self.receiveConnection)
 
     def forward(self, payload, attempts=1):
-        """Forward one payload without depending on a platform-specific wait."""
+        """Forward one payload while allowing Qt IPC events to keep flowing."""
         payload = list(payload or [])
+        connectedState = QLocalSocket.LocalSocketState.ConnectedState
         for attempt in range(max(1, attempts)):
             socket = QLocalSocket()
             try:
                 socket.connectToServer(self.serverName)
-                for _ in range(6):
-                    if socket.waitForConnected(20):
-                        socket.write(json.dumps(payload).encode('utf-8'))
-                        if not socket.waitForBytesWritten(1000):
-                            socket.abort()
-                            break
-                        socket.disconnectFromServer()
-                        socket.waitForDisconnected(100)
-                        return True
+                for _ in range(24):
+                    if socket.state() == connectedState:
+                        break
                     QCoreApplication.processEvents()
+                    QThread.msleep(5)
+                if socket.state() == connectedState:
+                    socket.write(json.dumps(payload).encode('utf-8'))
+                    if socket.waitForBytesWritten(1000):
+                        socket.disconnectFromServer()
+                        return True
             finally:
                 socket.abort()
                 socket.close()
