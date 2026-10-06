@@ -36,7 +36,7 @@ from core.trackerSources import (
 )
 from interface.actionIcons import actionIcon
 from interface.controls import AshoreComboBox, AshoreSpinBox
-from interface.languageManager import LANGUAGES, translate
+from interface.languageManager import LANGUAGES, resolveLanguage, translate
 from interface.settingItem import SettingItem, SettingsSectionHeader
 from interface.trackerManagerPanel import TrackerManagerPanel
 from interface.statusBadge import setConnectionBadge
@@ -81,7 +81,7 @@ class SettingPage(QWidget):
         ensureConfig('ashore.conf')
         ensureConfig('aria2.conf')
         self.ashoreConfig = self.loadAshoreConfig()
-        self.language = self.ashoreConfig.get('language', 'zh_CN')
+        self.language = resolveLanguage(self.ashoreConfig.get('language'))
         self.trackerTime = self.ashoreConfig['trackers_list_time']
         self.initUI()
         self.trackerManager = TrackerManager(
@@ -577,7 +577,7 @@ class SettingPage(QWidget):
                 time=displayTime(self.trackerTime)))
         self.trackerSource = ashoreConfig.get('trackers_list_source', '')
         self.loadTrackerSourceControls(ashoreConfig)
-        self.setLanguage(ashoreConfig.get('language', self.language))
+        self.setLanguage(resolveLanguage(ashoreConfig.get('language')))
         self.showTrackerStatus()
         self.setBoolOption(
             self.withAria2QuitComboBox, ashoreConfig['quit_with_aria2'])
@@ -591,7 +591,7 @@ class SettingPage(QWidget):
         self.rpcPortLineEdit.setEnabled(
             ashoreConfig['rpc_port_changeable'])
         languageIndex = self.languageComboBox.findData(
-            ashoreConfig.get('language', 'zh_CN'))
+            resolveLanguage(ashoreConfig.get('language')))
         self.languageComboBox.setCurrentIndex(max(0, languageIndex))
         trayIconIndex = self.trayIconStyleComboBox.findData(
             ashoreConfig.get('tray_icon_style', 'colorful'))
