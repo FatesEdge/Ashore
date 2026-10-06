@@ -124,6 +124,9 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertIn('tracker_source_keys', page.ashoreKeys)
             self.assertIn('tracker_custom_sources', page.ashoreKeys)
 
+    def test_default_accent_is_blue(self):
+        self.assertEqual(ACCENT_PRESETS[0], '#1c71d8')
+
     def test_theme_manager_applies_each_mode(self):
         manager = ThemeManager(self.app)
         for mode in THEME_MODES:

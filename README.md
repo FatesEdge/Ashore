@@ -46,7 +46,7 @@ The application uses aria2 JSON-RPC for authoritative task state and WebSocket n
 | macOS | Supported in code and packaging; application bundle/DMG workflow available |
 | Windows | Supported in code and CI; additional physical-machine release validation is still desirable |
 
-Ashore requires **Python 3.12+** when run from source and a working **aria2** installation.
+Ashore requires **Python 3.12+** when run from source and a working **aria2** installation for downloads. Packaged Ashore can be installed before aria2; if aria2 is missing at launch, Ashore shows platform-specific installation guidance.
 
 ## Installation
 
@@ -54,13 +54,15 @@ Prebuilt release artifacts should be preferred once a release is available. See 
 
 ### Linux
 
-Install aria2 first, unpack the Ashore Linux release package, then run:
+Unpack the Ashore Linux release package, then run:
 
 ```bash
 sudo ./install.sh
 ```
 
 The installer places Ashore under `/opt/Ashore` and the desktop entry under `/usr/local/share/applications/ashore.desktop`. User configuration remains in `~/.config/ashore/` or the directory selected by `XDG_CONFIG_HOME`.
+
+If aria2 is not installed when Ashore starts, the application reports the missing dependency and shows the recommended installation command for the current system. After installing aria2, use the recheck action to continue.
 
 ### macOS
 

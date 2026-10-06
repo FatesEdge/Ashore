@@ -108,6 +108,7 @@ class RecoveryWindow(QWidget):
         super().__init__()
         self.issue = issue
         self.language = language
+        self.controllerClose = False
         self.setProperty('recoveryPage', True)
         self.setWindowTitle('Ashore')
         self.setMinimumSize(640, 460)
@@ -193,6 +194,20 @@ class RecoveryWindow(QWidget):
         self.systemLabel.setText(
             self.tr('recoverySystem').format(system=issue.systemName))
         self.commandBox.setPlainText(f'$ {issue.installCommand}')
+
+    def closeFromController(self):
+        self.controllerClose = True
+        try:
+            self.close()
+        finally:
+            self.controllerClose = False
+
+    def closeEvent(self, event):
+        if self.controllerClose:
+            super().closeEvent(event)
+            return
+        event.ignore()
+        QTimer.singleShot(0, self.quitRequested.emit)
 
     def copyCommand(self):
         QApplication.clipboard().setText(self.issue.installCommand)

@@ -48,22 +48,136 @@ PYINSTALLER_EXCLUDES = (
     'PyQt6.QtWebEngineWidgets',
 )
 
+# Linux desktop releases support both X11 and Wayland. These are Qt plugins
+# for embedded/headless targets or image formats that Ashore never consumes.
+# Keep this list deliberately conservative: GTK/portal integration, input
+# methods, XCB, Wayland, SVG, Network, WebSockets and Qt translations remain.
+LINUX_BUNDLE_EXCLUDES = (
+    'PyQt6/Qt6/lib/libQt6Pdf.so.6',
+    'PyQt6/Qt6/lib/libQt6EglFSDeviceIntegration.so.6',
+    'PyQt6/Qt6/plugins/egldeviceintegrations/libqeglfs-emu-integration.so',
+    'PyQt6/Qt6/plugins/egldeviceintegrations/libqeglfs-x11-integration.so',
+    'PyQt6/Qt6/plugins/generic/libqevdevkeyboardplugin.so',
+    'PyQt6/Qt6/plugins/generic/libqevdevmouseplugin.so',
+    'PyQt6/Qt6/plugins/generic/libqevdevtabletplugin.so',
+    'PyQt6/Qt6/plugins/generic/libqevdevtouchplugin.so',
+    'PyQt6/Qt6/plugins/generic/libqtuiotouchplugin.so',
+    'PyQt6/Qt6/plugins/imageformats/libqicns.so',
+    'PyQt6/Qt6/plugins/imageformats/libqpdf.so',
+    'PyQt6/Qt6/plugins/imageformats/libqtga.so',
+    'PyQt6/Qt6/plugins/imageformats/libqtiff.so',
+    'PyQt6/Qt6/plugins/imageformats/libqwbmp.so',
+    'PyQt6/Qt6/plugins/platforms/libqeglfs.so',
+    'PyQt6/Qt6/plugins/platforms/libqlinuxfb.so',
+    'PyQt6/Qt6/plugins/platforms/libqminimal.so',
+    'PyQt6/Qt6/plugins/platforms/libqminimalegl.so',
+    'PyQt6/Qt6/plugins/platforms/libqoffscreen.so',
+    'PyQt6/Qt6/plugins/platforms/libqvkkhrdisplay.so',
+    'PyQt6/Qt6/plugins/platforms/libqvnc.so',
+)
+
+
+def linuxBundleEntryAllowed(destination):
+    normalized = str(destination).replace('\\', '/')
+    return normalized not in LINUX_BUNDLE_EXCLUDES
+
+
+def linuxSpecText(kind):
+    excludes = repr(list(PYINSTALLER_EXCLUDES))
+    bundleExcludes = repr(set(LINUX_BUNDLE_EXCLUDES))
+    analysis = f"""a = Analysis(
+    [{str(ROOT / 'Ashore.py')!r}],
+    pathex=[{str(ROOT)!r}],
+    binaries=[],
+    datas=[
+        ({str(ROOT / 'static')!r}, 'static'),
+        ({str(ROOT / 'config')!r}, 'config'),
+    ],
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={{}},
+    runtime_hooks=[],
+    excludes={excludes},
+    noarchive=False,
+    optimize=0,
+)
+
+bundle_excludes = {bundleExcludes}
+
+
+def keep_bundle_entry(entry):
+    return entry[0].replace('\\\\', '/') not in bundle_excludes
+
+
+a.binaries = TOC([entry for entry in a.binaries if keep_bundle_entry(entry)])
+a.datas = TOC([entry for entry in a.datas if keep_bundle_entry(entry)])
+
+pyz = PYZ(a.pure)
+"""
+    if kind == 'onedir':
+        return analysis + """
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='Ashore',
+    strip=True,
+    console=False,
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=True,
+    name='Ashore',
+)
+"""
+    return analysis + """
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name='Ashore',
+    strip=True,
+    console=False,
+)
+"""
+
+
+def writeLinuxSpec(kind):
+    buildDir = ROOT / 'build' / f'Linux.{kind}'
+    buildDir.mkdir(parents=True, exist_ok=True)
+    spec = buildDir / 'Ashore.spec'
+    spec.write_text(linuxSpecText(kind), encoding='utf-8')
+    return spec, buildDir
+
 
 def pyinstallerCommand(system, kind, staging):
+    if system == 'Linux':
+        spec, buildDir = writeLinuxSpec(kind)
+        return [
+            sys.executable, '-m', 'PyInstaller',
+            '--noconfirm', '--clean',
+            '--distpath', str(staging),
+            '--workpath', str(buildDir),
+            str(spec),
+        ]
+
     command = [
         sys.executable, '-m', 'PyInstaller',
         '--noconfirm', '--clean',
         '--name', 'Ashore',
         '--windowed',
-        '--onedir' if system == 'Darwin' or kind == 'onedir' else '--onefile',
+        '--onedir',
         '--distpath', str(staging),
         '--workpath', str(ROOT / 'build' / f'{system}.{kind}'),
         '--specpath', str(ROOT / 'build' / f'{system}.{kind}'),
         '--add-data', f'{ROOT / "static"}{os.pathsep}static',
         '--add-data', f'{ROOT / "config"}{os.pathsep}config',
     ]
-    if system == 'Linux':
-        command.append('--strip')
     for module in PYINSTALLER_EXCLUDES:
         command.extend(('--exclude-module', module))
     command.append(str(ROOT / 'Ashore.py'))

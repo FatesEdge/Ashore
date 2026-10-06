@@ -200,14 +200,37 @@ class StartupFlowTests(unittest.TestCase):
     def test_notification_click_restores_window_and_focuses_task(self):
         window = Mock()
         window.notificationTarget = 'gid'
-        window.pageDownloaded.focusSection.return_value = True
+        window.notificationTargetStatus = 'completed'
 
         Ashore.slotNotificationClicked(window, 'gid')
 
         window.slotShowWindow.assert_called_once_with()
-        window.pageDownloaded.focusSection.assert_called_once_with('gid')
         window.showCompleted.assert_called_once_with()
-        window.pageDownloading.focusSection.assert_not_called()
+        window.pageDownloaded.focusSection.assert_called_once_with('gid')
+        window.showDownloading.assert_not_called()
+
+    def test_completed_notification_opens_completed_page_before_card_exists(self):
+        window = Mock()
+        window.notificationTarget = 'gid'
+        window.notificationTargetStatus = 'completed'
+        window.pageDownloaded.focusSection.return_value = False
+
+        Ashore.slotNotificationClicked(window, 'gid')
+
+        window.showCompleted.assert_called_once_with()
+        window.pageDownloaded.focusSection.assert_called_once_with('gid')
+        window.showDownloading.assert_not_called()
+
+    def test_error_notification_opens_completed_page(self):
+        window = Mock()
+        window.notificationTarget = 'gid'
+        window.notificationTargetStatus = 'error'
+
+        Ashore.slotNotificationClicked(window, 'gid')
+
+        window.showCompleted.assert_called_once_with()
+        window.pageDownloaded.focusSection.assert_called_once_with('gid')
+        window.showDownloading.assert_not_called()
 
 
     def test_aria2_status_visibility_can_change_at_runtime(self):
@@ -252,7 +275,25 @@ class StartupFlowTests(unittest.TestCase):
         self.assertIn(
             issue.installCommand,
             controller.recovery.commandBox.toPlainText())
-        controller.recovery.close()
+        controller.recovery.closeFromController()
+
+    def test_recovery_window_close_requests_application_quit(self):
+        issue = makeEnvironmentIssue('aria2_missing')
+        window = RecoveryWindow(issue, 'en')
+        quitRequested = Mock()
+        window.quitRequested.connect(quitRequested)
+
+        window.show()
+        self.app.processEvents()
+        window.close()
+        self.app.processEvents()
+
+        quitRequested.assert_called_once_with()
+        self.assertTrue(window.isVisible())
+
+        window.closeFromController()
+        self.app.processEvents()
+        self.assertFalse(window.isVisible())
 
     def test_main_status_uses_colored_dot_and_normal_text_separately(self):
         service = Mock()
