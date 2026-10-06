@@ -60,7 +60,7 @@ class TrackerManagerPanel(QWidget):
         actionLayout.addWidget(self.checkBtn)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 4, 0, 4)
+        layout.setContentsMargins(18, 4, 18, 4)
         layout.setSpacing(8)
         layout.addWidget(self.summaryLabel)
         layout.addWidget(self.table)
