@@ -87,6 +87,8 @@ class StartupFlowTests(unittest.TestCase):
             window.windowFlags() & Qt.WindowType.FramelessWindowHint)
         self.assertTrue(
             window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
+        self.assertIs(window.windowChrome.parent(), window)
+        self.assertTrue(window.windowChrome._installed)
         self.assertTrue(window.windowSurface.property('windowSurface'))
         self.assertTrue(window.pageSurface.property('pageSurface'))
         self.assertTrue(window.pageStack.property('pageStack'))
