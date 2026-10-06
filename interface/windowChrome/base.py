@@ -1,21 +1,84 @@
-"""Platform window chrome contract."""
+"""Cross-platform client-side window chrome.
 
-from PyQt6.QtCore import Qt
+The application paints its own top bar, while move/resize operations are still
+delegated to the platform window manager through QWindow.
+"""
+
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtGui import QCursor
+from PyQt6.QtWidgets import QApplication, QWidget
 
 
-class NativeWindowChrome:
-    """Use the platform's native window decoration and window manager behaviour."""
+class WindowChrome:
+    """Provide frameless chrome without reimplementing window geometry."""
 
-    platformName = 'generic'
-    usesNativeDecoration = True
+    resizeMargin = 6
 
     def __init__(self, window):
         self.window = window
+        self._installed = False
 
     def install(self):
-        flags = self.window.windowFlags()
-        if flags & Qt.WindowType.FramelessWindowHint:
-            self.window.setWindowFlags(
-                flags & ~Qt.WindowType.FramelessWindowHint)
-        self.window.setAttribute(
-            Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        flags = self.window.windowFlags() | Qt.WindowType.FramelessWindowHint
+        self.window.setWindowFlags(flags)
+        self.window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        QApplication.instance().installEventFilter(self)
+        self._installed = True
+
+    def uninstall(self):
+        app = QApplication.instance()
+        if self._installed and app is not None:
+            app.removeEventFilter(self)
+        self._installed = False
+
+    def eventFilter(self, watched, event):
+        if not isinstance(watched, QWidget) or watched.window() is not self.window:
+            return False
+        if self.window.isMaximized() or self.window.isFullScreen():
+            if event.type() == QEvent.Type.MouseMove:
+                watched.unsetCursor()
+            return False
+
+        if event.type() == QEvent.Type.MouseMove:
+            edges = self._edgesAt(event.globalPosition())
+            self._applyCursor(watched, edges)
+        elif event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                edges = self._edgesAt(event.globalPosition())
+                if edges:
+                    handle = self.window.windowHandle()
+                    if handle is not None and handle.startSystemResize(edges):
+                        return True
+        return False
+
+    def _edgesAt(self, globalPosition):
+        point = self.window.mapFromGlobal(globalPosition.toPoint())
+        margin = self.resizeMargin
+        rect = self.window.rect()
+
+        edges = Qt.Edge(0)
+        if point.x() <= margin:
+            edges |= Qt.Edge.LeftEdge
+        elif point.x() >= rect.width() - margin - 1:
+            edges |= Qt.Edge.RightEdge
+        if point.y() <= margin:
+            edges |= Qt.Edge.TopEdge
+        elif point.y() >= rect.height() - margin - 1:
+            edges |= Qt.Edge.BottomEdge
+        return edges
+
+    @staticmethod
+    def _applyCursor(widget, edges):
+        horizontal = bool(edges & (Qt.Edge.LeftEdge | Qt.Edge.RightEdge))
+        vertical = bool(edges & (Qt.Edge.TopEdge | Qt.Edge.BottomEdge))
+        if horizontal and vertical:
+            sameDiagonal = bool(edges & Qt.Edge.LeftEdge and edges & Qt.Edge.TopEdge) or bool(
+                edges & Qt.Edge.RightEdge and edges & Qt.Edge.BottomEdge)
+            shape = Qt.CursorShape.SizeFDiagCursor if sameDiagonal else Qt.CursorShape.SizeBDiagCursor
+            widget.setCursor(QCursor(shape))
+        elif horizontal:
+            widget.setCursor(QCursor(Qt.CursorShape.SizeHorCursor))
+        elif vertical:
+            widget.setCursor(QCursor(Qt.CursorShape.SizeVerCursor))
+        else:
+            widget.unsetCursor()
