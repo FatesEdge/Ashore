@@ -44,7 +44,10 @@ class SettingsLayoutTests(unittest.TestCase):
                           page.rpcSecretLineEdit):
                 self.assertEqual(field.sizePolicy().horizontalPolicy(),
                                  QSizePolicy.Policy.Expanding)
-            self.assertLess(page.rpcPortLineEdit.maximumWidth(), 1000)
+            self.assertEqual(page.rpcPortLineEdit.width(), 200)
+            self.assertEqual(
+                page.rpcPortLineEdit.sizePolicy().horizontalPolicy(),
+                QSizePolicy.Policy.Fixed)
             self.assertTrue(page.pathLineEdit.property('joinedLeft'))
             self.assertTrue(page.pathBtn.property('joinedRight'))
             self.assertTrue(
@@ -245,6 +248,7 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertIn('QSpinBox QLineEdit', style)
         self.assertIn('QLineEdit[joinedLeft="true"]', style)
         self.assertIn('QPushButton[joinedRight="true"]', style)
+        self.assertIn('QLineEdit:disabled', style)
         self.assertNotIn('QLabel[connectionState="connected"]', style)
         self.assertIn('QLabel[mainConnectionDot="true"]', style)
         self.assertIn('QSpinBox {', style)
