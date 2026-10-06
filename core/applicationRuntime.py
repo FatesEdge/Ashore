@@ -241,3 +241,40 @@ class StartupController(QObject):
         if self.recovery is not None:
             self.recovery.close()
         self.app.quit()
+
+    def dispose(self):
+        """Break Python/Qt ownership cycles while QApplication is still alive."""
+        app = self.app
+        window = self.window
+
+        if window is not None:
+            try:
+                app.instanceMessage.disconnect(self.handleInstance)
+            except (TypeError, RuntimeError):
+                pass
+            window.windowChrome.uninstall()
+            window.aria2Poller.timer.stop()
+            window.aria2Events.stop()
+            window.trayIcon.hide()
+            window.close()
+            window.deleteLater()
+            self.window = None
+
+        if self.recovery is not None:
+            self.recovery.close()
+            self.recovery.deleteLater()
+            self.recovery = None
+
+        if self.splash is not None:
+            self.splash.close()
+            self.splash.deleteLater()
+            self.splash = None
+
+        if self.startup is not None:
+            if self.startup.isRunning():
+                self.startup.wait()
+            self.startup.deleteLater()
+            self.startup = None
+
+        self.themeManager = None
+        self.app = None
