@@ -43,7 +43,16 @@ TEXT = {
         'show': '显示窗口', 'hide': '关闭窗口', 'about': '关于 Ashore',
         'showMain': '显示主窗口', 'trayQuit': '退出', 'exiting': '正在退出…',
         'downloading': '下载中', 'downloaded': '已完成', 'settings': '设置',
-        'more': '更多',
+         'more': '更多',
+        'startupLoadingConfig': '正在读取配置',
+        'startupCheckingInstance': '正在检查运行实例',
+        'startupCheckingAria2': '正在检查 aria2',
+        'startupAria2Connected': 'aria2 已连接',
+        'startupPreparingWindow': '正在准备主界面',
+        'startupSyncingDownloads': '正在同步下载任务',
+        'startupShowingWindow': '正在显示主界面',
+        'startupRecheckingAria2': '正在重新检查 aria2',
+        'startupFailedTitle': 'Ashore 启动失败',
 
         'pauseTask': '暂停任务', 'startTask': '继续任务', 'openFile': '打开文件',
         'openFolder': '打开目录', 'retryTask': '重试', 'copyLink': '复制下载链接',
@@ -127,7 +136,16 @@ TEXT = {
         'show': '顯示視窗', 'hide': '關閉視窗', 'about': '關於 Ashore',
         'showMain': '顯示主視窗', 'trayQuit': '結束', 'exiting': '正在結束…',
         'downloading': '下載中', 'downloaded': '已完成', 'settings': '設定',
-        'more': '更多',
+         'more': '更多',
+        'startupLoadingConfig': '正在讀取設定',
+        'startupCheckingInstance': '正在檢查執行中的實例',
+        'startupCheckingAria2': '正在檢查 aria2',
+        'startupAria2Connected': 'aria2 已連線',
+        'startupPreparingWindow': '正在準備主介面',
+        'startupSyncingDownloads': '正在同步下載任務',
+        'startupShowingWindow': '正在顯示主介面',
+        'startupRecheckingAria2': '正在重新檢查 aria2',
+        'startupFailedTitle': 'Ashore 啟動失敗',
 
         'pauseTask': '暫停任務', 'startTask': '繼續任務', 'openFile': '開啟檔案',
         'openFolder': '開啟資料夾', 'retryTask': '重試', 'copyLink': '複製下載連結',
@@ -211,7 +229,16 @@ TEXT = {
         'show': 'Show Window', 'hide': 'Hide Window', 'about': 'About Ashore',
         'showMain': 'Show Main Window', 'trayQuit': 'Quit', 'exiting': 'Exiting…',
         'downloading': 'Downloading', 'downloaded': 'Completed', 'settings': 'Settings',
-        'more': 'More',
+         'more': 'More',
+        'startupLoadingConfig': 'Loading configuration',
+        'startupCheckingInstance': 'Checking running instance',
+        'startupCheckingAria2': 'Checking aria2',
+        'startupAria2Connected': 'aria2 connected',
+        'startupPreparingWindow': 'Preparing main window',
+        'startupSyncingDownloads': 'Synchronizing downloads',
+        'startupShowingWindow': 'Showing main window',
+        'startupRecheckingAria2': 'Rechecking aria2',
+        'startupFailedTitle': 'Ashore startup failed',
 
         'pauseTask': 'Pause task', 'startTask': 'Resume task', 'openFile': 'Open file',
         'openFolder': 'Open folder', 'retryTask': 'Retry', 'copyLink': 'Copy download link',
@@ -292,5 +319,5 @@ TEXT = {
 }
 
 def translate(language, key):
-    languageText = TEXT.get(language, TEXT['zh_CN'])
-    return languageText.get(key, TEXT['zh_CN'].get(key, key))
+    languageText = TEXT.get(language, TEXT['en'])
+    return languageText.get(key, TEXT['en'].get(key, key))
