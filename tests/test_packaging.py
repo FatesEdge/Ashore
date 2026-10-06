@@ -37,5 +37,34 @@ class PackagingTests(unittest.TestCase):
                 self.assertTrue((previous / 'icon.png').is_file())
 
 
+    def test_pyinstaller_command_excludes_unused_heavy_modules(self):
+        with tempfile.TemporaryDirectory() as directory:
+            staging = Path(directory)
+            command = make.pyinstallerCommand('Linux', 'onefile', staging)
+
+        self.assertIn('--strip', command)
+        for module in (
+                'numpy', 'cryptography', 'tkinter',
+                'PyQt6.QtDBus', 'PyQt6.QtMultimedia',
+                'PyQt6.QtQml', 'PyQt6.QtQuick',
+                'PyQt6.QtWebEngineWidgets'):
+            pairFound = any(
+                command[index:index + 2] == ['--exclude-module', module]
+                for index in range(len(command) - 1))
+            self.assertTrue(pairFound, module)
+
+        for required in (
+                'PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets',
+                'PyQt6.QtNetwork', 'PyQt6.QtSvg',
+                'PyQt6.QtWebSockets'):
+            self.assertNotIn(required, make.PYINSTALLER_EXCLUDES)
+
+    def test_non_linux_build_does_not_request_binary_stripping(self):
+        with tempfile.TemporaryDirectory() as directory:
+            command = make.pyinstallerCommand(
+                'Darwin', 'app', Path(directory))
+        self.assertNotIn('--strip', command)
+
+
 if __name__ == '__main__':
     unittest.main()
