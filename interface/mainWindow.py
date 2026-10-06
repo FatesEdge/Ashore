@@ -402,7 +402,7 @@ class Ashore(QMainWindow):
     def initUI(self) -> None:
         self.setWindowTitle('Ashore')
         self.setWindowIcon(
-            QIcon(self.resourcePath + 'static/icon/functionIcons/icon0.png'))
+            QIcon(self.resourcePath + 'static/icon/functionIcons/appIcon.png'))
         self.createCommandActions()
 
         self.addBtn = QPushButton(self.tr('new'))
@@ -707,7 +707,7 @@ class Ashore(QMainWindow):
         aboutTitle = QLabel('<h1 style="Text-align: center;">Ashore</h1>')
         aboutTitle.setFixedHeight(30)
         infoLIcon = QLabel()
-        infoLIcon.setPixmap(QPixmap(self.resourcePath + 'static/icon/functionIcons/icon0.png'))
+        infoLIcon.setPixmap(QPixmap(self.resourcePath + 'static/icon/functionIcons/appIcon.png'))
         infoLIcon.setScaledContents(True)
         infoLIcon.setFixedSize(180, 180)
         aria2Version = self.aria2Client.getAria2Version()
@@ -742,7 +742,7 @@ class Ashore(QMainWindow):
     def requestTrayQuit(self):
         if self.quitting or self.exitWindow is not None:
             return
-        iconPath = self.resourcePath + 'static/icon/functionIcons/icon0.png'
+        iconPath = self.resourcePath + 'static/icon/functionIcons/appIcon.png'
         self.exitWindow = ExitWindow(iconPath, self.tr('exiting'))
         self.exitWindow.ready.connect(self.slotQuit)
         self.exitWindow.showActive()
