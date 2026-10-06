@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from PyQt6.QtCore import pyqtSlot
+
 """Freedesktop notification backend for Linux desktops."""
 
 from .base import NotificationBackend
@@ -10,7 +14,9 @@ class LinuxNotificationBackend(NotificationBackend):
 
     def __init__(self, iconPath='', parent=None):
         super().__init__(parent)
-        self.iconPath = iconPath
+        self.iconPath = (
+            Path(iconPath).resolve().as_uri()
+            if iconPath else '')
         self.notificationTargets = {}
 
         from PyQt6.QtDBus import (
@@ -58,6 +64,7 @@ class LinuxNotificationBackend(NotificationBackend):
         notificationId = int(arguments[0])
         self.notificationTargets[notificationId] = gid
 
+    @pyqtSlot(int, str)
     def _actionInvoked(self, notificationId, actionKey):
         if actionKey != 'default':
             return
