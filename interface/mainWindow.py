@@ -86,6 +86,7 @@ class Ashore(QMainWindow):
 
         self.exitWindow = None
         self.notificationTarget = None
+        self.notificationTargetStatus = None
         self.removalWorkers = {}
         self.knownStatuses = None
         self.pendingNotifications = {}
@@ -645,6 +646,7 @@ class Ashore(QMainWindow):
 
     def notifyDownload(self, gid, name, status):
         self.notificationTarget = gid
+        self.notificationTargetStatus = status
         title = self.tr(
             'downloadComplete' if status == 'completed' else 'downloadFailed')
         if not self.notificationManager.show(gid, title, name):
@@ -655,10 +657,21 @@ class Ashore(QMainWindow):
         gid = gid or self.notificationTarget
         if not gid:
             return
+
+        status = (
+            self.notificationTargetStatus
+            if gid == self.notificationTarget
+            else None)
+        if status in ('completed', 'error'):
+            self.showCompleted()
+            self.pageDownloaded.focusSection(gid)
+            return
+
         if self.pageDownloaded.focusSection(gid):
             self.showCompleted()
-        elif self.pageDownloading.focusSection(gid):
+        else:
             self.showDownloading()
+            self.pageDownloading.focusSection(gid)
     def showDownloading(self) -> None:
         self.tabDownloading.setChecked(True)
         self.pageStack.setCurrentIndex(0)
