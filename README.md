@@ -35,7 +35,7 @@ The application uses aria2 JSON-RPC for authoritative task state and WebSocket n
 - Download-complete/error system notifications
 - Persistent learned task names
 - Single-instance handling for URLs, magnet links, and `.torrent` files
-- Simplified Chinese, Traditional Chinese, and English UI support
+- Simplified Chinese, Traditional Chinese, and English UI support; first launch follows the supported system language and otherwise defaults to English
 - Linux, macOS, and Windows code paths covered by CI
 
 ## Platform status
