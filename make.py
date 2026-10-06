@@ -21,7 +21,7 @@ def build(kind):
     system = platform.system()
     supported = {'Linux': ('onefile', 'onedir'), 'Darwin': ('app', 'dmg')}
     if kind not in supported.get(system, ()):
-        raise ValueError(f'{system} 不支持 {kind} 打包')
+        raise ValueError(f'{system} does not support {kind} packaging')
     target = DIST / f'Ashore.{system}.{kind}'
     DIST.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f'.Ashore.{system}.{kind}.', dir=DIST) as directory:
@@ -39,7 +39,7 @@ def build(kind):
             program = staging / 'Ashore'
             executable = program / 'Ashore' if kind == 'onedir' else program
             if not executable.is_file():
-                raise ValueError('PyInstaller 未生成完整的 Ashore Linux 安装包')
+                raise ValueError('PyInstaller did not produce a complete Ashore Linux package')
             for source, name in [(ROOT / 'static/icon/functionIcons/appIcon.png', 'icon.png'),
                                  (ROOT / 'packaging/ashore.desktop', 'ashore.desktop'),
                                  (ROOT / 'packaging/install.sh', 'install.sh')]:
@@ -80,10 +80,10 @@ def build(kind):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='构建 Ashore 发布包')
+    parser = argparse.ArgumentParser(description='Build Ashore release packages')
     parser.add_argument('kind', choices=('onefile', 'onedir', 'app', 'dmg'))
     arguments = parser.parse_args()
     try:
         build(arguments.kind)
     except (ValueError, OSError, subprocess.CalledProcessError) as exc:
-        parser.exit(1, f'打包失败：{exc}\n')
+        parser.exit(1, f'Packaging failed: {exc}\n')
