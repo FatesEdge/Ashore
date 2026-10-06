@@ -15,6 +15,9 @@ class TitleBar(QWidget):
         self.setProperty('titleBar', True)
         self.setFixedHeight(38)
 
+        self.appIconLabel = QLabel()
+        self.appIconLabel.setFixedSize(20, 20)
+
         self.titleLabel = QLabel('Ashore')
         self.titleLabel.setProperty('windowTitle', True)
         self.titleLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
