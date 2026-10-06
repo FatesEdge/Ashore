@@ -17,10 +17,10 @@ def systemLanguage(localeName=None):
 
     parts = name.split('_')
     language = parts[0].lower()
-    territory = parts[1].upper() if len(parts) > 1 else ''
+    localeParts = {part.upper() for part in parts[1:]}
 
     if language == 'zh':
-        if territory in {'TW', 'HK', 'MO'}:
+        if localeParts & {'HANT', 'TW', 'HK', 'MO'}:
             return 'zh_TW'
         return 'zh_CN'
     if language == 'en':
