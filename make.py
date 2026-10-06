@@ -40,7 +40,7 @@ def build(kind):
             executable = program / 'Ashore' if kind == 'onedir' else program
             if not executable.is_file():
                 raise ValueError('PyInstaller 未生成完整的 Ashore Linux 安装包')
-            for source, name in [(ROOT / 'static/icon/functionIcons/icon0.png', 'icon.png'),
+            for source, name in [(ROOT / 'static/icon/functionIcons/appIcon.png', 'icon.png'),
                                  (ROOT / 'packaging/ashore.desktop', 'ashore.desktop'),
                                  (ROOT / 'packaging/install.sh', 'install.sh')]:
                 shutil.copy2(source, staging / name)
@@ -59,7 +59,7 @@ def build(kind):
             info['CFBundleIconFile'] = 'icon.icns'
             with plist.open('wb') as file:
                 plistlib.dump(info, file)
-            shutil.copy2(ROOT / 'static/icon/functionIcons/icon.icns', app / 'Contents/Resources/icon.icns')
+            shutil.copy2(ROOT / 'static/icon/functionIcons/appIcon.icns', app / 'Contents/Resources/icon.icns')
             if kind == 'dmg':
                 dmg_stage = Path(directory) / 'dmg-stage'
                 dmg_stage.mkdir()
