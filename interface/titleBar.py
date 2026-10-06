@@ -16,6 +16,7 @@ class TitleBar(QWidget):
         self.setFixedHeight(38)
 
         self.appIconLabel = QLabel()
+        self.appIconLabel.setProperty('windowIcon', True)
         self.appIconLabel.setFixedSize(20, 20)
         self.appIconLabel.setPixmap(self.hostWindow.windowIcon().pixmap(18, 18))
         self.appIconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
