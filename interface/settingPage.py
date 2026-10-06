@@ -2,13 +2,13 @@
 
 import json
 import secrets
-import urllib.parse
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QFileSystemModel
 from PyQt6.QtWidgets import (
     QApplication,
     QColorDialog,
+    QCheckBox,
     QComboBox,
     QCompleter,
     QFileDialog,
@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QScrollArea,
+    QToolButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -26,11 +27,18 @@ from PyQt6.QtWidgets import (
 
 from core.configStore import readAshore, readOptions, writeAshore, writeOptions
 from core.trackerManager import TrackerManager, displayTime
-from core.trackerSources import parseTrackers
+from core.trackerSources import (
+    DEFAULT_SOURCE_KEYS,
+    TRACKER_SOURCE_CATALOG,
+    parseTrackers,
+    sourceUrls,
+    validSourceUrl,
+)
+from interface.actionIcons import actionIcon
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.languageManager import LANGUAGES, translate
 from interface.settingItem import SettingItem
-from interface.trackerManagerDialog import TrackerManagerDialog
+from interface.trackerManagerPanel import TrackerManagerPanel
 from interface.statusBadge import setConnectionBadge
 from interface.themeManager import ACCENT_PRESETS, THEME_MODES, validColor
 from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig, systemDownloadDirectory
@@ -50,6 +58,7 @@ class SettingPage(QWidget):
         'quit_with_aria2', 'update_interval', 'rpc_port_changeable', 'language',
         'legacy_download_path_handled', 'tray_icon_style', 'user_agent_presets',
         'theme_mode', 'accent_color', 'show_aria2_status',
+        'tracker_source_keys', 'tracker_custom_sources',
     )
 
     def __init__(self):
@@ -215,25 +224,37 @@ class SettingPage(QWidget):
         settingsLayout.addWidget(self.btSettingLabel)
 
         self.trackers = []
-        self.trackerSource = self.ashoreConfig['trackers_list_source']
+        self.trackerSource = self.ashoreConfig.get('trackers_list_source', '')
         self.trackerHealthSummary = None
-        self.trackerStatus = QLabel('')
-        self.trackerStatus.setWordWrap(True)
-        self.trackerInfo = QLabel('')
-        self.trackerBtn = QPushButton()
-        self.trackerManageBtn = QPushButton()
-        trackerActions = QHBoxLayout()
-        trackerActions.addWidget(self.trackerInfo)
-        trackerActions.addStretch(1)
-        trackerActions.addWidget(self.trackerBtn)
-        trackerActions.addWidget(self.trackerManageBtn)
-        trackerLayout = QVBoxLayout()
-        trackerLayout.setContentsMargins(0, 0, 0, 0)
-        trackerLayout.setSpacing(6)
-        trackerLayout.addWidget(self.trackerStatus)
-        trackerLayout.addLayout(trackerActions)
-        self.btTrackerLabel = QLabel()
-        self.addSettingItem(settingsLayout, self.btTrackerLabel, trackerLayout)
+
+        self.trackerSourceChecks = {}
+        trackerSourceLayout = QVBoxLayout()
+        trackerSourceLayout.setContentsMargins(0, 0, 0, 0)
+        trackerSourceLayout.setSpacing(5)
+        for source in TRACKER_SOURCE_CATALOG:
+            checkBox = QCheckBox(source['name'])
+            checkBox.setToolTip(source['url'])
+            self.trackerSourceChecks[source['key']] = checkBox
+            trackerSourceLayout.addWidget(checkBox)
+
+        self.customTrackerRows = []
+        self.customTrackerSourceLayout = QVBoxLayout()
+        self.customTrackerSourceLayout.setContentsMargins(0, 0, 0, 0)
+        self.customTrackerSourceLayout.setSpacing(4)
+        trackerSourceLayout.addLayout(self.customTrackerSourceLayout)
+
+        self.customTrackerSourceInput = QLineEdit()
+        self.customTrackerSourceInput.setPlaceholderText('https://example.org/trackers.txt')
+        self.addTrackerSourceBtn = QPushButton()
+        customSourceInputLayout = QHBoxLayout()
+        customSourceInputLayout.setContentsMargins(0, 0, 0, 0)
+        customSourceInputLayout.addWidget(self.customTrackerSourceInput, 1)
+        customSourceInputLayout.addWidget(self.addTrackerSourceBtn)
+        trackerSourceLayout.addLayout(customSourceInputLayout)
+
+        self.trackerSourcesLabel = QLabel()
+        self.addSettingItem(
+            settingsLayout, self.trackerSourcesLabel, trackerSourceLayout)
 
         self.autoTrackerComboBox = AshoreComboBox()
         self.autoTrackerComboBox.addItems(['', ''])
@@ -244,6 +265,35 @@ class SettingPage(QWidget):
         autoTrackerLayout.addStretch(1)
         self.autoTrackerLabel = QLabel()
         self.addSettingItem(settingsLayout, self.autoTrackerLabel, autoTrackerLayout)
+
+        self.trackerStatus = QLabel('')
+        self.trackerStatus.setWordWrap(True)
+        self.trackerInfo = QLabel('')
+        self.trackerBtn = QPushButton()
+        trackerActions = QHBoxLayout()
+        trackerActions.setContentsMargins(0, 0, 0, 0)
+        trackerActions.addWidget(self.trackerInfo)
+        trackerActions.addStretch(1)
+        trackerActions.addWidget(self.trackerBtn)
+        trackerOverviewLayout = QVBoxLayout()
+        trackerOverviewLayout.setContentsMargins(0, 0, 0, 0)
+        trackerOverviewLayout.setSpacing(6)
+        trackerOverviewLayout.addWidget(self.trackerStatus)
+        trackerOverviewLayout.addLayout(trackerActions)
+        self.btTrackerLabel = QLabel()
+        self.addSettingItem(
+            settingsLayout, self.btTrackerLabel, trackerOverviewLayout)
+
+        self.trackerToggle = QToolButton()
+        self.trackerToggle.setCheckable(True)
+        self.trackerToggle.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.trackerToggle.setProperty('advancedToggle', True)
+        self.trackerPanel = TrackerManagerPanel(
+            self.trackers, self.language, self)
+        self.trackerPanel.setVisible(False)
+        settingsLayout.addWidget(self.trackerToggle)
+        settingsLayout.addWidget(self.trackerPanel)
 
         self.ashoreSettingLabel = QLabel()
         self.ashoreSettingLabel.setProperty('settingsSectionTitle', True)
@@ -361,7 +411,11 @@ class SettingPage(QWidget):
         self.scrollToAria2Btn.clicked.connect(self.slotScrollToAria2)
         self.scrollToAshoreBtn.clicked.connect(self.slotScrollToAshore)
         self.trackerBtn.clicked.connect(self.slotTracker)
-        self.trackerManageBtn.clicked.connect(self.openTrackerManager)
+        self.addTrackerSourceBtn.clicked.connect(self.addCustomTrackerSource)
+        self.trackerToggle.toggled.connect(self.toggleTrackerManager)
+        self.trackerPanel.trackersChanged.connect(self.applyManagedTrackers)
+        self.trackerPanel.healthSummaryChanged.connect(
+            self.applyTrackerHealthSummary)
         self.saveBtn.clicked.connect(self.slotSaveConf)
         self.rpcPortChangeableComboBox.currentIndexChanged.connect(
             self.slotRpcPortChangeable)
@@ -374,6 +428,7 @@ class SettingPage(QWidget):
         self.accentComboBox.currentTextChanged.connect(self.previewTheme)
         self.accentButton.clicked.connect(self.pickAccent)
 
+        self.loadTrackerSourceControls(self.ashoreConfig)
         self.retranslateUi()
         self.updateTokenRow()
 
@@ -416,12 +471,16 @@ class SettingPage(QWidget):
         self.rpcListenAllComboBox.setItemText(1, self.tr('no'))
         self.rpcSecretLabel.setText(self.tr('rpcToken'))
 
+        self.trackerSourcesLabel.setText(self.tr('trackerSources'))
+        self.addTrackerSourceBtn.setText(self.tr('addTrackerSource'))
         self.btTrackerLabel.setText(self.tr('trackerOverview'))
         self.trackerBtn.setText(
             self.tr('updateTracker')
             if self.trackerBtn.isEnabled()
             else self.tr('trackerUpdating'))
-        self.trackerManageBtn.setText(self.tr('manageTrackers'))
+        self.trackerToggle.setText(self.tr('trackerManagement'))
+        self.updateTrackerToggleIcon()
+        self.trackerPanel.setLanguage(self.language)
         self.trackerInfo.setText(
             self.tr('lastTrackerUpdate').format(
                 time=displayTime(self.trackerTime)))
@@ -480,6 +539,7 @@ class SettingPage(QWidget):
         self.updateTokenRow()
         self.trackers = parseTrackers(aria2Config['bt-tracker'])
         self.trackerHealthSummary = None
+        self.trackerPanel.setTrackers(self.trackers)
         self.showTrackerStatus()
 
 
@@ -488,7 +548,8 @@ class SettingPage(QWidget):
         self.trackerInfo.setText(
             self.tr('lastTrackerUpdate').format(
                 time=displayTime(self.trackerTime)))
-        self.trackerSource = ashoreConfig['trackers_list_source']
+        self.trackerSource = ashoreConfig.get('trackers_list_source', '')
+        self.loadTrackerSourceControls(ashoreConfig)
         self.setLanguage(ashoreConfig.get('language', self.language))
         self.showTrackerStatus()
         self.setBoolOption(
@@ -563,14 +624,19 @@ class SettingPage(QWidget):
                 value = True
             elif value == 'false':
                 value = False
-            elif key == 'user_agent_presets':
+            elif key in (
+                    'user_agent_presets', 'tracker_source_keys',
+                    'tracker_custom_sources'):
                 try:
                     value = json.loads(value)
                 except (TypeError, ValueError):
                     value = []
                 if not isinstance(value, list):
                     value = []
-                value = [item for item in value if isinstance(item, str) and item.strip()]
+                if key == 'user_agent_presets':
+                    value = [
+                        item for item in value
+                        if isinstance(item, str) and item.strip()]
             tempDict[key] = value
         return tempDict
 
@@ -606,37 +672,121 @@ class SettingPage(QWidget):
             self.pathLineEdit.setText(path)
 
     def slotTracker(self):
+        sources = self.selectedTrackerSourceUrls()
+        if not sources:
+            self.showTrackerMessage(self.tr('noTrackerSources'))
+            return
         self.saveBtn.setEnabled(False)
         self.trackerBtn.setEnabled(False)
         self.trackerBtn.setText(self.tr('trackerUpdating'))
-        self.trackerManager.start(force=True)
+        if not self.trackerManager.start(force=True, sources=sources):
+            self.trackerBtn.setEnabled(True)
+            self.saveBtn.setEnabled(True)
+            self.trackerBtn.setText(self.tr('updateTracker'))
     def startAutoTracker(self):
         return self.trackerManager.start()
 
 
+    def selectedTrackerSourceKeys(self):
+        return [
+            key for key, checkBox in self.trackerSourceChecks.items()
+            if checkBox.isChecked()]
+
+    def customTrackerSources(self):
+        return [
+            {'url': row['checkBox'].text(), 'enabled': row['checkBox'].isChecked()}
+            for row in self.customTrackerRows]
+
+    def selectedTrackerSourceUrls(self):
+        return sourceUrls(
+            self.selectedTrackerSourceKeys(), self.customTrackerSources())
+
+    def loadTrackerSourceControls(self, ashoreConfig):
+        selectedKeys = ashoreConfig.get(
+            'tracker_source_keys', list(DEFAULT_SOURCE_KEYS))
+        if not selectedKeys:
+            selectedKeys = list(DEFAULT_SOURCE_KEYS)
+        for key, checkBox in self.trackerSourceChecks.items():
+            checkBox.setChecked(key in selectedKeys)
+
+        for row in list(self.customTrackerRows):
+            row['widget'].deleteLater()
+        self.customTrackerRows.clear()
+        for item in ashoreConfig.get('tracker_custom_sources', []):
+            if isinstance(item, str):
+                self.addCustomTrackerSource(item, True)
+            elif isinstance(item, dict):
+                self.addCustomTrackerSource(
+                    item.get('url', ''), item.get('enabled', True))
+
+    def addCustomTrackerSource(self, url=None, enabled=True):
+        value = (
+            self.customTrackerSourceInput.text()
+            if url is None else str(url))
+        value = validSourceUrl(value)
+        if not value:
+            if url is None:
+                self.showTrackerMessage(self.tr('invalidTrackerSource'))
+            return
+        known = {
+            source['url'] for source in TRACKER_SOURCE_CATALOG}
+        known.update(
+            row['checkBox'].text() for row in self.customTrackerRows)
+        if value in known:
+            if url is None:
+                self.showTrackerMessage(self.tr('duplicateTrackerSource'))
+            return
+
+        rowWidget = QWidget()
+        rowLayout = QHBoxLayout(rowWidget)
+        rowLayout.setContentsMargins(0, 0, 0, 0)
+        rowLayout.setSpacing(6)
+        checkBox = QCheckBox(value)
+        checkBox.setChecked(bool(enabled))
+        removeBtn = QPushButton('×')
+        removeBtn.setFixedSize(26, 26)
+        rowLayout.addWidget(checkBox, 1)
+        rowLayout.addWidget(removeBtn)
+        row = {'widget': rowWidget, 'checkBox': checkBox}
+        self.customTrackerRows.append(row)
+        self.customTrackerSourceLayout.addWidget(rowWidget)
+        removeBtn.clicked.connect(
+            lambda _checked=False, row=row: self.removeCustomTrackerSource(row))
+        if url is None:
+            self.customTrackerSourceInput.clear()
+            self.showTrackerStatus()
+
+    def removeCustomTrackerSource(self, row):
+        if row not in self.customTrackerRows:
+            return
+        self.customTrackerRows.remove(row)
+        self.customTrackerSourceLayout.removeWidget(row['widget'])
+        row['widget'].deleteLater()
+        self.showTrackerStatus()
+
+    def toggleTrackerManager(self, expanded):
+        self.trackerPanel.setVisible(expanded)
+        self.updateTrackerToggleIcon()
+
+    def updateTrackerToggleIcon(self):
+        name = 'chevron-down' if self.trackerToggle.isChecked() else 'chevron-right'
+        self.trackerToggle.setIcon(actionIcon(name, size=16))
+
     def showTrackerStatus(self):
         count = len(self.trackers)
-        source = (
-            urllib.parse.urlsplit(self.trackerSource).netloc
-            if self.trackerSource else self.tr('manualConfiguration'))
+        sourceCount = len(self.selectedTrackerSourceUrls())
         if self.trackerHealthSummary is None:
             text = self.tr('trackerSummary').format(
-                count=count, source=source)
+                count=count, sources=sourceCount)
         else:
             healthy, failed = self.trackerHealthSummary
             text = (
                 self.tr('trackerSummary').format(
-                    count=count, source=source)
+                    count=count, sources=sourceCount)
                 + ' · '
                 + self.tr('trackerHealthSummary').format(
                     count=count, healthy=healthy, failed=failed))
         self.trackerStatus.setText(text)
-    def openTrackerManager(self):
-        dialog = TrackerManagerDialog(
-            self.trackers, self.language, self)
-        dialog.trackersChanged.connect(self.applyManagedTrackers)
-        dialog.healthSummaryChanged.connect(self.applyTrackerHealthSummary)
-        dialog.exec()
 
     def applyManagedTrackers(self, trackers):
         self.trackers = list(trackers)
@@ -652,17 +802,17 @@ class SettingPage(QWidget):
         self.trackerStatus.setText(message)
 
 
-    def applyTrackerUpdate(self, trackers, source, timestamp):
-        self.trackerSource = source
+    def applyTrackerUpdate(self, trackers, sources, timestamp):
+        self.trackerSource = json.dumps(sources, ensure_ascii=False)
         self.trackerTime = timestamp
         self.trackerInfo.setText(
             self.tr('lastTrackerUpdate').format(time=displayTime(timestamp)))
         self.trackers = list(trackers)
         self.trackerHealthSummary = None
-        host = urllib.parse.urlsplit(source).netloc
+        self.trackerPanel.setTrackers(self.trackers)
         self.trackerStatus.setText(
             self.tr('trackerUpdated').format(
-                count=len(trackers), source=host))
+                count=len(trackers), sources=len(sources)))
         self.trackerBtn.setText(self.tr('updateTracker'))
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
@@ -676,6 +826,7 @@ class SettingPage(QWidget):
         self.trackerBtn.setEnabled(True)
         self.saveBtn.setEnabled(True)
     def slotSaveConf(self) -> None:
+        self.trackers = self.trackerPanel.trackers()
         aria2Values = {
             'dir'                       :   self.pathLineEdit.text(),
             'bt-tracker'                :   ','.join(self.trackers),
@@ -702,6 +853,10 @@ class SettingPage(QWidget):
             'tray_icon_style'       :   self.trayIconStyleComboBox.currentData(),
             'show_aria2_status'     :   self.getBoolOption(self.showAria2StatusComboBox),
             'trackers_auto_update'  :   self.getBoolOption(self.autoTrackerComboBox),
+            'tracker_source_keys'   :   json.dumps(
+                self.selectedTrackerSourceKeys(), ensure_ascii=False),
+            'tracker_custom_sources':   json.dumps(
+                self.customTrackerSources(), ensure_ascii=False),
             'theme_mode'            :   self.themeModeComboBox.currentData(),
             'accent_color'          :   validColor(self.accentComboBox.currentText()),
         }
