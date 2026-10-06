@@ -95,13 +95,13 @@ class Aria2Startup(QThread):
 
     def run(self):
         try:
-            self.statusChanged.emit('正在检查 aria2')
+            self.statusChanged.emit('startupCheckingAria2')
             service = Aria2Service(self.quitWithAshore)
             issue = service.ensureReady()
             if issue is not None:
                 self.unhealthy.emit(issue)
                 return
-            self.statusChanged.emit('aria2 已连接')
+            self.statusChanged.emit('startupAria2Connected')
             self.ready.emit(service)
         except (RuntimeError, OSError, ValueError) as exc:
             issue = makeEnvironmentIssue(
