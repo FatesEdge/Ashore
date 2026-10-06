@@ -47,7 +47,7 @@ class SingleInstanceCoordinator(QObject):
             return True
 
         raise RuntimeError(
-            '另一个 Ashore 实例正在启动，但无法建立本地通信。')
+            'Another Ashore instance is starting, but local IPC could not be established.')
 
     def startServer(self):
         QLocalServer.removeServer(self.serverName)
@@ -55,7 +55,7 @@ class SingleInstanceCoordinator(QObject):
         if not self.server.listen(self.serverName):
             self.lock.unlock()
             self.server = None
-            raise RuntimeError('无法建立 Ashore 单实例通信通道')
+            raise RuntimeError('Could not create the Ashore single-instance IPC channel')
         self.server.newConnection.connect(self.receiveConnection)
 
     def forward(self, payload, attempts=1):
