@@ -50,7 +50,7 @@ Ashore requires **Python 3.12+** when run from source and a working **aria2** in
 
 ## Installation
 
-Prebuilt release artifacts should be preferred once a release is available. See the repository [Releases](https://github.com/FatesEdge/Ashore/releases) page.
+Prebuilt release artifacts should be preferred once a release is available. See the repository [Releases](https://github.com/Kai-x64/Ashore/releases) page.
 
 ### Linux
 
@@ -73,7 +73,7 @@ Windows is covered by automated tests, but a formal installer is not provided ye
 ## Run from source
 
 ```bash
-git clone https://github.com/FatesEdge/Ashore.git
+git clone https://github.com/Kai-x64/Ashore.git
 cd Ashore
 
 python3 -m venv .venv
