@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from core.configStore import readOptions, writeOptions
+from core.userAgents import defaultUserAgent
 
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "ashore"
@@ -54,8 +55,13 @@ def ensureConfig(name):
         source = RESOURCE_DIR / "config" / name
         content = source.read_bytes()
         if name == 'aria2.conf':
-            content = content.replace(b'${HOME}/.config/ashore', os.fsencode(CONFIG_DIR))
-            content = content.replace(b'${DOWNLOAD_DIR}', os.fsencode(systemDownloadDirectory()))
+            content = content.replace(
+                b'${HOME}/.config/ashore', os.fsencode(CONFIG_DIR))
+            content = content.replace(
+                b'${DOWNLOAD_DIR}', os.fsencode(systemDownloadDirectory()))
+            content = content.replace(
+                b'${DEFAULT_USER_AGENT}',
+                defaultUserAgent().encode('utf-8'))
         target.write_bytes(content)
     if name == 'aria2.conf':
         options = readOptions(target)
