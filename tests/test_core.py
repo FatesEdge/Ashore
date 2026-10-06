@@ -49,9 +49,12 @@ class Aria2Tests(unittest.TestCase):
             with patch.object(paths, 'CONFIG_DIR', Path(folder)), \
                  patch.object(SettingPage, 'ashoreConfDir', folder):
                 page = SettingPage()
-                presets = page.ashoreConfig['user_agent_presets']
+                presets = [
+                    page.userAgentComboBox.itemText(index)
+                    for index in range(page.userAgentComboBox.count())]
                 self.assertGreaterEqual(len(presets), 5)
-                self.assertTrue(all(item.startswith('Mozilla/5.0 (') for item in presets))
+                self.assertTrue(all(
+                    item.startswith('Mozilla/5.0 (') for item in presets))
                 self.assertTrue(page.userAgentComboBox.isEditable())
                 page.userAgentComboBox.setCurrentText('Custom Agent/1.0')
                 self.assertEqual(page.userAgentComboBox.currentText(), 'Custom Agent/1.0')
