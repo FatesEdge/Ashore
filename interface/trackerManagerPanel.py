@@ -1,6 +1,7 @@
 """Inline Tracker list editor and health checker for the settings page."""
 
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QBrush, QColor, QPalette
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -39,11 +40,13 @@ class TrackerManagerPanel(QWidget):
             QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(26)
         header = self.table.horizontalHeader()
+        header.setFixedHeight(26)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.setMinimumHeight(220)
+        self.table.setMinimumHeight(190)
 
         self.addBtn = QPushButton()
         self.removeBtn = QPushButton()
@@ -57,7 +60,7 @@ class TrackerManagerPanel(QWidget):
         actionLayout.addWidget(self.checkBtn)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 6, 0, 4)
+        layout.setContentsMargins(18, 4, 0, 4)
         layout.setSpacing(8)
         layout.addWidget(self.summaryLabel)
         layout.addWidget(self.table)
@@ -105,6 +108,7 @@ class TrackerManagerPanel(QWidget):
         self.table.insertRow(row)
         urlItem = QTableWidgetItem(url)
         statusItem = QTableWidgetItem(self.tr('notChecked'))
+        statusItem.setForeground(self.statusBrush('pending'))
         latencyItem = QTableWidgetItem('—')
         statusItem.setFlags(statusItem.flags() & ~Qt.ItemFlag.ItemIsEditable)
         latencyItem.setFlags(latencyItem.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -171,6 +175,17 @@ class TrackerManagerPanel(QWidget):
         self.worker.finished.connect(self.clearWorker)
         self.worker.start()
 
+    def statusBrush(self, status):
+        dark = self.palette().color(
+            QPalette.ColorRole.Window).lightness() < 128
+        colors = {
+            'healthy': '#69ad78' if dark else '#2f7d4a',
+            'failed': '#d46b6b' if dark else '#b84a4a',
+        }
+        if status in colors:
+            return QBrush(QColor(colors[status]))
+        return QBrush(self.palette().color(QPalette.ColorRole.PlaceholderText))
+
     def applyHealthResult(self, row, status, latency, error):
         if row >= self.table.rowCount():
             return
@@ -178,8 +193,11 @@ class TrackerManagerPanel(QWidget):
             self.tr('trackerHealthy')
             if status == 'healthy'
             else self.tr('trackerUnavailable'))
-        self.table.item(row, 1).setText(statusText)
-        self.table.item(row, 1).setToolTip(error or '')
+        statusItem = self.table.item(row, 1)
+        statusItem.setText(statusText)
+        statusItem.setForeground(
+            self.statusBrush('healthy' if status == 'healthy' else 'failed'))
+        statusItem.setToolTip(error or '')
         self.table.item(row, 2).setText(
             f'{latency} ms' if latency is not None else '—')
 
