@@ -478,6 +478,11 @@ class ThemeManager(QObject):
             QLineEdit:focus, QTextEdit:focus {{
                 border-color: {self.accent};
             }}
+            QLineEdit:disabled {{
+                background: {token['background']};
+                color: {token['disabled']};
+                border-color: {token['border']};
+            }}
             QToolButton[advancedToggle="true"] {{
                 color: {token['text']};
                 background: transparent;
