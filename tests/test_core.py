@@ -248,7 +248,7 @@ class Aria2Tests(unittest.TestCase):
             deleteTaskFiles({'dir': folder, 'filename': 'My download', 'files': [str(target)]})
             self.assertFalse(target.exists())
             self.assertTrue(other.exists())
-            with self.assertRaisesRegex(ValueError, '拒绝删除'):
+            with self.assertRaisesRegex(ValueError, 'refusing to delete'):
                 deleteTaskFiles({'dir': folder, 'filename': '', 'files': [str(root.parent / 'outside')]})
 
     def test_running_task_removal_waits_for_removed_status_before_cleanup(self):
