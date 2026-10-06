@@ -1,101 +1,145 @@
-<h1  align="center">Ashore</h1>
+# Ashore
 
 <p align="center">
-  <a target="_blank" href="https://github.com/PanZK/Ashore"><img src="https://raw.githubusercontent.com/PanZK/Ashore/main/static/icon/icon.funtion/icon0.png"></a></p>
-<p align="center"><br>Ashore 是一个用Python编写的内核为aria2的界面管理程序。<br><br>
+  <img src="static/icon/functionIcons/appIcon.png" width="96" alt="Ashore icon">
 </p>
 
-&emsp;&emsp;![](https://img.shields.io/badge/python-v3.10-blue)&ensp;![](https://img.shields.io/badge/PyQt-v6-yellowgreen)&ensp;![PyPI - License](https://img.shields.io/badge/license-GPL-blue)&ensp;[![download](https://img.shields.io/badge/download-50M-brightgreen)](https://github.com/PanZK/Ashore/releases)
+<p align="center">
+  A focused cross-platform desktop download manager powered by aria2 and PyQt6.
+</p>
 
----
+<p align="center">
+  <a href="README.CN.md">简体中文</a>
+</p>
 
-## Origin
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12%2B-blue" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/PyQt-6-green" alt="PyQt6">
+  <img src="https://img.shields.io/badge/license-MPL--2.0-blue" alt="MPL-2.0">
+</p>
 
-&emsp;下载器有很多，逐渐变得不好用，使用aria2后感觉很好，没有界面是一大特点，但用着也稍嫌费劲。网络上已有很多大佬做的各种界面程序基本都使用过感觉都非常棒，不过有时候太符合自己操作习惯，在再加上自己想练练手，遂coding小白就用Python做了一个。
+## Overview
 
-## Features
+Ashore is a native-feeling desktop front end for [aria2](https://github.com/aria2/aria2). It keeps the product scope deliberately narrow: managing downloads well, exposing the aria2 features that matter in day-to-day use, and behaving consistently across desktop platforms.
 
-- 下载内核部分直接使用[aria2](https://github.com/aria2/aria2)
-- 程序界面使用[PyQt6](https://pypi.org/project/PyQt6/)制作
-- aria2的设置默认为localhost、RPC端口号为 `6801`避免冲突
-- Ashore配置文件单独存放于ashore.conf文件中
-- 程序中可对aria2的配置简单进行更改，后续可以加入更多配置选项（[Mac下配置Aria2](https://gist.github.com/sumpeter/9f71b26b0e79cfd3bae39c3bdf6cfd8c)这里讲的非常细致）
+The application uses aria2 JSON-RPC for authoritative task state and WebSocket notifications for prompt refreshes. It also provides task naming persistence, Tracker source management and health checks, system notifications, theme support, single-instance routing, and desktop protocol/file integration.
 
-## Stand by
+## Highlights
 
-- Ubuntu 18.04 或更高版本
-- MacOS 10.15 或更高版本
+- HTTP, HTTPS, FTP, BitTorrent, magnet links, and local `.torrent` files through aria2
+- Compact PyQt6 desktop interface with light, dark, and system themes
+- Download state, speed, aria2 connection state, and task actions in one window
+- WebSocket notifications for immediate refresh with HTTP polling as the authoritative fallback
+- Multi-source BT Tracker lists with merge, deduplication, manual editing, and reachability/latency checks
+- Local-only RPC by default, with an explicit external-access switch and generated read-only token display
+- Download-complete/error system notifications
+- Persistent learned task names
+- Single-instance handling for URLs, magnet links, and `.torrent` files
+- Simplified Chinese, Traditional Chinese, and English UI support; first launch follows the supported system language and otherwise defaults to English
+- Linux, macOS, and Windows code paths covered by CI
 
-## Install
+## Platform status
 
-### 	MacOS
+| Platform | Status |
+| --- | --- |
+| Linux | Primary development and manual validation platform |
+| macOS | Supported in code and packaging; application bundle/DMG workflow available |
+| Windows | Supported in code and CI; additional physical-machine release validation is still desirable |
 
-1. 确认已安装好[aria2](https://github.com/aria2/aria2)；
-2. 下载[release](https://github.com/PanZK/videoSorter/releases)中的 `dmg` 文件；
-3. 双击运行 `dmg` 文件，将Ashorer拉进 `Applications` 文件夹；
-4. 程序坞中找到，点击运行。
+Ashore requires **Python 3.12+** when run from source and a working **aria2** installation.
 
-### 	Linux
+## Installation
 
-1. 确认已安装好[aria2](https://github.com/aria2/aria2)；
+Prebuilt release artifacts should be preferred once a release is available. See the repository [Releases](https://github.com/Kai-x64/Ashore/releases) page.
 
-2. 下载Linux系统载[release](https://github.com/PanZK/videoSorter/releases)中的zip并解压；
+### Linux
 
-3. 终端进入解压目录执行
+Install aria2 first, unpack the Ashore Linux release package, then run:
 
-   ```
-   sudo chmod +x make.sh
-   sudo ./make.sh
-   ```
+```bash
+sudo ./install.sh
+```
 
-   赋予权限后运行
+The installer places Ashore under `/opt/Ashore` and the desktop entry under `/usr/local/share/applications/ashore.desktop`. User configuration remains in `~/.config/ashore/` or the directory selected by `XDG_CONFIG_HOME`.
 
-4. Ashore将会被安装在 `/opt/Ashore` 文件夹，同时应用程序列表中也会列出；
+### macOS
 
-### 	Windows
+Install aria2 first. For a packaged release, open the Ashore DMG and move `Ashore.app` to `Applications`.
 
-- 尚未测试
+### Windows
 
+Windows is covered by automated tests, but a formal installer is not provided yet. Running from source remains the development path for Windows until packaging is finalized.
 
+## Run from source
 
-## Usage
+```bash
+git clone https://github.com/Kai-x64/Ashore.git
+cd Ashore
 
-1. 运行Ashore后界面如下：
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
 
-   
+python Ashore.py
+```
 
-   <p align="center">
-     <img src="https://raw.githubusercontent.com/PanZK/Ashore/main/static/icon/icon.funtion/surface.png"></p>
+On Windows, activate the virtual environment with the platform-appropriate command.
 
-2. 程序图标为主，上手简单。
+## Configuration and RPC
 
-## make
+Ashore stores user configuration outside the source tree. RPC is local-only by default. External RPC access must be enabled explicitly in Settings; Ashore then generates and displays the authorization token as read-only UI.
 
-1. 编程环境vscode、python3.10、pyqt6
+The application shows the effective HTTP polling address, WebSocket notification address, connection state, and aria2 version. HTTP remains the authoritative source for task state; WebSocket is used to trigger prompt refreshes.
 
-2. clone项目后解压，终端进入解压目录执行
+See [RPC and security](docs/rpc.md) for details.
 
-   ```
-   sudo chmod +x make.py
-   python3 make.py
-   ```
+## Tracker management
 
-   按提示操作
+Ashore can combine multiple Tracker sources, remove duplicates, preserve the last successful list on failures, and test individual endpoints concurrently. Automatic refresh is optional and uses the last successful update time rather than refreshing on every launch.
 
 ## Development
 
-1. 上一版是通过[aria2p](https://github.com/pawamoy/aria2p)实现，后面感觉过于繁琐，故自行写了一版，目前仍有许多不足，后续继续努力；
-2. 欠缺一套常用文件类型的系列图标；
-3. 界面也没好好写，后续考虑加入深浅色配置并优化界面；
-4. 对于rpcserver发送出来的消息不知如何获取，暨aria2在任务完成/出错等情况时发送的消息不知如何接收，后面想办法；
-5. 目前手头没有Windows实体机及虚拟机，还未对win平台做测试；
-6. 添加多语言选项；
-7. 后续考虑对任务管理添加多选功能。
+Install development dependencies with:
 
+```bash
+python -m pip install -e ".[dev]"
+```
 
+Run the same core checks used by CI:
 
----
+```bash
+python -m compileall -q Ashore.py paths.py make.py core interface
+python -m pyflakes Ashore.py paths.py make.py core interface tests
+python -m unittest discover -s tests -v
+```
 
-<p align="center">
-  Enjoy it!
-</p>
+The repository intentionally keeps application logic separated from UI code:
+
+- `Ashore.py` — application bootstrap
+- `core/` — aria2 integration, lifecycle, configuration, trackers, requests, and platform-independent services
+- `interface/` — PyQt6 windows, pages, controls, themes, notifications, and window chrome
+- `packaging/` — desktop packaging metadata and Linux installer
+- `tests/` — unit, UI-structure, platform-behaviour, and packaging tests
+
+More detail is available in [Architecture](docs/architecture.md) and [Development](docs/development.md).
+
+## Packaging
+
+Linux supports both PyInstaller `onefile` and `onedir` builds. macOS supports `.app` and DMG output.
+
+```bash
+python make.py onefile   # Linux
+python make.py onedir    # Linux
+python make.py app       # macOS
+python make.py dmg       # macOS
+```
+
+See [Packaging](docs/packaging.md) for the release layout and validation notes.
+
+## Roadmap
+
+Ashore will continue to focus on being a small, dependable aria2 desktop manager rather than growing into a plugin or service ecosystem. Longer-term ideas, including a possible C++/Qt rewrite, are recorded in [Roadmap](docs/roadmap.md).
+
+## License
+
+Ashore is licensed under the [Mozilla Public License 2.0](LICENSE).

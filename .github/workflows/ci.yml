@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - codex/python-stability-refactor
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install Linux Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0
+      - name: Install Ashore development dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Check source
+        run: |
+          python -m compileall -q Ashore.py paths.py make.py core interface
+          python -m pyflakes Ashore.py paths.py make.py core interface tests
+      - name: Check Linux installer shell
+        if: runner.os == 'Linux'
+        run: sh -n packaging/install.sh
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Smoke test source application
+        run: python tests/smoke_application.py Ashore.py
+
+  linux-package:
+    runs-on: ubuntu-24.04
+    needs: test
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aria2 libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0
+          python -m pip install -e ".[dev]"
+      - name: Build Linux onefile package
+        run: |
+          python make.py onefile
+          test -x dist/Ashore.Linux.onefile/Ashore
+          test -f dist/Ashore.Linux.onefile/icon.png
+          test -f dist/Ashore.Linux.onefile/ashore.desktop
+          test -x dist/Ashore.Linux.onefile/install.sh
+      - name: Smoke test packaged GUI
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/ashore-ci-config
+        run: |
+          set +e
+          timeout --signal=INT --kill-after=5s 12s dist/Ashore.Linux.onefile/Ashore
+          result=$?
+          set -e
+          if [ "$result" -ne 124 ]; then
+            echo "Ashore exited before the smoke test ended (status: $result)" >&2
+            exit 1
+          fi
+
+  macos-package:
+    runs-on: macos-14
+    needs: test
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Build macOS application
+        run: |
+          python make.py app
+          test -x dist/Ashore.Darwin.app/Ashore.app/Contents/MacOS/Ashore
+          test -f dist/Ashore.Darwin.app/Ashore.app/Contents/Info.plist
+          test -f dist/Ashore.Darwin.app/Ashore.app/Contents/Resources/icon.icns
+      - name: Validate macOS application metadata
+        run: |
+          python - <<'PY'
+          import plistlib
+          from pathlib import Path
+          from core.applicationInfo import APP_VERSION
+
+          plist = Path('dist/Ashore.Darwin.app/Ashore.app/Contents/Info.plist')
+          with plist.open('rb') as file:
+              info = plistlib.load(file)
+
+          assert info['CFBundleShortVersionString'] == APP_VERSION
+          assert info['CFBundleVersion'] == APP_VERSION
+          assert info['CFBundleIdentifier'] == 'io.github.kai-x64.ashore'
+          schemes = {
+              scheme
+              for entry in info.get('CFBundleURLTypes', [])
+              for scheme in entry.get('CFBundleURLSchemes', [])
+          }
+          assert {'ashore', 'magnet'} <= schemes
+          extensions = {
+              extension
+              for entry in info.get('CFBundleDocumentTypes', [])
+              for extension in entry.get('CFBundleTypeExtensions', [])
+          }
+          assert 'torrent' in extensions
+          PY
+      - name: Smoke test packaged macOS application
+        run: python tests/smoke_application.py dist/Ashore.Darwin.app/Ashore.app/Contents/MacOS/Ashore
+

@@ -1,0 +1,321 @@
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPalette
+from PyQt6.QtWidgets import QApplication, QSizePolicy
+
+import paths
+from core.applicationRuntime import StartupController
+from interface.addNewDialog import AddNewDialog
+from interface.controls import AshoreComboBox, AshoreSpinBox
+from interface.section import Section
+from interface.settingItem import SettingItem, SettingsSectionHeader
+from interface.settingPage import SettingPage
+from interface.themeManager import ACCENT_PRESETS, THEME_MODES, ThemeManager
+
+
+class SettingsLayoutTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        cls.app = QApplication.instance() or QApplication([])
+
+    def makePage(self, folder):
+        root = Path(folder)
+        patches = (
+            patch.object(paths, 'CONFIG_DIR', root),
+            patch.object(SettingPage, 'ashoreConfDir', folder),
+            patch.object(SettingPage, 'aria2ConfPath', str(root / 'aria2.conf')),
+        )
+        for item in patches:
+            item.start()
+            self.addCleanup(item.stop)
+        return SettingPage()
+
+    def test_long_text_fields_expand_while_compact_controls_do_not(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertTrue(page.scrollArea.widgetResizable())
+            for field in (page.pathLineEdit, page.userAgentComboBox,
+                          page.rpcSecretLineEdit):
+                self.assertEqual(field.sizePolicy().horizontalPolicy(),
+                                 QSizePolicy.Policy.Expanding)
+            self.assertEqual(page.rpcPortLineEdit.width(), 200)
+            self.assertEqual(
+                page.rpcPortLineEdit.sizePolicy().horizontalPolicy(),
+                QSizePolicy.Policy.Fixed)
+            self.assertTrue(page.pathLineEdit.property('joinedLeft'))
+            self.assertTrue(page.pathBtn.property('joinedRight'))
+            self.assertTrue(
+                page.customTrackerSourceInput.property('joinedLeft'))
+            self.assertTrue(page.addTrackerSourceBtn.property('joinedRight'))
+
+    def test_token_mask_has_fixed_length_and_reveals_real_value(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.rpcListenAllComboBox.setCurrentIndex(0)
+            token = page.rpcSecret
+            self.assertEqual(page.rpcSecretLineEdit.text(), '●' * 12)
+            page.toggleToken()
+            self.assertEqual(page.rpcSecretLineEdit.text(), token)
+
+    def test_settings_use_ashore_combo_and_spin_controls(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertIsInstance(page.languageComboBox, AshoreComboBox)
+            self.assertIsInstance(page.updateIntervalSpin, AshoreSpinBox)
+            self.assertEqual(
+                page.languageComboBox.focusPolicy(),
+                Qt.FocusPolicy.StrongFocus)
+            self.assertEqual(
+                page.updateIntervalSpin.focusPolicy(),
+                Qt.FocusPolicy.StrongFocus)
+            self.assertTrue(page.settingItems)
+            self.assertTrue(all(
+                isinstance(item, SettingItem)
+                for item in page.settingItems))
+            self.assertTrue(
+                page.defaultDownloadDirLabel.property('settingsFormLabel'))
+            firstItem = page.settingItems[0]
+            self.assertEqual(
+                firstItem.layout().contentsMargins().bottom(), 10)
+            self.assertEqual(firstItem.layout().spacing(), 4)
+            self.assertEqual(
+                firstItem.fieldHost.layout().contentsMargins().left(),
+                SettingItem.FIELD_INDENT)
+            self.assertEqual(SettingItem.FIELD_INDENT, 18)
+            self.assertEqual(
+                firstItem.field.layout().contentsMargins().left(), 0)
+
+    def test_rpc_token_setting_item_disappears_when_external_rpc_is_off(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.rpcListenAllComboBox.setCurrentIndex(1)
+            page.updateTokenRow()
+            self.assertTrue(page.rpcSecretItem.isHidden())
+            page.rpcListenAllComboBox.setCurrentIndex(0)
+            page.updateTokenRow()
+            self.assertFalse(page.rpcSecretItem.isHidden())
+
+    def test_theme_and_tracker_controls_have_persistable_values(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertEqual(
+                {page.themeModeComboBox.itemData(index)
+                 for index in range(page.themeModeComboBox.count())},
+                set(THEME_MODES))
+            self.assertIn(page.accentComboBox.currentText(), ACCENT_PRESETS)
+            userAgents = [
+                page.userAgentComboBox.itemText(index)
+                for index in range(page.userAgentComboBox.count())]
+            self.assertGreaterEqual(len(userAgents), 10)
+            self.assertTrue(any('Edg/' in value for value in userAgents))
+            self.assertTrue(any('Version/26.0 Safari/' in value for value in userAgents))
+            self.assertTrue(any(
+                'Mac OS X 10_15_7' in value and 'Chrome/' in value
+                for value in userAgents))
+            self.assertEqual(page.getBoolOption(page.autoTrackerComboBox), 'true')
+            self.assertEqual(StartupController.TRACKER_GRACE_MS, 1000)
+            self.assertEqual(set(page.selectedTrackerSourceKeys()), {'ngosang', 'xiu2'})
+            self.assertIn('tracker_source_keys', page.ashoreKeys)
+            self.assertIn('tracker_custom_sources', page.ashoreKeys)
+
+    def test_theme_manager_applies_each_mode(self):
+        manager = ThemeManager(self.app)
+        for mode in THEME_MODES:
+            manager.apply(mode, '#3f7cac')
+            self.assertEqual(manager.mode, mode)
+            self.assertEqual(manager.accent, '#3f7cac')
+
+    def test_light_and_dark_palettes_are_visibly_distinct(self):
+        manager = ThemeManager(self.app)
+        manager.apply('light', '#3f7cac')
+        light = self.app.palette().color(QPalette.ColorRole.Window)
+        manager.apply('dark', '#3f7cac')
+        dark = self.app.palette().color(QPalette.ColorRole.Window)
+        self.assertGreater(light.lightness(), 220)
+        self.assertLess(dark.lightness(), 80)
+
+    def test_semantic_styles_cover_command_navigation_cards_and_scrollbars(self):
+        manager = ThemeManager(self.app)
+        manager.apply('dark', '#3f7cac')
+        style = self.app.styleSheet()
+        self.assertIn('QPushButton[commandPrimary="true"]', style)
+        self.assertIn('QPushButton[navigationTab="true"]:checked', style)
+        self.assertIn('QPushButton[navigationTab="true"]:hover', style)
+        self.assertIn('QLabel[statusMetricText="true"]', style)
+        self.assertIn('QFrame[downloadCard="true"]', style)
+        self.assertIn('QScrollBar:vertical', style)
+
+    def test_tracker_and_download_progress_use_dense_row_card_layout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertTrue(page.trackerToggle.text())
+            self.assertIs(
+                page.trackerToggle.parentWidget(),
+                page.trackerPanel.parentWidget())
+            self.assertTrue(page.trackerPanel.isHidden())
+            page.trackerToggle.setChecked(True)
+            self.assertFalse(page.trackerPanel.isHidden())
+            self.assertTrue(page.saveBtn.property('primaryAction'))
+        section = Section(
+            'gid', 'example.bin', 'completed', 100, 100, 0,
+            language='zh_CN')
+        self.assertEqual(section.progressBar.height(), 4)
+        self.assertFalse(section.progressBar.isTextVisible())
+        self.assertEqual(section.rateLabel.text(), '100%')
+        self.assertEqual(section.progressBar.value(), 100)
+        self.assertEqual(section.property('downloadCard'), True)
+        self.assertTrue(section.actionButton.isHidden())
+        self.assertTrue(section.openFolderButton.isHidden())
+        section.setQuickActionsVisible(True)
+        self.assertEqual(section.actionButton.iconSize().width(), 18)
+        self.assertEqual(section.actionSlot.height(), 22)
+        self.assertFalse(section.actionButton.isHidden())
+        self.assertFalse(section.openFolderButton.isHidden())
+        self.assertFalse(section.copyUrlButton.isHidden())
+        self.assertFalse(section.moreButton.isHidden())
+        self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
+        self.assertEqual(section.overflowMenu.dismissTimer.interval(), 450)
+        self.assertEqual(section.height(), 84)
+        self.assertEqual(section.CONTENT_MIN_WIDTH, 660)
+        self.assertEqual(section.CONTENT_MAX_WIDTH, 820)
+        self.assertEqual(
+            section.actionSlot.layout().contentsMargins().left(), 30)
+        layout = section.rateLabel.parentWidget().layout()
+        namePosition = layout.getItemPosition(layout.indexOf(section.nameLabel))
+        ratePosition = layout.getItemPosition(layout.indexOf(section.rateLabel))
+        self.assertEqual(namePosition[:2], (0, 0))
+        self.assertEqual(ratePosition[:2], (1, 1))
+
+    def test_completed_multifile_task_opens_folder_as_primary_action(self):
+        multi = Section(
+            'gid', 'Example', 'completed', 100, 100, 0,
+            isTorrent=True, files=['a.bin', 'b.bin'])
+        single = Section(
+            'gid2', 'single.iso', 'completed', 100, 100, 0,
+            files=['single.iso'])
+        self.assertEqual(multi.primaryActionKind(), 'open-folder')
+        self.assertEqual(single.primaryActionKind(), 'open-file')
+
+    def test_settings_retranslate_without_recreating_page(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.setLanguage('en')
+            self.assertEqual(
+                page.defaultDownloadDirLabel.text(),
+                'Default download directory:')
+            self.assertEqual(page.saveBtn.text(), 'Save Settings')
+            self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
+            self.assertIsInstance(
+                page.aria2SettingLabel, SettingsSectionHeader)
+            self.assertIsInstance(
+                page.ashoreSettingLabel, SettingsSectionHeader)
+            self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
+            self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
+            self.assertGreater(len(page.settingItems), 10)
+            self.assertEqual(
+                page.showAria2StatusLabel.text(),
+                'Show aria2 status in main window:')
+    def test_connection_status_uses_semantic_states_and_current_language(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.setLanguage('en')
+            page.setConnectionStatus('connected', 'disconnected', '1.37.0')
+            self.assertEqual(page.httpStatusLabel.text(), '● Connected')
+            self.assertEqual(
+                page.websocketStatusLabel.text(), '● Disconnected, retrying')
+            self.assertEqual(page.aria2VersionLabel.text(), '1.37.0')
+
+
+    def test_overflow_menu_only_contains_non_quick_actions(self):
+        section = Section(
+            'gid-menu', 'file.bin', 'paused', 100, 50, 0,
+            files=['file.bin'])
+        overflow = [
+            action for action in section.overflowMenu.actions()
+            if not action.isSeparator()]
+        self.assertEqual(
+            overflow, [section.removeAction, section.deleteAction])
+
+        section.prepareContextMenu()
+        context = [
+            action for action in section.contextMenu.actions()
+            if not action.isSeparator()]
+        self.assertEqual(
+            context,
+            [
+                section.primaryAction,
+                section.openFolderAction,
+                section.copyUrlAction,
+                section.removeAction,
+                section.deleteAction,
+            ])
+
+    def test_multifile_context_menu_does_not_duplicate_open_folder(self):
+        section = Section(
+            'gid-multi', 'bundle', 'completed', 100, 100, 0,
+            isTorrent=True, files=['a.bin', 'b.bin'])
+        section.prepareContextMenu()
+        actions = [
+            action for action in section.contextMenu.actions()
+            if not action.isSeparator()]
+        self.assertEqual(actions.count(section.openFolderAction), 0)
+        self.assertEqual(section.primaryActionKind(), 'open-folder')
+
+
+    def test_show_aria2_status_is_a_persistable_boolean_setting(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            self.assertIn('show_aria2_status', page.ashoreKeys)
+            self.assertEqual(
+                page.getBoolOption(page.showAria2StatusComboBox), 'true')
+            page.setBoolOption(page.showAria2StatusComboBox, False)
+            self.assertEqual(
+                page.getBoolOption(page.showAria2StatusComboBox), 'false')
+
+    def test_theme_styles_combo_spin_controls_and_accent_arrows(self):
+        manager = ThemeManager(self.app)
+        manager.apply('dark', '#a51d2d')
+        style = self.app.styleSheet()
+        self.assertIn('QComboBox::down-arrow', style)
+        self.assertIn('QSpinBox::up-arrow', style)
+        self.assertIn('QSpinBox::down-arrow', style)
+        self.assertIn('QSpinBox QLineEdit', style)
+        self.assertIn('QLineEdit[joinedLeft="true"]', style)
+        self.assertIn('QPushButton[joinedRight="true"]', style)
+        self.assertIn('QLineEdit:disabled', style)
+        self.assertNotIn('QLabel[connectionState="connected"]', style)
+        self.assertIn('QLabel[mainConnectionDot="true"]', style)
+        self.assertIn('QSpinBox {', style)
+        self.assertIn('QComboBox, QSpinBox {', style)
+        self.assertNotIn('background-color: #2e7d32', style)
+
+    def test_new_download_advanced_control_uses_ashore_chevron(self):
+        dialog = AddNewDialog('/tmp', language='en')
+        self.assertEqual(
+            dialog.advancedToggle.arrowType(),
+            Qt.ArrowType.NoArrow)
+        self.assertFalse(dialog.advancedToggle.icon().isNull())
+        dialog.advancedToggle.setChecked(True)
+        self.assertFalse(dialog.advancedToggle.icon().isNull())
+        self.assertGreaterEqual(dialog.headersEdit.minimumHeight(), 64)
+        dialog.close()
+
+
+    def test_chinese_settings_uses_same_stacked_form_layout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            page = self.makePage(folder)
+            page.setLanguage('zh_CN')
+            self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
+            self.assertTrue(page.showAria2StatusLabel.wordWrap())
+            self.assertGreater(len(page.settingItems), 10)
+
+
+
+if __name__ == '__main__':
+    unittest.main()

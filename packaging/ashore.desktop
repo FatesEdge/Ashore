@@ -1,0 +1,21 @@
+[Desktop Entry]
+Type=Application
+Name=Ashore
+Name[zh_CN]=Ashore
+Name[zh_TW]=Ashore
+Version=1.0
+GenericName=Download manager
+GenericName[zh_CN]=下载管理器
+GenericName[zh_TW]=下载管理器
+Comment=aria2 desktop download manager
+Comment[zh_CN]=基于 aria2 的桌面下载管理器
+Comment[zh_TW]=基於 aria2 的桌面下載管理器
+Icon=/opt/Ashore/icon.png
+Exec=/opt/Ashore/Ashore %U
+Terminal=false
+StartupNotify=false
+StartupWMClass=Ashore
+X-GNOME-UsesNotifications=true
+Categories=Network;FileTransfer;
+MimeType=x-scheme-handler/magnet;x-scheme-handler/ashore;application/x-bittorrent;
+Keywords=download;aria2;下载;Ashore;
