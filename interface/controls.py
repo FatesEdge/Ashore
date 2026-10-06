@@ -46,6 +46,16 @@ def _drawChevron(widget, painter, rect, direction):
 class AshoreComboBox(QComboBox):
     """Native combo behaviour with an Ashore accent chevron."""
 
+    def hasWheelFocus(self):
+        editor = self.lineEdit()
+        return self.hasFocus() or (editor is not None and editor.hasFocus())
+
+    def wheelEvent(self, event):
+        if self.hasWheelFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
     def paintEvent(self, event):
         super().paintEvent(event)
         option = QStyleOptionComboBox()
@@ -61,6 +71,16 @@ class AshoreComboBox(QComboBox):
 
 class AshoreSpinBox(QSpinBox):
     """Native spin behaviour with Ashore accent chevrons."""
+
+    def hasWheelFocus(self):
+        editor = self.lineEdit()
+        return self.hasFocus() or (editor is not None and editor.hasFocus())
+
+    def wheelEvent(self, event):
+        if self.hasWheelFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
 
     def paintEvent(self, event):
         super().paintEvent(event)

@@ -404,9 +404,10 @@ class SettingPage(QWidget):
             QFormLayout.RowWrapPolicy.WrapAllRows)
         self.formLayout.setLabelAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.formLayout.setVerticalSpacing(8)
+        self.formLayout.setVerticalSpacing(4)
 
         for label in self.formLabelWidgets:
+            label.setProperty('settingsFormLabel', True)
             label.setWordWrap(True)
             label.setMinimumWidth(0)
             label.setMaximumWidth(16777215)

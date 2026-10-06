@@ -106,7 +106,7 @@ class ThemeManager(QObject):
         accentSoft = translucent(self.accent, 52 if dark else 34)
         return f"""
             QMainWindow {{
-                background: {token['background']};
+                background: transparent;
                 color: {token['text']};
             }}
             QWidget#mainRoot, QWidget[windowFrame="true"] {{
@@ -128,9 +128,11 @@ class ThemeManager(QObject):
                 background: {token['raised']};
                 color: {token['muted']};
                 border: none;
-                border-radius: 13px;
+                border-radius: 11px;
+                min-width: 22px; max-width: 22px;
+                min-height: 22px; max-height: 22px;
                 padding: 0;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 500;
             }}
             QToolButton[windowControl="true"]:hover {{
@@ -289,6 +291,9 @@ class ThemeManager(QObject):
                 font-size: 15px;
                 font-weight: 700;
                 padding: 10px 2px 6px 2px;
+            }}
+            QLabel[settingsFormLabel="true"] {{
+                padding-top: 7px;
             }}
             QLabel[settingsSubTitle="true"] {{
                 color: {token['text']};

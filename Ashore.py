@@ -60,6 +60,7 @@ class Ashore(QMainWindow):
     def __init__(self, aria2Service, themeManager):
         super().__init__()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'
@@ -182,7 +183,7 @@ class Ashore(QMainWindow):
             ('addBtn', 'add', 16, primaryColor),
             ('unpauseAllBtn', 'play', 15, None),
             ('pauseAllBtn', 'pause', 15, None),
-            ('moreBtn', 'more', 16, None),
+            ('moreBtn', 'menu', 16, None),
         )
         for attribute, iconName, size, color in buttonIcons:
             button = getattr(self, attribute, None)

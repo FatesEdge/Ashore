@@ -85,7 +85,7 @@ class StartupFlowTests(unittest.TestCase):
         self.assertTrue(
             window.windowFlags() & Qt.WindowType.FramelessWindowHint)
         self.assertTrue(window.titleBar.property('customTitleBar'))
-        self.assertFalse(
+        self.assertTrue(
             window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
         self.assertTrue(window.pageStack.property('pageSurface'))
         self.assertIs(window.moreBtn.menu(), window.moreMenu)
@@ -98,7 +98,7 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.tabDownloading.height(), 52)
         self.assertEqual(window.tabDownloading.iconSize().width(), 32)
         self.assertEqual(window.tabSetting.iconSize().width(), 28)
-        self.assertEqual(window.commandBar.height(), 40)
+        self.assertEqual(window.commandBar.height(), 36)
         self.assertTrue(window.statusStrip.property('statusStrip'))
         self.assertEqual(window.statusStrip.height(), 30)
         self.assertTrue(window.aria2StateText.property('statusMetricText'))

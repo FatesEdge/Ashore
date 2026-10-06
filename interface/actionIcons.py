@@ -11,7 +11,7 @@ from paths import RESOURCE_DIR
 
 
 ACTION_NAMES = {
-    'add', 'copy', 'delete', 'hide', 'info', 'more', 'open-file',
+    'add', 'copy', 'delete', 'hide', 'info', 'menu', 'more', 'open-file',
     'open-folder', 'pause', 'play', 'quit', 'remove', 'restart',
     'retry', 'save', 'show', 'download', 'completed', 'settings',
     'chevron-down', 'chevron-right',

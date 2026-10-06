@@ -102,7 +102,7 @@ class AshoreTitleBar(QWidget):
         self.window = window
         self.setProperty('customTitleBar', True)
         self.setProperty('commandBar', True)
-        self.setFixedHeight(40)
+        self.setFixedHeight(36)
 
         self.minimizeButton = self.makeButton('−', 'minimize')
         self.maximizeButton = self.makeButton('□', 'maximize')
@@ -114,7 +114,7 @@ class AshoreTitleBar(QWidget):
         }
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setContentsMargins(8, 3, 8, 3)
         layout.setSpacing(4)
 
         controlsLeft, controlOrder = self.nativeControlLayout()
@@ -176,7 +176,7 @@ class AshoreTitleBar(QWidget):
         button.setText(text)
         button.setProperty('windowControl', True)
         button.setProperty('windowControlRole', role)
-        button.setFixedSize(24, 24)
+        button.setFixedSize(22, 22)
         return button
 
     def toggleMaximized(self):

@@ -59,6 +59,8 @@ class SettingsLayoutTests(unittest.TestCase):
             page = self.makePage(folder)
             self.assertIsInstance(page.languageComboBox, AshoreComboBox)
             self.assertIsInstance(page.updateIntervalSpin, AshoreSpinBox)
+            self.assertTrue(
+                page.defaultDownloadDirLabel.property('settingsFormLabel'))
 
     def test_theme_and_tracker_controls_have_persistable_values(self):
         with tempfile.TemporaryDirectory() as folder:
