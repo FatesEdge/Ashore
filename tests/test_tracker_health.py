@@ -1,7 +1,5 @@
 import os
 import unittest
-from unittest.mock import patch
-
 from PyQt6.QtWidgets import QApplication
 
 from core.trackerHealth import probeTracker
