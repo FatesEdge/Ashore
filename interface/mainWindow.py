@@ -237,7 +237,7 @@ class Ashore(QMainWindow):
             color = selectedColor if button.isChecked() else normalColor
             button.setIcon(actionIcon(iconName, color=color, size=size))
             button.setIconSize(QSize(size, size))
-    def createTrayIcon(self) -> None:   #设置菜单栏程序图标及功能
+    def createTrayIcon(self) -> None:
         showWindowAction = QAction(self.tr('showMain'), self)
         newAction = QAction(self.tr('new'), self)
         aboutInfoAction = QAction(self.tr('about'), self)
@@ -526,7 +526,7 @@ class Ashore(QMainWindow):
         self.pageDownloading.sectionAdded.connect(self.connectSection)
         self.pageDownloaded.sectionAdded.connect(self.connectSection)
 
-    def updatePage(self, snapshot:dict) -> None:
+    def updatePage(self, snapshot: dict) -> None:
         missions = snapshot['missions']
         globalStatus = snapshot['globalStatus']
         if 'ResultError' in globalStatus:
@@ -780,7 +780,7 @@ class Ashore(QMainWindow):
             self.aria2Poller.poll()
 
 
-    def slotTaskAction(self, gid:str, action:str) -> None:
+    def slotTaskAction(self, gid: str, action: str) -> None:
         if action == 'pause':
             self.aria2Client.pause(gid)
         elif action == 'unpause':
@@ -807,7 +807,7 @@ class Ashore(QMainWindow):
             QDesktopServices.openUrl(
                 QUrl.fromLocalFile(openResult['dir']))
 
-    def slotCopyUrl(self, gid:str) -> None:
+    def slotCopyUrl(self, gid: str) -> None:
         urlResult = self.aria2Client.getUrl(gid)
         if 'ResultError' in urlResult:
             self.showStatus(urlResult['ResultError'])
@@ -817,7 +817,7 @@ class Ashore(QMainWindow):
             self.showStatus('已复制到剪贴板')
 
 
-    def slotRemoveTask(self, data:tuple) -> None:
+    def slotRemoveTask(self, data: tuple) -> None:
         gid, deleteFiles = data
         if gid in self.removalWorkers:
             return
@@ -835,8 +835,7 @@ class Ashore(QMainWindow):
         else:
             self.showStatus('删除成功')
         self.aria2Poller.poll()
-    def applyAria2Config(self, conf:dict) -> None:
-        # 将setting页面的设置信息更新到运行的aria2程序中
+    def applyAria2Config(self, conf: dict) -> None:
         if 'ResultError' in conf:
             result = conf
         else:
@@ -858,7 +857,7 @@ class Ashore(QMainWindow):
         self.aria2ConfigError = result.get('ResultError') if isinstance(result, dict) else str(result)
 
 
-    def applyAshoreConfig(self, conf:dict) -> None:
+    def applyAshoreConfig(self, conf: dict) -> None:
         self.aria2Service.quitWithAshore = conf['quit_with_aria2'] == 'true'
         self.aria2Poller.timer.setInterval(
             max(500, int(conf['update_interval'])))
