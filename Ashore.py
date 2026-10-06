@@ -19,10 +19,10 @@ def main():
     if platform.system() == 'Darwin':
         app.setFont(QFont('Hiragino Sans GB'))
         app.setWindowIcon(QIcon(
-            resourcePath + 'static/icon/functionIcons/icon.icns'))
+            resourcePath + 'static/icon/functionIcons/appIcon.icns'))
     else:
         app.setWindowIcon(QIcon(
-            resourcePath + 'static/icon/functionIcons/icon0.png'))
+            resourcePath + 'static/icon/functionIcons/appIcon.png'))
 
     app.startupController = StartupController(app, sys.argv, Ashore)
     app.startupController.start()
