@@ -83,11 +83,13 @@ class StartupFlowTests(unittest.TestCase):
         self.assertTrue(window.titleBar.property('titleBar'))
         self.assertTrue(
             window.windowFlags() & Qt.WindowType.FramelessWindowHint)
-        self.assertFalse(
+        self.assertTrue(
             window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
+        self.assertTrue(window.windowSurface.property('windowSurface'))
         self.assertTrue(window.pageSurface.property('pageSurface'))
         self.assertTrue(window.pageStack.property('pageStack'))
         self.assertIs(window.moreBtn.menu(), window.moreMenu)
+        self.assertIs(window.titleBar.overflowButton.menu(), window.moreMenu)
         self.assertEqual(window.tabDownloading.text(), '')
         self.assertEqual(window.tabDownloaded.text(), '')
         self.assertEqual(window.tabSetting.text(), '')
@@ -100,8 +102,8 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.titleBar.height(), 36)
         self.assertEqual(window.titleBar.titleLabel.text(), 'Ashore')
         self.assertFalse(window.titleBar.appIconLabel.pixmap().isNull())
-        self.assertEqual(window.titleBar.minimizeButton.width(), 24)
-        self.assertEqual(window.titleBar.minimizeButton.height(), 24)
+        self.assertEqual(window.titleBar.minimizeButton.width(), 22)
+        self.assertEqual(window.titleBar.minimizeButton.height(), 22)
         self.assertTrue(window.statusStrip.property('statusStrip'))
         self.assertEqual(window.statusStrip.height(), 30)
         self.assertTrue(window.aria2StateText.property('statusMetricText'))
