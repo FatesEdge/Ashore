@@ -44,7 +44,7 @@ The application uses aria2 JSON-RPC for authoritative task state and WebSocket n
 | --- | --- |
 | Linux | Primary development and manual validation platform |
 | macOS | Supported in code and packaging; application bundle/DMG workflow available |
-| Windows | Supported in code and CI; additional physical-machine release validation is still desirable |
+| Windows | Supported in code, CI, and portable onefile packaging; a formal installer still needs physical-machine validation |
 
 Ashore requires **Python 3.12+** when run from source and a working **aria2** installation for downloads. Packaged Ashore can be installed before aria2; if aria2 is missing at launch, Ashore shows platform-specific installation guidance.
 
@@ -70,7 +70,7 @@ Install aria2 first. For a packaged release, open the Ashore DMG and move `Ashor
 
 ### Windows
 
-Windows is covered by automated tests, but a formal installer is not provided yet. Running from source remains the development path for Windows until packaging is finalized.
+Windows releases include a portable `Ashore.exe` build. A formal installer and system-wide protocol/file association installer are intentionally deferred until they have been validated on a physical Windows machine.
 
 ## Run from source
 
@@ -127,13 +127,14 @@ More detail is available in [Architecture](docs/architecture.md) and [Developmen
 
 ## Packaging
 
-Linux supports both PyInstaller `onefile` and `onedir` builds. macOS supports `.app` and DMG output.
+Linux supports both PyInstaller `onefile` and `onedir` builds. macOS supports `.app` and DMG output. Windows supports a portable PyInstaller `onefile` build.
 
 ```bash
 python make.py onefile   # Linux
 python make.py onedir    # Linux
 python make.py app       # macOS
 python make.py dmg       # macOS
+python make.py onefile   # Windows
 ```
 
 See [Packaging](docs/packaging.md) for the release layout and validation notes.
