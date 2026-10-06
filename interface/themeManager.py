@@ -412,6 +412,30 @@ class ThemeManager(QObject):
                 height: 9px;
             }}
 
+            QLabel[dialogStatus="true"] {{
+                color: {token['muted']};
+                background: transparent;
+                border: none;
+                padding: 2px 0;
+            }}
+            QTableWidget {{
+                background: {token['field']};
+                alternate-background-color: {token['surface']};
+                color: {token['text']};
+                border: 1px solid {token['border']};
+                border-radius: 8px;
+                gridline-color: {token['border']};
+                selection-background-color: {accentSoft};
+                selection-color: {token['text']};
+            }}
+            QHeaderView::section {{
+                background: {token['raised']};
+                color: {token['muted']};
+                border: none;
+                border-bottom: 1px solid {token['border']};
+                padding: 6px 8px;
+                font-weight: 500;
+            }}
             QLineEdit, QTextEdit {{
                 background: {token['field']};
                 color: {token['text']};
