@@ -7,6 +7,7 @@ from core.applicationInfo import configureApplication
 from core.aria2Service import Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
 from core.singleInstance import SingleInstanceCoordinator
+from interface.languageManager import resolveLanguage
 from interface.startupWindow import RecoveryWindow, StartupWindow
 from interface.themeManager import ThemeManager
 from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig
@@ -202,7 +203,7 @@ class StartupController(QObject):
 
     def showRecovery(self, issue):
         self.splash.close()
-        language = self.settings.get('language', 'zh_CN')
+        language = resolveLanguage(self.settings.get('language'))
         if self.recovery is None:
             self.recovery = RecoveryWindow(issue, language)
             self.recovery.recheckRequested.connect(self.retryEnvironment)
