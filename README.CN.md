@@ -50,7 +50,7 @@ Ashore 使用 aria2 JSON-RPC 作为任务状态的权威来源，并使用 WebSo
 
 ## 安装
 
-正式 Release 可用后，优先使用预构建产物。发布内容见仓库 [Releases](https://github.com/FatesEdge/Ashore/releases)。
+正式 Release 可用后，优先使用预构建产物。发布内容见仓库 [Releases](https://github.com/Kai-x64/Ashore/releases)。
 
 ### Linux
 
@@ -73,7 +73,7 @@ Windows 已纳入自动化测试，但目前尚未提供正式安装器。在 Wi
 ## 从源码运行
 
 ```bash
-git clone https://github.com/FatesEdge/Ashore.git
+git clone https://github.com/Kai-x64/Ashore.git
 cd Ashore
 
 python3 -m venv .venv
