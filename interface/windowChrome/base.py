@@ -39,12 +39,12 @@ class WindowChrome(QObject):
             return False
         if self.window.isMaximized() or self.window.isFullScreen():
             if event.type() == QEvent.Type.MouseMove:
-                watched.unsetCursor()
+                self.window.unsetCursor()
             return False
 
         if event.type() == QEvent.Type.MouseMove:
             edges = self._edgesAt(event.globalPosition())
-            self._applyCursor(watched, edges)
+            self._applyCursor(self.window, edges)
         elif event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.MouseButton.LeftButton:
                 edges = self._edgesAt(event.globalPosition())
