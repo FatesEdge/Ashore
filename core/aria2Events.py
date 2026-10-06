@@ -28,6 +28,7 @@ class Aria2Events(QObject):
         self.retry.setInterval(5000)
         self.retry.timeout.connect(self.openSocket)
         self.socket = QWebSocket()
+        self.socket.setParent(self)
         self.socket.textMessageReceived.connect(self.receive)
         self.socket.connected.connect(self.connected)
         self.socket.disconnected.connect(self.reconnect)
@@ -66,11 +67,16 @@ class Aria2Events(QObject):
             self.notification.emit(method, gid)
 
     def stop(self):
-        if self.socket is not None:
-            self.stopped = True
+        self.stopped = True
+        if hasattr(self, 'retry'):
             self.retry.stop()
-            self.socket.close()
-            self.setState('stopped')
+        socket = self.socket
+        self.socket = None
+        if socket is not None:
+            socket.blockSignals(True)
+            socket.abort()
+            socket.deleteLater()
+        self.setState('stopped')
 
     def setPort(self, port):
         if self.socket is not None and self.address.port() != port:
