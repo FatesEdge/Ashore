@@ -121,7 +121,7 @@ class StartupController(QObject):
 
     def buildWindow(self, service):
         if self.recovery is not None:
-            self.recovery.close()
+            self.recovery.closeFromController()
             self.recovery.deleteLater()
             self.recovery = None
         self.showStage('startupPreparingWindow')
@@ -234,7 +234,7 @@ class StartupController(QObject):
     def fail(self, message):
         self.splash.close()
         if self.recovery is not None:
-            self.recovery.close()
+            self.recovery.closeFromController()
         QMessageBox.critical(
             None, translate(self.language, 'startupFailedTitle'), message)
         self.app.quit()
@@ -244,7 +244,7 @@ class StartupController(QObject):
             self.window.slotQuit()
             return
         if self.recovery is not None:
-            self.recovery.close()
+            self.recovery.closeFromController()
         self.app.quit()
 
     def dispose(self):
@@ -266,7 +266,7 @@ class StartupController(QObject):
             self.window = None
 
         if self.recovery is not None:
-            self.recovery.close()
+            self.recovery.closeFromController()
             self.recovery.deleteLater()
             self.recovery = None
 
