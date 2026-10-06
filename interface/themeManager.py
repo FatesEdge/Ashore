@@ -327,11 +327,23 @@ class ThemeManager(QObject):
                 background: transparent;
                 border: none;
             }}
+            QWidget[settingsSectionHeader="true"] {{
+                background: transparent;
+                border: none;
+            }}
             QLabel[settingsSectionTitle="true"] {{
                 color: {token['text']};
+                background: transparent;
+                border: none;
                 font-size: 16px;
                 font-weight: 700;
-                padding: 16px 0 8px 0;
+                padding: 0;
+            }}
+            QFrame[settingsSectionDivider="true"] {{
+                background: {token['border']};
+                border: none;
+                min-height: 1px;
+                max-height: 1px;
             }}
             QWidget[settingItem="true"],
             QWidget[settingFieldHost="true"] {{
