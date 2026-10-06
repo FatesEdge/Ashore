@@ -104,8 +104,8 @@ class StartupFlowTests(unittest.TestCase):
         self.assertEqual(window.titleBar.height(), 36)
         self.assertEqual(window.titleBar.titleLabel.text(), 'Ashore')
         self.assertFalse(window.titleBar.appIconLabel.pixmap().isNull())
-        self.assertEqual(window.titleBar.minimizeButton.width(), 22)
-        self.assertEqual(window.titleBar.minimizeButton.height(), 22)
+        self.assertEqual(window.titleBar.minimizeButton.width(), 20)
+        self.assertEqual(window.titleBar.minimizeButton.height(), 20)
         self.assertTrue(window.statusStrip.property('statusStrip'))
         self.assertEqual(window.statusStrip.height(), 30)
         self.assertTrue(window.aria2StateText.property('statusMetricText'))
@@ -220,7 +220,7 @@ class StartupFlowTests(unittest.TestCase):
 
     def test_recovery_window_shows_system_command_without_main_window(self):
         issue = makeEnvironmentIssue('aria2_missing')
-        controller = StartupController(self.app, ['Ashore.py'])
+        controller = StartupController(self.app, ['Ashore.py'], Ashore)
         controller.settings = {'language': 'en'}
         controller.splash.close()
 
