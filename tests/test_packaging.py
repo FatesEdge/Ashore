@@ -36,6 +36,12 @@ class PackagingTests(unittest.TestCase):
                 self.assertTrue((previous / 'ashore.desktop').is_file())
                 self.assertTrue((previous / 'icon.png').is_file())
 
+    def test_linux_installer_does_not_require_aria2_before_install(self):
+        installer = (make.ROOT / 'packaging' / 'install.sh').read_text(
+            encoding='utf-8')
+
+        self.assertNotIn('command -v aria2c', installer)
+        self.assertNotIn('Install aria2 first', installer)
 
     def test_pyinstaller_command_excludes_unused_heavy_modules(self):
         with tempfile.TemporaryDirectory() as directory:
