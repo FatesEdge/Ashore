@@ -33,7 +33,9 @@ class WindowChrome(QObject):
         self._installed = False
 
     def eventFilter(self, watched, event):
-        if not isinstance(watched, QWidget) or watched.window() is not self.window:
+        if not isinstance(watched, QWidget):
+            return False
+        if watched is not self.window and not self.window.isAncestorOf(watched):
             return False
         if self.window.isMaximized() or self.window.isFullScreen():
             if event.type() == QEvent.Type.MouseMove:
