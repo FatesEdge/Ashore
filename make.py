@@ -41,8 +41,8 @@ def build(kind):
             if not executable.is_file():
                 raise ValueError('PyInstaller 未生成完整的 Ashore Linux 安装包')
             for source, name in [(ROOT / 'static/icon/functionIcons/icon0.png', 'icon.png'),
-                                 (ROOT / 'bale/ashore.desktop', 'ashore.desktop'),
-                                 (ROOT / 'bale/install.sh', 'install.sh')]:
+                                 (ROOT / 'packaging/ashore.desktop', 'ashore.desktop'),
+                                 (ROOT / 'packaging/install.sh', 'install.sh')]:
                 shutil.copy2(source, staging / name)
             (staging / 'install.sh').chmod(0o755)
         else:
@@ -50,7 +50,7 @@ def build(kind):
             plist = app / 'Contents/Info.plist'
             with plist.open('rb') as file:
                 info = plistlib.load(file)
-            with (ROOT / 'bale/Info.plist').open('rb') as file:
+            with (ROOT / 'packaging/Info.plist').open('rb') as file:
                 template = plistlib.load(file)
             for key in ('CFBundleURLTypes', 'CFBundleDocumentTypes'):
                 info[key] = template[key]
