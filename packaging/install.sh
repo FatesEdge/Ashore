@@ -5,10 +5,6 @@ if [ "$(id -u)" -ne 0 ]; then
     echo 'Run this installer with sudo.' >&2
     exit 1
 fi
-if ! command -v aria2c >/dev/null 2>&1; then
-    echo 'aria2c was not found. Install aria2 first.' >&2
-    exit 1
-fi
 
 package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ ! -f "$package_dir/icon.png" ] || [ ! -f "$package_dir/ashore.desktop" ]; then
