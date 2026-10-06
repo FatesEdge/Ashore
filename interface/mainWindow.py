@@ -1,5 +1,6 @@
 """Ashore main window and runtime UI orchestration."""
 
+import platform
 import sys
 
 from PyQt6.QtCore import QEvent, QSize, Qt, QTimer, QUrl, pyqtSignal
