@@ -22,12 +22,12 @@ class TitleBar(QWidget):
         self.appIconLabel.setFixedSize(20, 20)
         self.appIconLabel.setPixmap(self.hostWindow.windowIcon().pixmap(18, 18))
         self.appIconLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.appIconLabel.setContentsMargins(0, 3, 0, 0)
+        self.appIconLabel.setContentsMargins(1, 4, 0, 0)
         self.appIconLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         self.titleLabel = QLabel('Ashore')
         self.titleLabel.setProperty('windowTitle', True)
-        self.titleLabel.setContentsMargins(5, 0, 0, 0)
+        self.titleLabel.setContentsMargins(8, 0, 0, 0)
         self.titleLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         self.minimizeButton = self._windowButton('minimize', '−')
@@ -45,7 +45,7 @@ class TitleBar(QWidget):
 
         controls = (self.minimizeButton, self.maximizeButton, self.closeButton)
         controlLayout = QHBoxLayout()
-        controlLayout.setContentsMargins(0, 3, 0, 0)
+        controlLayout.setContentsMargins(0, 5, 0, 0)
         controlLayout.setSpacing(6)
         for button in controls:
             controlLayout.addWidget(button)
