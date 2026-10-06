@@ -79,7 +79,7 @@ def fetchTrackers(sources=None, totalTimeout=12, requestTimeout=3):
     """Fetch every selected list and return one merged, deduplicated result."""
     urls = list(sources or sourceUrls())
     if not urls:
-        return [], '没有启用 Tracker 来源'
+        return [], 'No Tracker sources are enabled'
 
     deadline = time.monotonic() + max(0.1, totalTimeout)
     trackers = []
@@ -90,7 +90,7 @@ def fetchTrackers(sources=None, totalTimeout=12, requestTimeout=3):
     for url in urls:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            errors.append('Tracker 更新超时')
+            errors.append('Tracker update timed out')
             break
         try:
             request = urllib.request.Request(
@@ -99,7 +99,7 @@ def fetchTrackers(sources=None, totalTimeout=12, requestTimeout=3):
                     request, timeout=min(requestTimeout, remaining)) as response:
                 values = parseTrackers(response.read().decode('utf-8'))
             if not values:
-                errors.append(f'{url} 未返回有效的 Tracker 地址')
+                errors.append(f'{url} returned no valid Tracker addresses')
                 continue
             successfulSources.append(url)
             for tracker in values:
@@ -111,4 +111,4 @@ def fetchTrackers(sources=None, totalTimeout=12, requestTimeout=3):
 
     if trackers:
         return trackers, successfulSources
-    return [], '; '.join(errors) or '所有 Tracker 来源均不可用'
+    return [], '; '.join(errors) or 'All Tracker sources are unavailable'
