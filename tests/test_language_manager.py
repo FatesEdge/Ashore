@@ -23,6 +23,12 @@ class LanguageManagerTests(unittest.TestCase):
         self.assertEqual(resolveLanguage('system', 'zh_CN'), 'zh_CN')
         self.assertEqual(resolveLanguage(None, 'fr_FR'), 'en')
         self.assertEqual(resolveLanguage('unsupported', 'zh_CN'), 'en')
+    def test_translate_falls_back_to_english_for_unknown_language(self):
+        self.assertEqual(translate('unsupported', 'settings'), 'Settings')
+        self.assertEqual(
+            translate('unsupported', 'startupLoadingConfig'),
+            'Loading configuration')
+
 
 if __name__ == '__main__':
     unittest.main()
