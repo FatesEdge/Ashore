@@ -1,6 +1,7 @@
 """Ashore application identity."""
 
 APP_VERSION = '0.7.89'
+PROJECT_URL = 'https://github.com/FatesEdge/Ashore'
 
 
 def configureApplication():
