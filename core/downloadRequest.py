@@ -142,6 +142,15 @@ def nextAvailableOutputName(path):
             return candidate.name
         index += 1
 
+
+def outputNameAvailable(targetDir, name):
+    """Return whether a user-supplied output name is safe and currently unused."""
+    value = str(name or '').strip()
+    if not value or value in {'.', '..'} or Path(value).name != value:
+        return False
+    path = Path(targetDir).expanduser() / value
+    return not path.exists() and not Path(str(path) + '.aria2').exists()
+
 def parseDownloadInputs(rawInputs):
     items = []
     invalid = []
