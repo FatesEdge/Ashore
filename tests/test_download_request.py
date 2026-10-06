@@ -13,6 +13,7 @@ from core.downloadRequest import (
     ITEM_REMOTE_TORRENT,
     existingOutputConflict,
     nextAvailableOutputName,
+    outputNameAvailable,
     outputNameForItem,
     parseDownloadInputs,
 )
@@ -123,6 +124,20 @@ class DownloadRequestTests(unittest.TestCase):
                 existingOutputConflict(item, folder, options), target)
             self.assertEqual(
                 nextAvailableOutputName(target), 'archive.2.tar.gz')
+
+
+    def test_manual_output_name_must_be_safe_and_unused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.assertTrue(outputNameAvailable(folder, 'custom.iso'))
+            self.assertFalse(outputNameAvailable(folder, '../custom.iso'))
+            self.assertFalse(outputNameAvailable(folder, ''))
+            existing = root / 'custom.iso'
+            existing.write_bytes(b'existing')
+            self.assertFalse(outputNameAvailable(folder, 'custom.iso'))
+            existing.unlink()
+            Path(str(existing) + '.aria2').write_bytes(b'progress')
+            self.assertFalse(outputNameAvailable(folder, 'custom.iso'))
 
 
 if __name__ == '__main__':
