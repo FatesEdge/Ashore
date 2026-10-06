@@ -14,7 +14,7 @@ from core.downloadRequest import (
     ITEM_LOCAL_TORRENT,
     classifyInput,
 )
-from core.fileOperations import deleteTaskFiles, deleteTaskSidecars
+from core.fileOperations import deleteTaskFiles
 from core.missionNames import MissionNames
 from paths import ensureConfig
 
@@ -315,13 +315,11 @@ class Aria2Client:
             if 'is not found' not in message:
                 return result
 
-        try:
-            if delFile:
+        if delFile:
+            try:
                 deleteTaskFiles(mission)
-            else:
-                deleteTaskSidecars(mission)
-        except (OSError, ValueError) as exc:
-            return {'ResultError': str(exc)}
+            except (OSError, ValueError) as exc:
+                return {'ResultError': str(exc)}
         return {}
     def getFilePath(self, gid: str) -> dict:
         mission = self.getMission(gid)
