@@ -38,7 +38,7 @@ class TitleBar(QWidget):
         self.closeButton.clicked.connect(self.hostWindow.close)
 
         layout = QHBoxLayout(self)
-        leftInset = 12 if sys.platform == 'darwin' else 26
+        leftInset = 12 if sys.platform == 'darwin' else 20
         layout.setContentsMargins(leftInset, 4, 12, 2)
         layout.setSpacing(4)
 
