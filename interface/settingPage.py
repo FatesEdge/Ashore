@@ -247,7 +247,6 @@ class SettingPage(QWidget):
 
         self.trackers = []
         self.trackerSource = self.ashoreConfig.get('trackers_list_source', '')
-        self.trackerHealthSummary = None
 
         self.trackerSourceChecks = {}
         trackerSourceLayout = QVBoxLayout()
@@ -291,8 +290,6 @@ class SettingPage(QWidget):
         self.autoTrackerLabel = QLabel()
         self.addSettingItem(settingsLayout, self.autoTrackerLabel, autoTrackerLayout)
 
-        self.trackerStatus = QLabel('')
-        self.trackerStatus.setWordWrap(True)
         self.trackerInfo = QLabel('')
         self.trackerBtn = QPushButton()
         trackerActions = QHBoxLayout()
@@ -321,7 +318,7 @@ class SettingPage(QWidget):
         trackerOverviewLayout.addWidget(self.trackerPanel)
 
         self.btTrackerLabel = QLabel()
-        self.trackerSettingItem = self.addSettingItem(
+        self.addSettingItem(
             settingsLayout, self.btTrackerLabel, trackerOverviewLayout)
 
         self.ashoreSettingLabel = SettingsSectionHeader()
@@ -807,7 +804,6 @@ class SettingPage(QWidget):
         self.showTrackerStatus()
 
     def applyTrackerHealthSummary(self, healthy, failed):
-        self.trackerHealthSummary = (healthy, failed)
         self.showTrackerStatus()
 
     def showTrackerMessage(self, message):
