@@ -235,6 +235,7 @@ class SettingPage(QWidget):
             checkBox = QCheckBox(source['name'])
             checkBox.setToolTip(source['url'])
             self.trackerSourceChecks[source['key']] = checkBox
+            checkBox.toggled.connect(self.showTrackerStatus)
             trackerSourceLayout.addWidget(checkBox)
 
         self.customTrackerRows = []
@@ -704,8 +705,6 @@ class SettingPage(QWidget):
     def loadTrackerSourceControls(self, ashoreConfig):
         selectedKeys = ashoreConfig.get(
             'tracker_source_keys', list(DEFAULT_SOURCE_KEYS))
-        if not selectedKeys:
-            selectedKeys = list(DEFAULT_SOURCE_KEYS)
         for key, checkBox in self.trackerSourceChecks.items():
             checkBox.setChecked(key in selectedKeys)
 
@@ -743,6 +742,7 @@ class SettingPage(QWidget):
         rowLayout.setSpacing(6)
         checkBox = QCheckBox(value)
         checkBox.setChecked(bool(enabled))
+        checkBox.toggled.connect(self.showTrackerStatus)
         removeBtn = QPushButton('×')
         removeBtn.setFixedSize(26, 26)
         rowLayout.addWidget(checkBox, 1)
