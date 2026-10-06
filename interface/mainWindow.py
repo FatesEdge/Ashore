@@ -103,6 +103,14 @@ class Ashore(QMainWindow):
         """Start asynchronous work after the startup controller is listening."""
         self.aria2Poller.poll()
 
+    def showEvent(self, event):
+        self.windowChrome.install()
+        super().showEvent(event)
+
+    def closeEvent(self, event):
+        self.windowChrome.uninstall()
+        super().closeEvent(event)
+
     def showTray(self):
         if not self.trayIcon.isVisible():
             self.trayIcon.show()
