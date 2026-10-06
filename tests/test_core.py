@@ -74,6 +74,7 @@ class Aria2Tests(unittest.TestCase):
                 first = conf.read_text(encoding='utf-8')
                 self.assertIn('rpc-listen-all=false', first)
                 self.assertNotIn('\nrpc-secret=', first)
+                self.assertNotIn('${DEFAULT_USER_AGENT}', first)
                 if os.name != 'nt':
                     self.assertEqual(conf.stat().st_mode & 0o777, 0o600)
                 self.assertEqual(paths.ensureConfig('aria2.conf').read_text(encoding='utf-8'), first)
