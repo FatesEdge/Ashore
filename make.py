@@ -191,6 +191,11 @@ def directorySize(path):
         if file.is_file())
 
 
+def copyMacAppBundle(source, destination):
+    """Copy a macOS .app without expanding PyInstaller symlinks."""
+    shutil.copytree(source, destination, symlinks=True)
+
+
 def printPackageSize(target):
     target = Path(target)
     if not target.exists():
@@ -249,10 +254,13 @@ def build(kind):
             if kind == 'dmg':
                 dmg_stage = Path(directory) / 'dmg-stage'
                 dmg_stage.mkdir()
-                shutil.copytree(app, dmg_stage / 'Ashore.app')
+                copyMacAppBundle(app, dmg_stage / 'Ashore.app')
                 (dmg_stage / 'Applications').symlink_to('/Applications')
                 subprocess.run(['hdiutil', 'create', '-volname', 'Ashore', '-srcfolder', str(dmg_stage),
                                 '-format', 'UDZO', str(staging / 'Ashore.dmg')], check=True)
+            looseBundle = staging / 'Ashore'
+            if looseBundle.exists():
+                shutil.rmtree(looseBundle)
         else:
             executable = staging / 'Ashore.exe'
             if not executable.is_file():
