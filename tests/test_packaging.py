@@ -106,6 +106,32 @@ class PackagingTests(unittest.TestCase):
                 'Darwin', 'app', Path(directory))
         self.assertNotIn('--strip', command)
 
+    def test_windows_onefile_command_and_package_shape(self):
+        with tempfile.TemporaryDirectory() as directory:
+            staging = Path(directory)
+            command = make.pyinstallerCommand(
+                'Windows', 'onefile', staging)
+
+        self.assertIn('--onefile', command)
+        self.assertNotIn('--onedir', command)
+        self.assertNotIn('--strip', command)
+
+        with tempfile.TemporaryDirectory() as directory:
+            dist = Path(directory)
+
+            def completed(command, **kwargs):
+                destination = Path(command[command.index('--distpath') + 1])
+                (destination / 'Ashore.exe').write_text('windows')
+
+            with patch.object(make, 'DIST', dist), patch.object(
+                    make.platform, 'system', return_value='Windows'):
+                with patch.object(make.subprocess, 'run', side_effect=completed):
+                    make.build('onefile')
+
+            package = dist / 'Ashore.Windows.onefile'
+            self.assertTrue((package / 'Ashore.exe').is_file())
+            self.assertTrue((package / 'icon.png').is_file())
+
 
 if __name__ == '__main__':
     unittest.main()
