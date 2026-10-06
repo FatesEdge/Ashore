@@ -122,9 +122,9 @@ class SettingsLayoutTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             page = self.makePage(folder)
             self.assertTrue(page.trackerToggle.text())
-            self.assertFalse(page.trackerPanel.isVisible())
+            self.assertTrue(page.trackerPanel.isHidden())
             page.trackerToggle.setChecked(True)
-            self.assertTrue(page.trackerPanel.isVisible())
+            self.assertFalse(page.trackerPanel.isHidden())
             self.assertTrue(page.saveBtn.property('primaryAction'))
         section = Section('gid', 'example.bin', 'completed', 100, 100, 0)
         self.assertEqual(section.progressBar.height(), 4)
