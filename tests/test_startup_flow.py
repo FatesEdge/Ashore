@@ -80,9 +80,8 @@ class StartupFlowTests(unittest.TestCase):
 
         self.assertIsInstance(window.pageStack, QStackedWidget)
         self.assertEqual(window.pageStack.count(), 3)
-        self.assertTrue(window.commandBar.property('commandBar'))
-        self.assertTrue(window.windowChrome.usesNativeDecoration)
-        self.assertFalse(
+        self.assertTrue(window.titleBar.property('titleBar'))
+        self.assertTrue(
             window.windowFlags() & Qt.WindowType.FramelessWindowHint)
         self.assertFalse(
             window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
