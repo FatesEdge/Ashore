@@ -252,7 +252,25 @@ class StartupFlowTests(unittest.TestCase):
         self.assertIn(
             issue.installCommand,
             controller.recovery.commandBox.toPlainText())
-        controller.recovery.close()
+        controller.recovery.closeFromController()
+
+    def test_recovery_window_close_requests_application_quit(self):
+        issue = makeEnvironmentIssue('aria2_missing')
+        window = RecoveryWindow(issue, 'en')
+        quitRequested = Mock()
+        window.quitRequested.connect(quitRequested)
+
+        window.show()
+        self.app.processEvents()
+        window.close()
+        self.app.processEvents()
+
+        quitRequested.assert_called_once_with()
+        self.assertTrue(window.isVisible())
+
+        window.closeFromController()
+        self.app.processEvents()
+        self.assertFalse(window.isVisible())
 
     def test_main_status_uses_colored_dot_and_normal_text_separately(self):
         service = Mock()
