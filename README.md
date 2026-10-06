@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.12%2B-blue" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/PyQt-6-green" alt="PyQt6">
   <img src="https://img.shields.io/badge/license-MPL--2.0-blue" alt="MPL-2.0">
 </p>
@@ -43,10 +43,10 @@ The application uses aria2 JSON-RPC for authoritative task state and WebSocket n
 | Platform | Status |
 | --- | --- |
 | Linux | Primary development and manual validation platform |
-| macOS | Supported in code and packaging; application bundle/DMG workflow available |
+| macOS | Supported in code and packaging; Intel macOS 12.7.6 is validated with PyQt6 6.8.1 / Qt 6.8.2, and Apple Silicon DMG builds are covered by CI |
 | Windows | Supported in code, CI, and portable onefile packaging; a formal installer still needs physical-machine validation |
 
-Ashore requires **Python 3.12+** when run from source and a working **aria2** installation for downloads. Packaged Ashore can be installed before aria2; if aria2 is missing at launch, Ashore shows platform-specific installation guidance.
+Ashore requires **Python 3.10+** when run from source and a working **aria2** installation for downloads. Packaged Ashore can be installed before aria2; if aria2 is missing at launch, Ashore shows platform-specific installation guidance.
 
 ## Installation
 
@@ -66,7 +66,7 @@ If aria2 is not installed when Ashore starts, the application reports the missin
 
 ### macOS
 
-Install aria2 first. For a packaged release, open the Ashore DMG and move `Ashore.app` to `Applications`.
+Install aria2 first. For a packaged release, use the DMG matching your Mac architecture and move `Ashore.app` to `Applications`. Ashore pins PyQt6 6.8.1 with Qt 6.8.2 so Intel macOS 12 remains supported.
 
 ### Windows
 
