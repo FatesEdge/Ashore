@@ -44,7 +44,7 @@ from interface.page import Page
 from interface.settingPage import SettingPage
 from interface.startupWindow import ExitWindow, RecoveryWindow, StartupWindow
 from interface.titleBar import TitleBar
-from interface.windowChrome import createWindowChrome
+from interface.windowChrome import WindowChrome
 from interface.notificationManager import NotificationManager
 from interface.themeManager import TRAY_GRAY, ThemeManager
 from paths import (
@@ -61,7 +61,7 @@ class Ashore(QMainWindow):
 
     def __init__(self, aria2Service, themeManager):
         super().__init__()
-        self.windowChrome = createWindowChrome(self)
+        self.windowChrome = WindowChrome(self)
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'
