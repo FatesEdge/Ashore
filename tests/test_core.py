@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 from PyQt6.QtWidgets import QApplication
 
 import paths
+from core.fileOperations import deleteTaskFiles
 from core.aria2Client import Aria2Client
 from core.downloadRequest import DownloadItem, DownloadRequest, ITEM_LOCAL_TORRENT, ITEM_MAGNET, ITEM_NETWORK
 from core.aria2Service import Aria2Poller, Aria2Service, Aria2Shutdown
@@ -240,11 +241,11 @@ class Aria2Tests(unittest.TestCase):
             target.write_bytes(b'payload')
             other = root / 'keep.txt'
             other.write_bytes(b'keep')
-            client.deleteTaskFiles({'dir': folder, 'filename': 'My download', 'files': [str(target)]})
+            deleteTaskFiles({'dir': folder, 'filename': 'My download', 'files': [str(target)]})
             self.assertFalse(target.exists())
             self.assertTrue(other.exists())
             with self.assertRaisesRegex(ValueError, '拒绝删除'):
-                client.deleteTaskFiles({'dir': folder, 'filename': '', 'files': [str(root.parent / 'outside')]})
+                deleteTaskFiles({'dir': folder, 'filename': '', 'files': [str(root.parent / 'outside')]})
 
     def test_running_task_removal_waits_for_removed_status_before_cleanup(self):
         client = Aria2Client.__new__(Aria2Client)
