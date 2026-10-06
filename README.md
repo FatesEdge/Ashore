@@ -1,7 +1,7 @@
 <h1  align="center">Ashore</h1>
 
 <p align="center">
-  <a target="_blank" href="https://github.com/FatesEdge/Ashore"><img src="./static/icon/functionIcons/icon0.png"></a></p>
+  <a target="_blank" href="https://github.com/FatesEdge/Ashore"><img src="./static/icon/functionIcons/appIcon.png"></a></p>
 <p align="center"><br>Ashore 是一个用Python编写的内核为aria2的界面管理程序。<br><br>
 </p>
 
