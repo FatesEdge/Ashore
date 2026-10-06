@@ -152,8 +152,13 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(page.rpcListenAllComboBox.itemText(0), 'Yes')
             self.assertEqual(page.themeModeComboBox.itemText(2), 'Dark')
             self.assertTrue(page.defaultDownloadDirLabel.wordWrap())
+            self.assertGreaterEqual(
+                page.defaultDownloadDirLabel.minimumWidth(), 190)
             self.assertLessEqual(
-                page.defaultDownloadDirLabel.maximumWidth(), 150)
+                page.defaultDownloadDirLabel.maximumWidth(), 220)
+            self.assertEqual(
+                page.formLayout.labelAlignment(),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.assertEqual(
                 page.showAria2StatusLabel.text(),
                 'Show aria2 status in main window:')
@@ -234,6 +239,7 @@ class SettingsLayoutTests(unittest.TestCase):
             page = self.makePage(folder)
             page.setLanguage('zh_CN')
             self.assertFalse(page.defaultDownloadDirLabel.wordWrap())
+            self.assertEqual(page.defaultDownloadDirLabel.minimumWidth(), 0)
             self.assertGreater(
                 page.defaultDownloadDirLabel.maximumWidth(), 10000)
             self.assertFalse(page.showAria2StatusLabel.wordWrap())

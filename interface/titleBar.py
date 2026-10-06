@@ -1,7 +1,9 @@
 """Ashore integrated command bar and frameless window chrome."""
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QHBoxLayout, QToolButton, QWidget
+from PyQt6.QtCore import QRect, Qt
+from PyQt6.QtWidgets import (
+    QHBoxLayout, QStyle, QStyleOptionTitleBar, QToolButton, QWidget,
+)
 
 
 class WindowFrame(QWidget):
@@ -69,7 +71,7 @@ class WindowFrame(QWidget):
 
 
 class AshoreTitleBar(QWidget):
-    """One top row for commands, dragging, overflow, and window controls."""
+    """One top row for commands, dragging, overflow, and native-order controls."""
 
     def __init__(
             self, window, addButton, startButton, pauseButton, moreButton):
@@ -82,23 +84,67 @@ class AshoreTitleBar(QWidget):
         self.minimizeButton = self.makeButton('−', 'minimize')
         self.maximizeButton = self.makeButton('□', 'maximize')
         self.closeButton = self.makeButton('×', 'close')
+        self.windowButtons = {
+            'minimize': self.minimizeButton,
+            'maximize': self.maximizeButton,
+            'close': self.closeButton,
+        }
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 7, 8, 7)
         layout.setSpacing(4)
+
+        controlsLeft, controlOrder = self.nativeControlLayout()
+        if controlsLeft:
+            self.addWindowControls(layout, controlOrder)
+            layout.addSpacing(4)
+
         layout.addWidget(addButton)
         layout.addWidget(startButton)
         layout.addWidget(pauseButton)
         layout.addStretch(1)
         layout.addWidget(moreButton)
-        layout.addSpacing(4)
-        layout.addWidget(self.minimizeButton)
-        layout.addWidget(self.maximizeButton)
-        layout.addWidget(self.closeButton)
+
+        if not controlsLeft:
+            layout.addSpacing(4)
+            self.addWindowControls(layout, controlOrder)
 
         self.minimizeButton.clicked.connect(window.showMinimized)
         self.maximizeButton.clicked.connect(self.toggleMaximized)
         self.closeButton.clicked.connect(window.close)
+
+    def nativeControlLayout(self):
+        """Infer control side and order from the active Qt platform style."""
+        option = QStyleOptionTitleBar()
+        option.rect = QRect(0, 0, 320, 32)
+        option.titleBarFlags = self.window.windowFlags()
+
+        controls = (
+            ('minimize', QStyle.SubControl.SC_TitleBarMinButton),
+            ('maximize', QStyle.SubControl.SC_TitleBarMaxButton),
+            ('close', QStyle.SubControl.SC_TitleBarCloseButton),
+        )
+        positions = []
+        for role, control in controls:
+            rect = self.style().subControlRect(
+                QStyle.ComplexControl.CC_TitleBar,
+                option,
+                control,
+                self)
+            if rect.isValid() and rect.width() > 0:
+                positions.append((rect.center().x(), role))
+
+        if len(positions) == len(controls):
+            positions.sort()
+            center = sum(position for position, _ in positions) / len(positions)
+            return center < option.rect.center().x(), [
+                role for _, role in positions]
+
+        return False, ['minimize', 'maximize', 'close']
+
+    def addWindowControls(self, layout, order):
+        for role in order:
+            layout.addWidget(self.windowButtons[role])
 
     def makeButton(self, text, role):
         button = QToolButton(self)

@@ -77,7 +77,10 @@ class SettingPage(QWidget):
         self.setProperty('settingsPage', True)
 
         formLayout = QFormLayout()
-        formLayout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self.formLayout = formLayout
+        formLayout.setLabelAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        formLayout.setVerticalSpacing(6)
         formLayout.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
@@ -396,10 +399,31 @@ class SettingPage(QWidget):
     def configureFormLabels(self):
         if not hasattr(self, 'formLabelWidgets'):
             return
+
         english = self.language == 'en'
+        if english:
+            self.formLayout.setLabelAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.formLayout.setVerticalSpacing(9)
+        else:
+            self.formLayout.setLabelAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.formLayout.setVerticalSpacing(6)
+
         for label in self.formLabelWidgets:
             label.setWordWrap(english)
-            label.setMaximumWidth(150 if english else 16777215)
+            label.setMinimumWidth(190 if english else 0)
+            label.setMaximumWidth(220 if english else 16777215)
+            label.setAlignment(
+                (Qt.AlignmentFlag.AlignLeft if english
+                 else Qt.AlignmentFlag.AlignRight)
+                | Qt.AlignmentFlag.AlignVCenter)
+
+        for row in range(self.formLayout.rowCount()):
+            fieldItem = self.formLayout.itemAt(
+                row, QFormLayout.ItemRole.FieldRole)
+            if fieldItem is not None:
+                fieldItem.setAlignment(Qt.AlignmentFlag.AlignVCenter)
     def retranslateUi(self):
         self.aria2SettingLabel.setText(
             f'<h3>{self.tr("aria2Settings")}</h3>')

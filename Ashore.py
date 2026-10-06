@@ -60,7 +60,6 @@ class Ashore(QMainWindow):
     def __init__(self, aria2Service, themeManager):
         super().__init__()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'

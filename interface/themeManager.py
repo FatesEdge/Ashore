@@ -106,7 +106,7 @@ class ThemeManager(QObject):
         accentSoft = translucent(self.accent, 52 if dark else 34)
         return f"""
             QMainWindow {{
-                background: transparent;
+                background: {token['background']};
                 color: {token['text']};
             }}
             QWidget#mainRoot, QWidget[windowFrame="true"] {{
@@ -136,6 +136,9 @@ class ThemeManager(QObject):
             QToolButton[windowControl="true"]:hover {{
                 background: {token['hover']};
                 color: {token['text']};
+            }}
+            QToolButton[windowControlRole="maximize"] {{
+                font-size: 11px;
             }}
             QToolButton[windowControlRole="close"]:hover {{
                 background: {token['danger']};
