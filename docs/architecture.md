@@ -42,6 +42,8 @@ HTTP JSON-RPC is the authoritative task-state source.
 
 WebSocket notifications do not replace polling. They only trigger prompt refreshes so the UI reacts quickly to aria2 events. Periodic polling remains responsible for progress synchronisation and recovery when WebSocket is unavailable.
 
+Desktop completion/error notifications carry the task id back into the main window. Notification activation restores Ashore, routes outcome notifications to the downloaded-task page, and focuses the matching task when its card is already present.
+
 ## Ownership and shutdown
 
 Qt/Python ownership is treated explicitly.
