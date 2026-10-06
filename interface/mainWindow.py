@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.applicationInfo import APP_VERSION, PROJECT_URL
+from core.applicationInfo import APP_AUTHOR, APP_VERSION, PROJECT_URL
 from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Removal, Aria2Shutdown
@@ -86,7 +86,7 @@ class Ashore(QMainWindow):
         self.quitting = False
         self.websocketState = 'unavailable'
         self.aria2Version = ''
-        self.pendingConnectionStatus = '等待检测'
+        self.pendingConnectionState = 'waitingCheck'
 
         self.initUI()
         self.windowChrome.install()
@@ -157,10 +157,10 @@ class Ashore(QMainWindow):
         """Create low-frequency actions for the command-bar overflow menu."""
         self.menuActions = {}
         saveAction = QAction(self.tr('saveSession'), self, triggered=self.slotSaveSession)
-        saveAction.setStatusTip('保存下载任务')
+        saveAction.setStatusTip(self.tr('saveSessionTip'))
         saveAction.setShortcut('Ctrl+S')
         restartAction = QAction(self.tr('restart'), self, triggered=self.slotRestartAria2)
-        restartAction.setStatusTip('重新启动 Aria2，运行中的任务会短暂刷新')
+        restartAction.setStatusTip(self.tr('restartAria2Tip'))
         showAction = QAction(self.tr('show'), self, triggered=self.show)
         showAction.setShortcut('Ctrl+R')
         hideAction = QAction(self.tr('hide'), self, triggered=self.hide)
@@ -313,6 +313,17 @@ class Ashore(QMainWindow):
         self.tabDownloading.setToolTip(self.tr('downloading'))
         self.tabDownloaded.setToolTip(self.tr('downloaded'))
         self.tabSetting.setToolTip(self.tr('settings'))
+        self.menuActions['saveSession'].setStatusTip(
+            self.tr('saveSessionTip'))
+        self.menuActions['restart'].setStatusTip(
+            self.tr('restartAria2Tip'))
+        self.addBtn.setStatusTip(self.tr('newDownloadTip'))
+        self.unpauseAllBtn.setStatusTip(self.tr('resumeAllTip'))
+        self.pauseAllBtn.setStatusTip(self.tr('pauseAllTip'))
+        self.downSpeedIcon.setToolTip(self.tr('downloadSpeed'))
+        self.downSpeedLabel.setToolTip(self.tr('globalDownloadSpeed'))
+        self.upSpeedIcon.setToolTip(self.tr('uploadSpeed'))
+        self.upSpeedLabel.setToolTip(self.tr('globalUploadSpeed'))
         self.pageSetting.setLanguage(self.language)
         self.pageDownloading.setLanguage(self.language)
         self.pageDownloaded.setLanguage(self.language)
@@ -348,12 +359,12 @@ class Ashore(QMainWindow):
         self.downSpeedIcon.setPixmap(QPixmap(
             self.resourcePath
             + 'static/icon/functionIcons/downloadSpeed.png'))
-        self.downSpeedIcon.setToolTip('下载速度')
+        self.downSpeedIcon.setToolTip(self.tr('downloadSpeed'))
 
         self.downSpeedLabel = QLabel('0B/s')
         self.downSpeedLabel.setProperty('statusMetricText', True)
         self.downSpeedLabel.setMinimumWidth(80)
-        self.downSpeedLabel.setToolTip('全局实时下载速度')
+        self.downSpeedLabel.setToolTip(self.tr('globalDownloadSpeed'))
 
         self.upSpeedIcon = QLabel()
         self.upSpeedIcon.setFixedSize(20, 20)
@@ -361,12 +372,12 @@ class Ashore(QMainWindow):
         self.upSpeedIcon.setPixmap(QPixmap(
             self.resourcePath
             + 'static/icon/functionIcons/uploadSpeed.png'))
-        self.upSpeedIcon.setToolTip('上传速度')
+        self.upSpeedIcon.setToolTip(self.tr('uploadSpeed'))
 
         self.upSpeedLabel = QLabel('0B/s')
         self.upSpeedLabel.setProperty('statusMetricText', True)
         self.upSpeedLabel.setMinimumWidth(80)
-        self.upSpeedLabel.setToolTip('全局 BT / Magnet 上传速度')
+        self.upSpeedLabel.setToolTip(self.tr('globalUploadSpeed'))
 
         layout = QHBoxLayout(self.statusStrip)
         layout.setContentsMargins(10, 2, 10, 2)
@@ -415,18 +426,18 @@ class Ashore(QMainWindow):
 
         self.addBtn = QPushButton(self.tr('new'))
         self.addBtn.setToolTip(self.tr('new'))
-        self.addBtn.setStatusTip('新建下载任务')
+        self.addBtn.setStatusTip(self.tr('newDownloadTip'))
         self.addBtn.setShortcut('Ctrl+N')
         self.addBtn.setProperty('commandPrimary', True)
 
         self.unpauseAllBtn = QPushButton(self.tr('startAll'))
         self.unpauseAllBtn.setToolTip(self.tr('startAll'))
-        self.unpauseAllBtn.setStatusTip('恢复所有暂停的任务')
+        self.unpauseAllBtn.setStatusTip(self.tr('resumeAllTip'))
         self.unpauseAllBtn.setProperty('commandSecondary', True)
 
         self.pauseAllBtn = QPushButton(self.tr('pauseAll'))
         self.pauseAllBtn.setToolTip(self.tr('pauseAll'))
-        self.pauseAllBtn.setStatusTip('暂停所有下载中的任务')
+        self.pauseAllBtn.setStatusTip(self.tr('pauseAllTip'))
         self.pauseAllBtn.setProperty('commandSecondary', True)
 
         self.moreBtn = QPushButton()
@@ -543,7 +554,7 @@ class Ashore(QMainWindow):
                 str(globalStatus['ResultError']))
             self.downSpeedLabel.setText('—')
             self.upSpeedLabel.setText('—')
-            self.updateConnection('未连接')
+            self.updateConnection('disconnected')
             return
         if 'ResultError' in missions:
             self.setMainAria2State('disconnected')
@@ -552,7 +563,7 @@ class Ashore(QMainWindow):
             return
         self.setMainAria2State('connected')
         self.aria2Version = snapshot.get('aria2Version') or self.aria2Version
-        self.updateConnection('已连接')
+        self.updateConnection('connected')
         self.pageDownloading.updateSections({status: missions[status] for status in ('active', 'waiting', 'paused')})
         self.pageDownloaded.updateSections({status: missions[status] for status in ('completed', 'error')})
         self.downSpeedLabel.setText(formatSpeed(globalStatus['downloadSpeed']))
@@ -588,37 +599,44 @@ class Ashore(QMainWindow):
     def slotApplyTracker(self, options):
         result = self.aria2Client.setGlobalConfig(options)
         if 'ResultError' in result:
-            self.showStatus('Tracker 已保存，将在 aria2 下次启动时生效：' + str(result['ResultError']))
+            self.showStatus(self.tr('trackerApplyDeferred').format(
+                error=result['ResultError']))
 
     def slotWebSocketStateChanged(self, state):
         self.websocketState = state
-        self.updateConnection('已连接' if self.aria2Version else '等待检测')
+        self.updateConnection(
+            'connected' if self.aria2Version else 'waitingCheck')
 
-    def updateConnection(self, httpStatus):
-        self.pendingConnectionStatus = httpStatus
+    def updateConnection(self, httpState):
+        self.pendingConnectionState = httpState
         if not self.hasPainted:
             return
         self.flushConnectionStatus()
 
     def flushConnectionStatus(self):
-        httpStatus = self.pendingConnectionStatus
-        websocketText = {
-            'unavailable': '不可用',
-            'connecting': '连接中',
-            'connected': '已连接',
-            'disconnected': '已断开，正在重试',
-            'stopped': '已停止',
-        }.get(getattr(self, 'websocketState', 'unavailable'), '未知')
+        httpState = self.pendingConnectionState
+        websocketState = getattr(
+            self, 'websocketState', 'unavailable')
+        websocketKey = {
+            'unavailable': 'unavailable',
+            'connecting': 'connecting',
+            'connected': 'connected',
+            'disconnected': 'retrying',
+            'stopped': 'stopped',
+        }.get(websocketState, 'unknown')
+        httpText = self.tr(httpState)
+        websocketText = self.tr(websocketKey)
         endpoint = f'http://127.0.0.1:{self.aria2Client.rpcPort}/jsonrpc'
         self.aria2StateWidget.setToolTip(
-            f'HTTP：{httpStatus}\nWebSocket：{websocketText}\n{endpoint}')
+            f'HTTP: {httpText}\nWebSocket: {websocketText}\n{endpoint}')
         self.pageSetting.setConnectionStatus(
-            httpStatus, websocketText, self.aria2Version)
+            httpState, websocketState, self.aria2Version)
 
 
     def notifyDownload(self, gid, name, status):
         self.notificationTarget = gid
-        title = '下载完成' if status == 'completed' else '下载失败'
+        title = self.tr(
+            'downloadComplete' if status == 'completed' else 'downloadFailed')
         if not self.notificationManager.show(gid, title, name):
             self.showStatus(f'{title}：{name}')
 
@@ -662,9 +680,8 @@ class Ashore(QMainWindow):
         answer = QMessageBox.question(
             self,
             '更新默认下载目录',
-            f'检测到旧版默认下载目录：\n{oldPath}\n\n'
-            f'系统当前提供的下载目录是：\n{newPath}\n\n是否切换？\n'
-            '只有旧版默认值会触发此提示，用户自定义目录不会被覆盖。',
+            self.tr('migrationQuestion').format(
+                oldPath=oldPath, newPath=newPath),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes)
         if answer == QMessageBox.StandardButton.Yes:
@@ -672,9 +689,12 @@ class Ashore(QMainWindow):
                 self.pageSetting.pathLineEdit.setText(str(newPath))
                 result = self.aria2Client.setGlobalConfig({'dir': str(newPath)})
                 if isinstance(result, dict) and 'ResultError' in result:
-                    self.showStatus('目录已保存，运行中的 aria2 未能立即应用：' + str(result['ResultError']))
+                    self.showStatus(self.tr('migrationApplyDeferred').format(
+                        error=result['ResultError']))
             else:
-                QMessageBox.warning(self, '更新失败', '无法写入 aria2 配置文件。')
+                QMessageBox.warning(
+                    self, self.tr('updateFailedTitle'),
+                    self.tr('configWriteFailed'))
                 return
         self.pageSetting.saveAshoreConf({'legacy_download_path_handled': 'true'})
 
@@ -695,7 +715,8 @@ class Ashore(QMainWindow):
         result = self.aria2Client.addUrls(request)
         if 'ResultError' in result:
             QMessageBox.warning(
-                self, '添加任务失败', str(result['ResultError']))
+                self, self.tr('addTaskFailedTitle'),
+                str(result['ResultError']))
     def slotAdd(self) -> None:
         """用户通过按钮触发的添加新任务,无参数
         """
@@ -719,7 +740,15 @@ class Ashore(QMainWindow):
         infoLIcon.setScaledContents(True)
         infoLIcon.setFixedSize(180, 180)
         aria2Version = self.aria2Client.getAria2Version()
-        aboutText = QLabel('由 Python 编写的 aria2 可视化程序<br>作者: PPPPAN<br>项目地址: <a href="' + PROJECT_URL + '">GitHub/Ashore</a><br>Python version: ' + platform.python_version() + '<br>Ashore version: ' + APP_VERSION + '<br>aria2 version: ' + aria2Version)
+        aboutText = QLabel(
+            self.tr('aboutDescription')
+            + '<br>' + self.tr('aboutAuthor') + ': ' + APP_AUTHOR
+            + '<br>' + self.tr('aboutProject')
+            + ': <a href="' + PROJECT_URL + '">GitHub/Ashore</a>'
+            + '<br>' + self.tr('aboutPythonVersion')
+            + ': ' + platform.python_version()
+            + '<br>' + self.tr('aboutAshoreVersion') + ': ' + APP_VERSION
+            + '<br>' + self.tr('aboutAria2Version') + ': ' + aria2Version)
         aboutText.setOpenExternalLinks(True)
         aboutText.setFixedWidth(300)
         aboutText.setMargin(30)
@@ -771,7 +800,8 @@ class Ashore(QMainWindow):
         self.shutdown = Aria2Shutdown(
             self.aria2Service, self.aria2Poller, QApplication.instance())
         self.shutdown.failed.connect(
-            lambda message: print(f'Ashore 退出清理失败：{message}', file=sys.stderr))
+            lambda message: print(
+                f'Ashore shutdown cleanup failed: {message}', file=sys.stderr))
         self.shutdown.finished.connect(QApplication.instance().quit)
         self.shutdown.start()
 
@@ -781,7 +811,8 @@ class Ashore(QMainWindow):
         try:
             self.aria2Service.restart()
         except RuntimeError as exc:
-            QMessageBox.warning(self, '无法重启 aria2', str(exc))
+            QMessageBox.warning(
+                self, self.tr('restartAria2FailedTitle'), str(exc))
         finally:
             self.aria2Events.setPort(self.aria2Client.rpcPort)
             self.aria2Poller.timer.start()
@@ -822,7 +853,7 @@ class Ashore(QMainWindow):
         else:
             clipboard = QApplication.clipboard()
             clipboard.setText(urlResult['url'])
-            self.showStatus('已复制到剪贴板')
+            self.showStatus(self.tr('copiedToClipboard'))
 
 
     def slotRemoveTask(self, data: tuple) -> None:
@@ -841,7 +872,7 @@ class Ashore(QMainWindow):
         if 'ResultError' in result:
             self.showStatus(str(result['ResultError']))
         else:
-            self.showStatus('删除成功')
+            self.showStatus(self.tr('deleteSuccess'))
         self.aria2Poller.poll()
     def applyAria2Config(self, conf: dict) -> None:
         if 'ResultError' in conf:
@@ -858,7 +889,8 @@ class Ashore(QMainWindow):
                     self.aria2Version = ''
                     self.aria2Poller.version = ''
                 except RuntimeError as exc:
-                    result = {'ResultError': f'{exc} 配置已保存，请手动重启 aria2 后生效。'}
+                    result = {'ResultError': self.tr(
+                        'manualRestartRequired').format(error=exc)}
                 finally:
                     self.aria2Poller.timer.start()
                     self.aria2Poller.poll()
@@ -870,8 +902,9 @@ class Ashore(QMainWindow):
         self.aria2Poller.timer.setInterval(
             max(500, int(conf['update_interval'])))
 
-        if conf.get('language') and conf['language'] != self.language:
-            self.language = conf['language']
+        configuredLanguage = resolveLanguage(conf.get('language'))
+        if configuredLanguage != self.language:
+            self.language = configuredLanguage
             self.applyLanguage()
 
         if conf.get('tray_icon_style'):
