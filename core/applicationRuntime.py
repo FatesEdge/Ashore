@@ -7,7 +7,7 @@ from core.applicationInfo import configureApplication
 from core.aria2Service import Aria2Startup
 from core.configStore import boolValue, readAshore, writeAshore
 from core.singleInstance import SingleInstanceCoordinator
-from interface.languageManager import resolveLanguage
+from interface.languageManager import resolveLanguage, translate
 from interface.startupWindow import RecoveryWindow, StartupWindow
 from interface.themeManager import ThemeManager
 from paths import CONFIG_DIR, RESOURCE_DIR, ensureConfig
@@ -65,7 +65,9 @@ class StartupController(QObject):
         self.trackerReady = False
         self.clock = QElapsedTimer()
         self.themeManager = ThemeManager(app, self)
-        self.splash = StartupWindow(RESOURCE_DIR / 'static/img/cover.png')
+        self.language = resolveLanguage(None)
+        self.splash = StartupWindow(
+            RESOURCE_DIR / 'static/img/cover.png', self.language)
         self.splash.firstPainted.connect(self.checkInstance)
         self.startup = None
         self.settings = {}
@@ -75,7 +77,7 @@ class StartupController(QObject):
         self.splash.show()
 
     def checkInstance(self):
-        self.showStage('正在检查运行实例')
+        self.showStage('startupCheckingInstance')
         try:
             if not self.app.claimSingleInstance(self.arguments[1:]):
                 self.splash.close()
@@ -87,13 +89,14 @@ class StartupController(QObject):
         QTimer.singleShot(0, self.loadConfig)
 
     def loadConfig(self):
-        self.showStage('正在读取配置')
+        self.showStage('startupLoadingConfig')
         try:
             ensureConfig('ashore.conf')
             ensureConfig('aria2.conf')
             self.settings = readAshore(
                 CONFIG_DIR / 'ashore.conf',
                 RESOURCE_DIR / 'config/ashore.conf')
+            self.language = resolveLanguage(self.settings.get('language'))
             if self.settings.get('tray_icon_style') == 'monochrome':
                 self.settings['tray_icon_style'] = 'gray'
                 writeAshore(
@@ -108,7 +111,7 @@ class StartupController(QObject):
         QTimer.singleShot(0, self.startAria2)
 
     def startAria2(self):
-        self.showStage('正在检查 aria2')
+        self.showStage('startupCheckingAria2')
         self.startup = Aria2Startup(
             boolValue(self.settings.get('quit_with_aria2')), self)
         self.startup.statusChanged.connect(self.showStage)
@@ -121,7 +124,7 @@ class StartupController(QObject):
             self.recovery.close()
             self.recovery.deleteLater()
             self.recovery = None
-        self.showStage('正在准备主界面')
+        self.showStage('startupPreparingWindow')
         QTimer.singleShot(0, lambda: self.createWindow(service))
 
     def createWindow(self, service):
@@ -140,7 +143,7 @@ class StartupController(QObject):
         tracker.updated.connect(self.trackerFinished)
         tracker.failed.connect(self.trackerFinished)
 
-        self.showStage('正在同步下载任务')
+        self.showStage('startupSyncingDownloads')
         self.window.startRuntime()
         if self.window.pageSetting.startAutoTracker():
             QTimer.singleShot(self.TRACKER_GRACE_MS, self.trackerFinished)
@@ -172,7 +175,7 @@ class StartupController(QObject):
             return
         self.finished = True
         self.finishScheduled = False
-        self.showStage('正在显示主界面')
+        self.showStage('startupShowingWindow')
         self.splash.finish(self.window)
         if len(self.arguments) > 1:
             self.window.addNew(self.arguments[1:])
@@ -219,20 +222,21 @@ class StartupController(QObject):
             return
         if self.recovery is not None:
             self.recovery.hide()
-        self.splash.showStatus('正在重新检查 aria2')
+        self.showStage('startupRecheckingAria2')
         self.splash.show()
         self.splash.raise_()
         self.splash.activateWindow()
         QTimer.singleShot(0, self.startAria2)
 
-    def showStage(self, message):
-        self.splash.showStatus(message)
+    def showStage(self, key):
+        self.splash.showStatus(translate(self.language, key))
 
     def fail(self, message):
         self.splash.close()
         if self.recovery is not None:
             self.recovery.close()
-        QMessageBox.critical(None, 'Ashore 启动失败', message)
+        QMessageBox.critical(
+            None, translate(self.language, 'startupFailedTitle'), message)
         self.app.quit()
 
     def quit(self):
