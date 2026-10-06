@@ -223,6 +223,7 @@ class Ashore(QMainWindow):
             action = getattr(self, 'menuActions', {}).get(key)
             if action is not None:
                 action.setIcon(actionIcon(iconName, size=18))
+                action.setIconVisibleInMenu(True)
 
         trayIcons = {
             'showMain': 'show',
@@ -234,6 +235,7 @@ class Ashore(QMainWindow):
             action = getattr(self, 'trayActions', {}).get(key)
             if action is not None:
                 action.setIcon(actionIcon(iconName, size=18))
+                action.setIconVisibleInMenu(True)
 
         self.refreshNavigationIcons()
 
