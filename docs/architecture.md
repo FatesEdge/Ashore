@@ -50,6 +50,10 @@ The startup controller owns the runtime references needed while the application 
 
 UI-owned workers are parented where practical. Long-running workers and timers are stopped before their owner is released.
 
+## Language selection
+
+The bundled default is `system`. On first use, Ashore maps the operating-system locale to Simplified Chinese, Traditional Chinese, or English. Unsupported system languages fall back to English. Once the user explicitly saves a language choice, that persisted setting takes precedence.
+
 ## Project boundaries
 
 Ashore is not intended to become a browser, cloud service, plugin marketplace, or general automation platform. New features should directly improve download management, aria2 operation, or desktop integration.
