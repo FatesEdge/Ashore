@@ -199,3 +199,7 @@ class TrackerManagerPanel(QWidget):
             return
         self.worker.requestInterruption()
         self.worker.wait(2500)
+
+    def closeEvent(self, event):
+        self.stopHealthCheck()
+        super().closeEvent(event)
