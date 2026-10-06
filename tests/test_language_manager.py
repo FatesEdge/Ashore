@@ -1,6 +1,6 @@
 import unittest
 
-from interface.languageManager import LANGUAGES, resolveLanguage, systemLanguage, translate
+from interface.languageManager import LANGUAGES, TEXT, resolveLanguage, systemLanguage, translate
 
 
 class LanguageManagerTests(unittest.TestCase):
@@ -9,6 +9,11 @@ class LanguageManagerTests(unittest.TestCase):
         for language in LANGUAGES:
             self.assertNotEqual(translate(language, 'new'), 'new')
             self.assertNotEqual(translate(language, 'settings'), 'settings')
+
+    def test_all_supported_languages_define_the_same_keys(self):
+        englishKeys = set(TEXT['en'])
+        for language in LANGUAGES:
+            self.assertEqual(set(TEXT[language]), englishKeys)
 
 
     def test_system_language_prefers_supported_locale_and_falls_back_to_english(self):
