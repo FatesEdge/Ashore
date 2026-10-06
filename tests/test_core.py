@@ -233,7 +233,6 @@ class Aria2Tests(unittest.TestCase):
 
 
     def test_deletion_only_removes_listed_download_files(self):
-        client = Aria2Client.__new__(Aria2Client)
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             target = root / 'My download' / 'part.bin'
