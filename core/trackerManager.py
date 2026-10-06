@@ -21,6 +21,7 @@ SOURCE_KEY = 'trackers_list_source'
 SOURCE_KEYS_KEY = 'tracker_source_keys'
 CUSTOM_SOURCES_KEY = 'tracker_custom_sources'
 UPDATE_AGE = timedelta(days=1)
+LEGACY_EMPTY_TIMESTAMPS = {'尚未更新'}
 
 
 def isoNow():
@@ -28,7 +29,7 @@ def isoNow():
 
 
 def parseTime(value):
-    if not value or value == '尚未更新':
+    if not value or value in LEGACY_EMPTY_TIMESTAMPS:
         return None
     for parser in (
             lambda: datetime.fromisoformat(value),
