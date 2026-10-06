@@ -43,6 +43,7 @@ from interface.languageManager import translate
 from interface.page import Page
 from interface.settingPage import SettingPage
 from interface.startupWindow import ExitWindow, RecoveryWindow, StartupWindow
+from interface.titleBar import TitleBar
 from interface.windowChrome import createWindowChrome
 from interface.notificationManager import NotificationManager
 from interface.themeManager import TRAY_GRAY, ThemeManager
@@ -61,7 +62,6 @@ class Ashore(QMainWindow):
     def __init__(self, aria2Service, themeManager):
         super().__init__()
         self.windowChrome = createWindowChrome(self)
-        self.windowChrome.install()
         self.hasPainted = False
         self.isRelease = bool(getattr(sys, 'frozen', False))
         self.resourcePath = str(RESOURCE_DIR) + '/'
@@ -96,6 +96,7 @@ class Ashore(QMainWindow):
         self.pendingConnectionStatus = '等待检测'
 
         self.initUI()
+        self.windowChrome.install()
         self.connectSignals()
         self.aria2Poller.updated.connect(self.updatePage)
 
@@ -135,6 +136,9 @@ class Ashore(QMainWindow):
         if (event.type() == QEvent.Type.PaletteChange
                 and hasattr(self, 'addBtn')):
             self.refreshActionIcons()
+        elif (event.type() == QEvent.Type.WindowStateChange
+                and hasattr(self, 'titleBar')):
+            self.titleBar.syncWindowState()
 
 
     def createCommandActions(self) -> None:
@@ -415,22 +419,11 @@ class Ashore(QMainWindow):
         self.moreBtn.setProperty('overflowButton', True)
         self.moreBtn.setMenu(self.moreMenu)
 
-        self.commandBar = QWidget()
-        self.commandBar.setProperty('commandBar', True)
-        self.commandBar.setFixedHeight(40)
-        commandLayout = QHBoxLayout(self.commandBar)
-        commandLayout.setContentsMargins(8, 5, 8, 5)
-        commandLayout.setSpacing(4)
-        commandLayout.addWidget(self.addBtn)
-        commandLayout.addWidget(self.unpauseAllBtn)
-        commandLayout.addWidget(self.pauseAllBtn)
-        commandLayout.addStretch(1)
-        commandLayout.addWidget(self.moreBtn)
-
-        commandHost = QWidget()
-        commandHostLayout = QHBoxLayout(commandHost)
-        commandHostLayout.setContentsMargins(12, 0, 12, 10)
-        commandHostLayout.addWidget(self.commandBar)
+        self.titleBar = TitleBar(
+            self,
+            (self.addBtn, self.unpauseAllBtn, self.pauseAllBtn),
+            self.moreBtn,
+        )
 
         self.tabDownloading = QPushButton()
         self.tabDownloaded = QPushButton()
@@ -465,10 +458,17 @@ class Ashore(QMainWindow):
         self.pageDownloading = Page(self.language)
         self.pageDownloaded = Page(self.language)
         self.pageStack = QStackedWidget()
-        self.pageStack.setProperty('pageSurface', True)
+        self.pageStack.setProperty('pageStack', True)
         self.pageStack.addWidget(self.pageDownloading)
         self.pageStack.addWidget(self.pageDownloaded)
         self.pageStack.addWidget(self.pageSetting)
+
+        self.pageSurface = QWidget()
+        self.pageSurface.setProperty('pageSurface', True)
+        pageSurfaceLayout = QVBoxLayout(self.pageSurface)
+        pageSurfaceLayout.setContentsMargins(0, 0, 0, 0)
+        pageSurfaceLayout.setSpacing(0)
+        pageSurfaceLayout.addWidget(self.pageStack)
 
         bodyWidget = QWidget()
         bodyWidget.setProperty('contentBody', True)
@@ -476,7 +476,7 @@ class Ashore(QMainWindow):
         bodyLayout.setContentsMargins(0, 0, 12, 0)
         bodyLayout.setSpacing(0)
         bodyLayout.addWidget(self.navigationRail)
-        bodyLayout.addWidget(self.pageStack, 1)
+        bodyLayout.addWidget(self.pageSurface, 1)
 
         self.createStatusStrip()
 
@@ -485,9 +485,10 @@ class Ashore(QMainWindow):
         mainWidget.setObjectName('mainRoot')
 
         mainLayout = QVBoxLayout(mainWidget)
-        mainLayout.setContentsMargins(0, 10, 0, 0)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
         mainLayout.setSpacing(0)
-        mainLayout.addWidget(commandHost)
+        mainLayout.addWidget(self.titleBar)
+        mainLayout.addSpacing(8)
         mainLayout.addWidget(bodyWidget, 1)
         mainLayout.addSpacing(8)
         mainLayout.addWidget(self.statusStrip)
