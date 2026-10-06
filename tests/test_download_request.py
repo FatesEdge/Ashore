@@ -11,6 +11,9 @@ from core.downloadRequest import (
     ITEM_MAGNET,
     ITEM_NETWORK,
     ITEM_REMOTE_TORRENT,
+    existingOutputConflict,
+    nextAvailableOutputName,
+    outputNameForItem,
     parseDownloadInputs,
 )
 from interface.addNewDialog import AddNewDialog
@@ -90,6 +93,36 @@ class DownloadRequestTests(unittest.TestCase):
                 'checksum': 'sha-256=abcd',
             })
         dialog.close()
+
+
+    def test_existing_plain_file_without_sidecar_is_an_ambiguous_target(self):
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / 'ubuntu.iso'
+            target.write_bytes(b'partial')
+            item = parseDownloadInputs(
+                ['https://example.org/ubuntu.iso']).items[0]
+
+            self.assertEqual(outputNameForItem(item), 'ubuntu.iso')
+            self.assertEqual(
+                existingOutputConflict(item, folder), target)
+
+            Path(str(target) + '.aria2').write_bytes(b'progress')
+            self.assertIsNone(existingOutputConflict(item, folder))
+
+    def test_existing_target_uses_explicit_output_name_and_numbered_alternative(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            target = root / 'archive.tar.gz'
+            target.write_bytes(b'old')
+            (root / 'archive.1.tar.gz').write_bytes(b'old numbered')
+            item = parseDownloadInputs(
+                ['https://example.org/download?id=1']).items[0]
+
+            options = {'out': 'archive.tar.gz'}
+            self.assertEqual(
+                existingOutputConflict(item, folder, options), target)
+            self.assertEqual(
+                nextAvailableOutputName(target), 'archive.2.tar.gz')
 
 
 if __name__ == '__main__':
