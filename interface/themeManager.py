@@ -5,12 +5,12 @@ from PyQt6.QtGui import QColor, QPalette
 
 THEME_MODES = ('system', 'light', 'dark')
 ACCENT_PRESETS = (
-    '#5d795f', '#3f7cac', '#7b5ea7', '#b56576', '#b7791f', '#287271',
+    '#1c71d8', '#3f7cac', '#7b5ea7', '#b56576', '#b7791f', '#287271',
 )
 TRAY_GRAY = QColor('#9b9b9b')
 
 
-def validColor(value, fallback='#5d795f'):
+def validColor(value, fallback='#1c71d8'):
     color = QColor(value)
     return color.name() if color.isValid() else fallback
 
