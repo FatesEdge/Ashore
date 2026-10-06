@@ -1,11 +1,15 @@
 """Reusable settings item composition."""
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QLayout, QSizePolicy, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QHBoxLayout, QLayout, QSizePolicy, QVBoxLayout, QWidget,
+)
 
 
 class SettingItem(QWidget):
-    """A settings title followed by its control block."""
+    """A settings title followed by an indented control block."""
+
+    FIELD_INDENT = 18
 
     def __init__(self, label, field, parent=None):
         super().__init__(parent)
@@ -23,22 +27,32 @@ class SettingItem(QWidget):
         layout.setSpacing(4)
         layout.addWidget(self.label)
 
+        self.fieldHost = QWidget(self)
+        self.fieldHost.setProperty('settingFieldHost', True)
+        fieldHostLayout = QHBoxLayout(self.fieldHost)
+        fieldHostLayout.setContentsMargins(self.FIELD_INDENT, 0, 0, 0)
+        fieldHostLayout.setSpacing(0)
+
         if isinstance(field, QLayout):
-            self.fieldHost = QWidget(self)
-            self.fieldHost.setProperty('settingFieldHost', True)
-            self.fieldHost.setLayout(field)
-            self.fieldHost.setSizePolicy(
+            fieldWidget = QWidget(self.fieldHost)
+            fieldWidget.setProperty('settingFieldBody', True)
+            fieldWidget.setLayout(field)
+            fieldWidget.setSizePolicy(
                 QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-            layout.addWidget(self.fieldHost)
-            self.field = self.fieldHost
+            fieldHostLayout.addWidget(fieldWidget, 1)
+            self.field = fieldWidget
         else:
-            self.fieldHost = None
             self.field = field
             if field.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding:
-                layout.addWidget(field)
+                fieldHostLayout.addWidget(field, 1)
             else:
-                layout.addWidget(
+                fieldHostLayout.addWidget(
                     field, 0, Qt.AlignmentFlag.AlignLeft)
+                fieldHostLayout.addStretch(1)
+
+        self.fieldHost.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        layout.addWidget(self.fieldHost)
 
     def titleText(self):
         return self.label.text()
