@@ -2,17 +2,19 @@
 
 import base64
 import json
-import os
-import platform
-import shutil
-import subprocess
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from core.downloadRequest import DownloadItem, DownloadRequest, classifyInput, ITEM_LOCAL_TORRENT
+from core.downloadRequest import (
+    DownloadItem,
+    DownloadRequest,
+    ITEM_LOCAL_TORRENT,
+    classifyInput,
+)
+from core.fileOperations import deleteTaskFiles
 from core.missionNames import MissionNames
 from paths import ensureConfig
 
@@ -40,12 +42,6 @@ RPC_METHODS = {
 ERROR_MESSAGES = {
     -4: 'Mission Not Found',
 }
-PLATFORM_NAME = {
-    'Darwin': 'MacOS',
-    'Linux': 'Linux',
-    'Windows': 'Windows',
-}.get(platform.system(), 'unknown')
-
 
 class Aria2Client:
 
@@ -115,37 +111,22 @@ class Aria2Client:
                 errors.append(
                     f'{item.source}: {result["ResultError"]}')
         return {'ResultError': '\n'.join(errors)} if errors else {}
-    def pause(self, gid:str) -> dict:
-        jsonData = self.makeRequest(method = RPC_METHODS['pause'], params=[gid])
-        result = self.call(data=jsonData)   #执行添加操作得到返回结果。成功返回gid
-        if result == gid:
-            return {}       #设置成功返回空字典表示0
-        else:
-            return result   #设置失败返回带错误字典
+    def taskCommand(self, method, expected, params=None):
+        result = self.call(data=self.makeRequest(
+            RPC_METHODS[method], params))
+        return {} if result == expected else result
 
-    def unpause(self, gid:str) -> dict:
-        jsonData = self.makeRequest(method = RPC_METHODS['unpause'], params=[gid])
-        result = self.call(data=jsonData)   #执行添加操作得到返回结果。成功返回gid
-        if result == gid:
-            return {}       #设置成功返回空字典表示0
-        else:
-            return result   #设置失败返回带错误字典
+    def pause(self, gid: str) -> dict:
+        return self.taskCommand('pause', gid, [gid])
+
+    def unpause(self, gid: str) -> dict:
+        return self.taskCommand('unpause', gid, [gid])
 
     def pauseAll(self) -> dict:
-        jsonData = self.makeRequest(method = RPC_METHODS['pauseAll'])
-        result = self.call(data=jsonData)   #执行添加操作得到返回结果。成功返回'OK'
-        if result == 'OK':
-            return {}       #设置成功返回空字典表示0
-        else:
-            return result   #设置失败返回带错误字典
+        return self.taskCommand('pauseAll', 'OK')
 
     def unpauseAll(self) -> dict:
-        jsonData = self.makeRequest(method = RPC_METHODS['unpauseAll'])
-        result = self.call(data=jsonData)   #执行添加操作得到返回结果。成功返回'OK'
-        if result == 'OK':
-            return {}       #设置成功返回空字典表示0
-        else:
-            return result   #设置失败返回带错误字典
+        return self.taskCommand('unpauseAll', 'OK')
 
     def retry(self, gid:str) -> None:
         """重试就是先删除，再新建
@@ -370,63 +351,10 @@ class Aria2Client:
 
         if delFile:
             try:
-                self.deleteTaskFiles(mission)
+                deleteTaskFiles(mission)
             except (OSError, ValueError) as exc:
                 return {'ResultError': str(exc)}
         return {}
-    def deleteTaskFiles(self, mission):
-        root = Path(mission['dir']).resolve()
-        if not root.is_dir():
-            raise ValueError('下载目录不存在，未删除任何文件')
-        files = mission.get('files') or [str(root / mission['filename'])]
-        targets = []
-        for name in files:
-            if not name:
-                continue
-            candidate = Path(name)
-            if not candidate.is_absolute():
-                candidate = root / candidate
-            # Validate the complete set before touching any files.
-            if candidate.is_symlink() or not candidate.resolve().is_relative_to(root) or candidate.resolve() == root:
-                raise ValueError('任务文件超出下载目录，拒绝删除')
-            targets.append(candidate)
-        if not targets:
-            raise ValueError('无法确定任务文件，拒绝删除')
-        for path in targets:
-            for item in (path, Path(str(path) + '.aria2')):
-                if item.is_file() and not item.is_symlink():
-                    item.unlink()
-            parent = path.parent
-            while parent != root and parent.is_relative_to(root):
-                try:
-                    parent.rmdir()
-                except OSError:
-                    break
-                parent = parent.parent
-
-    def openFileDir(self, gid:str) -> dict:
-        mission = self.getMission(gid)
-        if 'ResultError' in mission:
-            #若未找到所给gid的任务，返回含错误代码字典{'ResultError' : -4}
-            return mission
-        else:
-            platformSystem = PLATFORM_NAME
-            filePath = mission['dir'] + '/' + mission['filename']
-            if platformSystem == 'MacOS':           # MacOS
-                cmd = ['open', '-R', filePath]
-            elif platformSystem == 'Linux':         # Linux
-                if shutil.which('nautilus') and os.path.exists(filePath):
-                    cmd = ['nautilus', '--select', filePath]
-                else:
-                    return {'dir' : mission['dir']}
-            elif platformSystem == 'Windows':       # Windows
-                cmd = ['explorer', '/select,', filePath]
-            else:           #防止其他情况
-                return {'dir' : mission['dir']}
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            return {} #返回空字典表示0成功
-
-
     def getFilePath(self, gid:str) -> dict:
         mission = self.getMission(gid)
         if 'ResultError' in mission:
