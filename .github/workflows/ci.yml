@@ -53,8 +53,6 @@ jobs:
     runs-on: ubuntu-24.04
     needs: test
     timeout-minutes: 20
-    env:
-      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -63,7 +61,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y aria2 libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0
+          sudo apt-get install -y aria2 xvfb libegl1 libopengl0 libxkbcommon-x11-0 libxcb-cursor0
           python -m pip install -e ".[dev]"
       - name: Build Linux onefile package
         run: |
@@ -77,7 +75,8 @@ jobs:
           XDG_CONFIG_HOME: ${{ runner.temp }}/ashore-ci-config
         run: |
           set +e
-          timeout --signal=INT --kill-after=5s 12s dist/Ashore.Linux.onefile/Ashore
+          xvfb-run -a env QT_QPA_PLATFORM=xcb \
+            timeout --signal=INT --kill-after=5s 12s dist/Ashore.Linux.onefile/Ashore
           result=$?
           set -e
           if [ "$result" -ne 124 ]; then
