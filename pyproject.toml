@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ashore-download-manager"
-version = "0.7.89"
+version = "1.0.0"
 description = "A cross-platform aria2 desktop download manager."
 readme = "README.md"
 requires-python = ">=3.12"
