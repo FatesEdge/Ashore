@@ -9,7 +9,7 @@ from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication, QSizePolicy
 
 import paths
-from Ashore import StartupController
+from core.applicationRuntime import StartupController
 from interface.addNewDialog import AddNewDialog
 from interface.controls import AshoreComboBox, AshoreSpinBox
 from interface.section import Section
@@ -41,7 +41,7 @@ class SettingsLayoutTests(unittest.TestCase):
             page = self.makePage(folder)
             self.assertTrue(page.scrollArea.widgetResizable())
             for field in (page.pathLineEdit, page.userAgentComboBox,
-                          page.rpcSecretLineEdit, page.btTracker):
+                          page.rpcSecretLineEdit):
                 self.assertEqual(field.sizePolicy().horizontalPolicy(),
                                  QSizePolicy.Policy.Expanding)
             self.assertLess(page.rpcPortLineEdit.maximumWidth(), 1000)
@@ -118,7 +118,7 @@ class SettingsLayoutTests(unittest.TestCase):
     def test_tracker_and_download_progress_use_dense_row_card_layout(self):
         with tempfile.TemporaryDirectory() as folder:
             page = self.makePage(folder)
-            self.assertGreaterEqual(page.btTracker.minimumHeight(), 120)
+            self.assertTrue(page.trackerManageBtn.text())
             self.assertTrue(page.saveBtn.property('primaryAction'))
         section = Section('gid', 'example.bin', 'completed', 100, 100, 0)
         self.assertEqual(section.progressBar.height(), 4)
