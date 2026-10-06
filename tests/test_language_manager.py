@@ -20,6 +20,8 @@ class LanguageManagerTests(unittest.TestCase):
         self.assertEqual(systemLanguage('zh_CN'), 'zh_CN')
         self.assertEqual(systemLanguage('zh_TW'), 'zh_TW')
         self.assertEqual(systemLanguage('zh_HK'), 'zh_TW')
+        self.assertEqual(systemLanguage('zh-Hant-TW'), 'zh_TW')
+        self.assertEqual(systemLanguage('zh_Hans_SG'), 'zh_CN')
         self.assertEqual(systemLanguage('en_AU'), 'en')
         self.assertEqual(systemLanguage('ja_JP'), 'en')
 
