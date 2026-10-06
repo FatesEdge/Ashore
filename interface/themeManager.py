@@ -114,6 +114,11 @@ class ThemeManager(QObject):
                 border: none;
                 border-bottom: 1px solid {token['border']};
             }}
+            QLabel[windowIcon="true"] {{
+                background: transparent;
+                border: none;
+                padding: 0;
+            }}
             QLabel[windowTitle="true"] {{
                 background: transparent;
                 color: {token['text']};
@@ -122,21 +127,26 @@ class ThemeManager(QObject):
                 font-weight: 700;
             }}
             QPushButton[windowControl="true"] {{
-                background: transparent;
+                background: {token['raised']};
                 color: {token['text']};
-                border: none;
-                border-radius: 8px;
-                min-width: 32px;
-                max-width: 32px;
-                min-height: 30px;
-                max-height: 30px;
+                border: 1px solid {token['border']};
+                border-radius: 13px;
+                min-width: 26px;
+                max-width: 26px;
+                min-height: 26px;
+                max-height: 26px;
                 padding: 0;
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: 500;
             }}
             QPushButton[windowControl="true"]:hover {{
                 background: {token['hover']};
-                border: none;
+                border-color: {token['borderStrong']};
+            }}
+            QPushButton[windowControlRole="close"]:hover {{
+                background: #c42b1c;
+                color: #ffffff;
+                border-color: #c42b1c;
             }}
             QPushButton[windowControl="true"]:pressed {{
                 background: {token['pressed']};
