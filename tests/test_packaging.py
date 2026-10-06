@@ -43,27 +43,51 @@ class PackagingTests(unittest.TestCase):
         self.assertNotIn('command -v aria2c', installer)
         self.assertNotIn('Install aria2 first', installer)
 
-    def test_pyinstaller_command_excludes_unused_heavy_modules(self):
-        with tempfile.TemporaryDirectory() as directory:
-            staging = Path(directory)
-            command = make.pyinstallerCommand('Linux', 'onefile', staging)
+    def test_linux_spec_excludes_unused_python_modules_and_native_plugins(self):
+        spec = make.linuxSpecText('onefile')
 
-        self.assertIn('--strip', command)
         for module in (
                 'numpy', 'cryptography', 'tkinter',
                 'PyQt6.QtDBus', 'PyQt6.QtMultimedia',
                 'PyQt6.QtQml', 'PyQt6.QtQuick',
                 'PyQt6.QtWebEngineWidgets'):
-            pairFound = any(
-                command[index:index + 2] == ['--exclude-module', module]
-                for index in range(len(command) - 1))
-            self.assertTrue(pairFound, module)
+            self.assertIn(repr(module), spec)
+
+        for plugin in (
+                'PyQt6/Qt6/lib/libQt6Pdf.so.6',
+                'PyQt6/Qt6/plugins/imageformats/libqpdf.so',
+                'PyQt6/Qt6/plugins/platforms/libqeglfs.so',
+                'PyQt6/Qt6/plugins/platforms/libqvnc.so'):
+            self.assertIn(repr(plugin), spec)
+            self.assertFalse(make.linuxBundleEntryAllowed(plugin))
 
         for required in (
                 'PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets',
                 'PyQt6.QtNetwork', 'PyQt6.QtSvg',
                 'PyQt6.QtWebSockets'):
             self.assertNotIn(required, make.PYINSTALLER_EXCLUDES)
+
+    def test_linux_native_filter_keeps_desktop_integrations(self):
+        for required in (
+                'PyQt6/Qt6/plugins/platforms/libqxcb.so',
+                'PyQt6/Qt6/plugins/platforms/libqwayland.so',
+                'PyQt6/Qt6/plugins/platformthemes/libqgtk3.so',
+                'PyQt6/Qt6/plugins/platformthemes/libqxdgdesktopportal.so',
+                'PyQt6/Qt6/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so',
+                'PyQt6/Qt6/plugins/imageformats/libqsvg.so',
+                'PyQt6/Qt6/lib/libQt6Network.so.6',
+                'PyQt6/Qt6/lib/libQt6WebSockets.so.6'):
+            self.assertTrue(make.linuxBundleEntryAllowed(required))
+
+    def test_linux_spec_preserves_onefile_and_onedir_shapes(self):
+        onefile = make.linuxSpecText('onefile')
+        onedir = make.linuxSpecText('onedir')
+
+        self.assertNotIn('COLLECT(', onefile)
+        self.assertIn('COLLECT(', onedir)
+        self.assertIn('exclude_binaries=True', onedir)
+        self.assertIn('strip=True', onefile)
+        self.assertIn('strip=True', onedir)
 
     def test_macos_bundle_identifier_matches_repository_identity(self):
         import plistlib
