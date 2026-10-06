@@ -117,6 +117,7 @@ jobs:
 
           assert info['CFBundleShortVersionString'] == APP_VERSION
           assert info['CFBundleVersion'] == APP_VERSION
+          assert info['CFBundleIdentifier'] == 'io.github.kai-x64.ashore'
           schemes = {
               scheme
               for entry in info.get('CFBundleURLTypes', [])
