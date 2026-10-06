@@ -1,10 +1,40 @@
 """Centralized runtime translations for Ashore."""
 
+from PyQt6.QtCore import QLocale
+
 LANGUAGES = {
     'zh_CN': '简体中文',
     'zh_TW': '繁體中文',
     'en': 'English',
 }
+
+
+def systemLanguage(localeName=None):
+    """Return the supported Ashore language closest to the system locale."""
+    name = str(localeName or QLocale.system().name()).replace('-', '_')
+    if name in LANGUAGES:
+        return name
+
+    parts = name.split('_')
+    language = parts[0].lower()
+    territory = parts[1].upper() if len(parts) > 1 else ''
+
+    if language == 'zh':
+        if territory in {'TW', 'HK', 'MO'}:
+            return 'zh_TW'
+        return 'zh_CN'
+    if language == 'en':
+        return 'en'
+    return 'en'
+
+
+def resolveLanguage(configured=None, localeName=None):
+    """Resolve a configured language, using the system language for defaults."""
+    if configured in LANGUAGES:
+        return configured
+    if configured in (None, '', 'system'):
+        return systemLanguage(localeName)
+    return 'en'
 
 TEXT = {
     'zh_CN': {
