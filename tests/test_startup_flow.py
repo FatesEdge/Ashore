@@ -147,7 +147,7 @@ class StartupFlowTests(unittest.TestCase):
 
     def test_lifecycle_window_ready_requires_activation_and_paint(self):
         window = ExitWindow(
-            RESOURCE_DIR / 'static/icon/functionIcons/icon0.png', 'Exiting')
+            RESOURCE_DIR / 'static/icon/functionIcons/appIcon.png', 'Exiting')
         ready = Mock()
         window.ready.connect(ready)
 
@@ -174,7 +174,7 @@ class StartupFlowTests(unittest.TestCase):
             Ashore.requestTrayQuit(window)
 
         factory.assert_called_once_with(
-            str(RESOURCE_DIR) + '/static/icon/functionIcons/icon0.png', 'Exiting')
+            str(RESOURCE_DIR) + '/static/icon/functionIcons/appIcon.png', 'Exiting')
         exitWindow.ready.connect.assert_called_once_with(window.slotQuit)
         exitWindow.showActive.assert_called_once_with()
         self.assertIs(window.exitWindow, exitWindow)
