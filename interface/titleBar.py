@@ -1,5 +1,7 @@
 """Ashore integrated command bar and frameless window chrome."""
 
+import sys
+
 from PyQt6.QtCore import QRect, Qt
 from PyQt6.QtWidgets import (
     QHBoxLayout, QStyle, QStyleOptionTitleBar, QToolButton, QWidget,
@@ -140,6 +142,8 @@ class AshoreTitleBar(QWidget):
             return center < option.rect.center().x(), [
                 role for _, role in positions]
 
+        if sys.platform == 'darwin':
+            return True, ['close', 'minimize', 'maximize']
         return False, ['minimize', 'maximize', 'close']
 
     def addWindowControls(self, layout, order):
