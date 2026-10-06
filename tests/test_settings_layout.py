@@ -74,6 +74,10 @@ class SettingsLayoutTests(unittest.TestCase):
             self.assertEqual(
                 page.updateIntervalSpin.focusPolicy(),
                 Qt.FocusPolicy.StrongFocus)
+            self.assertEqual(page.COMPACT_NUMBER_WIDTH, 120)
+            self.assertEqual(page.maxDownloadsSpin.width(), 120)
+            self.assertEqual(page.maxConnectionSpin.width(), 120)
+            self.assertEqual(page.updateIntervalSpin.width(), 120)
             self.assertTrue(page.settingItems)
             self.assertTrue(all(
                 isinstance(item, SettingItem)
@@ -184,13 +188,15 @@ class SettingsLayoutTests(unittest.TestCase):
         self.assertFalse(section.moreButton.isHidden())
         self.assertEqual(section.deleteAction.text(), '删除任务和文件…')
         self.assertEqual(section.overflowMenu.dismissTimer.interval(), 450)
-        self.assertEqual(section.height(), 84)
+        self.assertEqual(section.height(), 78)
+        self.assertEqual(section.iconLabel.height(), 56)
+        self.assertEqual(section.rateLabel.width(), 54)
         self.assertEqual(section.CONTENT_MIN_WIDTH, 660)
-        self.assertEqual(section.DETAILS_MAX_WIDTH, 820)
+        self.assertEqual(section.DETAILS_MAX_WIDTH, 720)
         self.assertEqual(
             section.infoPanel.sizePolicy().horizontalPolicy(),
             QSizePolicy.Policy.Expanding)
-        self.assertEqual(section.detailsPanel.maximumWidth(), 820)
+        self.assertEqual(section.detailsPanel.maximumWidth(), 720)
         self.assertEqual(section.bodyLayout.count(), 2)
         self.assertEqual(
             section.actionSlot.layout().contentsMargins().left(), 30)
