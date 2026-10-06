@@ -34,7 +34,7 @@ def probeUdpTracker(url, timeout):
     host = parsed.hostname
     port = parsed.port
     if not host or not port:
-        return False, None, '无效 UDP Tracker 地址'
+        return False, None, 'Invalid UDP Tracker address'
 
     started = time.monotonic()
     transactionId = int(time.time_ns() & 0xffffffff)
@@ -43,17 +43,17 @@ def probeUdpTracker(url, timeout):
         addresses = socket.getaddrinfo(
             host, port, type=socket.SOCK_DGRAM)
         if not addresses:
-            return False, None, '无法解析 Tracker 主机'
+            return False, None, 'Could not resolve Tracker host'
         family, socketType, protocol, _, address = addresses[0]
         with socket.socket(family, socketType, protocol) as sock:
             sock.settimeout(timeout)
             sock.sendto(packet, address)
             response, _ = sock.recvfrom(2048)
         if len(response) < 16:
-            return False, None, 'UDP Tracker 响应过短'
+            return False, None, 'UDP Tracker response is too short'
         action, responseTransaction = struct.unpack('!II', response[:8])
         if action != UDP_CONNECT_ACTION or responseTransaction != transactionId:
-            return False, None, 'UDP Tracker 响应无效'
+            return False, None, 'Invalid UDP Tracker response'
     except OSError as exc:
         return False, None, str(exc)
 
@@ -68,7 +68,7 @@ def probeTracker(url, timeout=2.0):
             return probeUdpTracker(url, timeout)
         if parsed.scheme in ('http', 'https'):
             return probeHttpTracker(url, timeout)
-        return False, None, '不支持的 Tracker 协议'
+        return False, None, 'Unsupported Tracker protocol'
     except (OSError, ValueError, urllib.error.URLError, ssl.SSLError) as exc:
         return False, None, str(exc)
 
