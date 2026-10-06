@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.applicationInfo import APP_VERSION
+from core.applicationInfo import APP_VERSION, PROJECT_URL
 from core.aria2Client import ERROR_MESSAGES
 from core.aria2Events import Aria2Events
 from core.aria2Service import Aria2Poller, Aria2Removal, Aria2Shutdown
@@ -719,7 +719,7 @@ class Ashore(QMainWindow):
         infoLIcon.setScaledContents(True)
         infoLIcon.setFixedSize(180, 180)
         aria2Version = self.aria2Client.getAria2Version()
-        aboutText = QLabel('由 Python 编写的 aria2 可视化程序<br>作者: PPPPAN<br>项目地址: <a href="https://github.com/FatesEdge/Ashore">GitHub/Ashore</a><br>Python version: ' + platform.python_version() + '<br>Ashore version: ' + APP_VERSION + '<br>aria2 version: ' + aria2Version)
+        aboutText = QLabel('由 Python 编写的 aria2 可视化程序<br>作者: PPPPAN<br>项目地址: <a href="' + PROJECT_URL + '">GitHub/Ashore</a><br>Python version: ' + platform.python_version() + '<br>Ashore version: ' + APP_VERSION + '<br>aria2 version: ' + aria2Version)
         aboutText.setOpenExternalLinks(True)
         aboutText.setFixedWidth(300)
         aboutText.setMargin(30)
