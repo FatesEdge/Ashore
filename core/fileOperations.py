@@ -10,7 +10,7 @@ from pathlib import Path
 def deleteTaskFiles(mission):
     root = Path(mission['dir']).resolve()
     if not root.is_dir():
-        raise ValueError('下载目录不存在，未删除任何文件')
+        raise ValueError('The download directory does not exist; no files were deleted')
 
     files = mission.get('files') or [str(root / mission['filename'])]
     targets = []
@@ -24,11 +24,11 @@ def deleteTaskFiles(mission):
         if (candidate.is_symlink()
                 or not resolved.is_relative_to(root)
                 or resolved == root):
-            raise ValueError('任务文件超出下载目录，拒绝删除')
+            raise ValueError('Task file is outside the download directory; refusing to delete')
         targets.append(candidate)
 
     if not targets:
-        raise ValueError('无法确定任务文件，拒绝删除')
+        raise ValueError('Task files could not be determined; refusing to delete')
 
     for path in targets:
         for item in (path, Path(str(path) + '.aria2')):
