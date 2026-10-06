@@ -2,6 +2,10 @@
 
 Ashore uses PyInstaller through `make.py`.
 
+The build script keeps a reviewed `PYINSTALLER_EXCLUDES` list for large optional Python/Qt modules that Ashore does not use. Required Qt modules such as Core, Gui, Widgets, Network, Svg, and WebSockets must never be added to that list. Linux builds also request binary stripping to reduce the shipped Qt/Python footprint.
+
+PyInstaller module exclusions apply to Python import modules. They are not a reliable way to remove arbitrary shared libraries such as `libssl` or `libcrypto`; native libraries should only be removed when their dependency relationship has been verified.
+
 ## Linux
 
 Supported build modes:
