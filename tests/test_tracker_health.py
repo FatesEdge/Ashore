@@ -3,7 +3,7 @@ import unittest
 from PyQt6.QtWidgets import QApplication
 
 from core.trackerHealth import probeTracker
-from interface.trackerManagerDialog import TrackerManagerDialog
+from interface.trackerManagerPanel import TrackerManagerPanel
 
 
 class TrackerHealthTests(unittest.TestCase):
@@ -18,27 +18,27 @@ class TrackerHealthTests(unittest.TestCase):
         self.assertIsNone(latency)
         self.assertIn('协议', error)
 
-    def test_dialog_normalizes_and_deduplicates_trackers(self):
-        dialog = TrackerManagerDialog([
+    def test_panel_normalizes_and_deduplicates_trackers(self):
+        panel = TrackerManagerPanel([
             'udp://tracker.example:80/announce',
             'udp://tracker.example:80/announce',
             'https://tracker.example/announce',
         ])
         self.assertEqual(
-            dialog.trackers(),
+            panel.trackers(),
             [
                 'udp://tracker.example:80/announce',
                 'https://tracker.example/announce',
             ])
-        dialog.close()
+        panel.close()
 
-    def test_dialog_applies_health_result_without_network(self):
-        dialog = TrackerManagerDialog(
+    def test_panel_applies_health_result_without_network(self):
+        panel = TrackerManagerPanel(
             ['https://tracker.example/announce'], language='en')
-        dialog.applyHealthResult(0, 'healthy', 42, '')
-        self.assertEqual(dialog.table.item(0, 1).text(), 'Reachable')
-        self.assertEqual(dialog.table.item(0, 2).text(), '42 ms')
-        dialog.close()
+        panel.applyHealthResult(0, 'healthy', 42, '')
+        self.assertEqual(panel.table.item(0, 1).text(), 'Reachable')
+        self.assertEqual(panel.table.item(0, 2).text(), '42 ms')
+        panel.close()
 
 
 if __name__ == '__main__':
