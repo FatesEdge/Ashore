@@ -63,4 +63,7 @@ def ensureConfig(name):
                 and not writeOptions(target, {'check-integrity': 'true'})):
             raise OSError(f'无法更新 aria2 配置：{target}')
         target.chmod(0o600)
+        sessionPath = CONFIG_DIR / 'aria2.session'
+        sessionPath.touch(exist_ok=True)
+        sessionPath.chmod(0o600)
     return target
